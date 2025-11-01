@@ -1,36 +1,128 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CompaChantier
+
+A modern web platform for comparing construction equipment prices across different countries, powered by AI for intelligent file mapping and analysis.
+
+## Overview
+
+CompaChantier helps construction and logistics teams compare equipment prices between Gabon (CFA) and China (RMB). Upload material lists (PDF, CSV, Excel, or Google Sheets), let GPT-4o automatically map columns, enter prices and supplier details, and generate professional comparison reports.
+
+## Features
+
+- **AI-Powered File Import**: Upload PDF, CSV, Excel, or Google Sheets with automatic column mapping via GPT-4o
+- **Multi-Country Pricing**: Compare prices between Gabon (CFA) and China (RMB) with manual exchange rates
+- **Role-Based Access**: Administrator, Editor, and Reader roles with granular permissions
+- **Real-Time Comparison**: Live price comparison table with filtering, sorting, and search
+- **Product Details**: High-resolution photos, specifications, and transport cost estimates
+- **Professional Exports**: Generate PDF and Excel reports with custom branding
+- **Freemium Model**: Free tier with limitations, Premium tier with unlimited access
+- **Multi-Language**: Interface in French, English, and Chinese
+
+## Tech Stack
+
+- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Supabase (PostgreSQL, Auth, Storage)
+- **AI**: OpenAI GPT-4o for file analysis
+- **File Parsing**: PapaParse (CSV), SheetJS (Excel), PDF.js (PDF)
+- **State Management**: React Query (TanStack Query)
+- **Deployment**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ and npm
+- Supabase account
+- OpenAI API key
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd windsurf-project
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Edit `.env.local` with your credentials:
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anon key
+- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+- `OPENAI_API_KEY`: Your OpenAI API key
 
-## Learn More
+4. Set up the database:
+   - Go to your Supabase project dashboard
+   - Navigate to SQL Editor
+   - Run the migration script from `supabase/migrations/001_initial_schema.sql`
 
-To learn more about Next.js, take a look at the following resources:
+5. Run the development server:
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open [http://localhost:3000](http://localhost:3000) to see the application.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```
+├── app/                    # Next.js App Router pages
+│   ├── (auth)/            # Authentication pages
+│   ├── (dashboard)/       # Protected dashboard pages
+│   └── api/               # API routes
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components
+│   ├── auth/             # Authentication components
+│   ├── projects/         # Project-related components
+│   └── comparison/       # Comparison table components
+├── lib/                   # Utility functions
+│   ├── supabase/         # Supabase clients
+│   └── utils.ts          # Helper functions
+├── types/                 # TypeScript type definitions
+├── documentation/         # Project documentation
+└── supabase/             # Database migrations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Documentation
+
+Comprehensive documentation is available in the `documentation/` folder:
+
+- **project_requirements_document.md**: Full project requirements and specifications
+- **tech_stack_document.md**: Detailed tech stack explanation
+- **backend_structure_document.md**: Backend architecture and database schema
+- **frontend_guidelines_document.md**: Frontend architecture and design principles
+- **app_flow_document.md**: User flows and navigation
+- **security_guideline_document.md**: Security best practices
+- **tasks.json**: Detailed implementation tasks
+
+## Development Workflow
+
+1. **Task 1**: Project setup and authentication ✅
+2. **Task 2**: File import and AI mapping (In Progress)
+3. **Task 3**: Product data management
+4. **Task 4**: Comparison dashboard
+5. **Task 5**: Export system and monetization
+
+## Contributing
+
+1. Create a feature branch from `main`
+2. Make your changes
+3. Run tests: `npm test`
+4. Submit a pull request
+
+## License
+
+Proprietary - All rights reserved
+
+## Support
+
+For questions or issues, please refer to the documentation or contact the development team.
+# byproject
