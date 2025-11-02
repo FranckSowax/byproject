@@ -46,7 +46,7 @@ export default function DashboardPage() {
       if (error) {
         console.error("Error loading projects:", error);
       } else {
-        setProjects(data || []);
+        setProjects((data as unknown as Project[]) || []);
       }
     } catch (error) {
       console.error("Error:", error);
