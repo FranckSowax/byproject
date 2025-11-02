@@ -163,7 +163,7 @@ export default function ProjectPage() {
         return;
       }
 
-      setProject(data);
+      setProject(data as any);
     } catch (error) {
       console.error("Error:", error);
       toast.error("Une erreur est survenue");
