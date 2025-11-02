@@ -371,9 +371,9 @@ export default function ComparisonPage() {
               <AccordionItem 
                 key={material.id} 
                 value={material.id}
-                className="border-0 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all"
+                className="border-0 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all data-[state=open]:border-2 data-[state=open]:border-[#5B5FC7]"
               >
-                <AccordionTrigger className="hover:no-underline p-0 [&[data-state=open]>div]:bg-gradient-to-r [&[data-state=open]>div]:from-[#5B5FC7] [&[data-state=open]>div]:to-[#7B7FE8] [&>svg]:hidden">
+                <AccordionTrigger className="hover:no-underline p-0 [&[data-state=open]>div]:bg-white [&[data-state=open]>div]:border-b-2 [&[data-state=open]>div]:border-[#5B5FC7] [&>svg]:hidden">
                   <div className="w-full bg-gradient-to-r from-gray-50 to-gray-100 transition-all flex items-center">
                     {/* Titre et infos - 3/4 de la largeur - aligné à gauche */}
                     <div className="flex-1 p-4 sm:p-6 text-left">
