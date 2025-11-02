@@ -23,6 +23,10 @@ interface Price {
   amount: number;
   currency: string;
   converted_amount: number;
+  package_length?: number | null;
+  package_width?: number | null;
+  package_height?: number | null;
+  units_per_package?: number | null;
   supplier: {
     name: string;
     country: string;
@@ -64,11 +68,12 @@ export default function ComparisonPage() {
         .eq('project_id', params.id)
         .order('name');
 
-      setMaterials(materialsData || []);
+      setMaterials((materialsData as unknown as Material[]) || []);
 
       // Charger tous les prix
       if (materialsData && materialsData.length > 0) {
-        const materialIds = materialsData.map(m => m.id);
+        const typedMaterials = materialsData as unknown as Material[];
+        const materialIds = typedMaterials.map(m => m.id);
         const { data: pricesData } = await supabase
           .from('prices')
           .select(`
@@ -79,7 +84,8 @@ export default function ComparisonPage() {
 
         // Grouper les prix par matériau
         const grouped: Record<string, Price[]> = {};
-        pricesData?.forEach(price => {
+        const typedPrices = (pricesData as unknown as Price[]) || [];
+        typedPrices.forEach(price => {
           if (!grouped[price.material_id]) {
             grouped[price.material_id] = [];
           }
