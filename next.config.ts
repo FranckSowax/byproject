@@ -4,10 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: false,
   typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
+    // Keep ignoreBuildErrors for now until all types are fixed
     ignoreBuildErrors: true,
   },
 };

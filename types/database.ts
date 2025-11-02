@@ -12,85 +12,157 @@ export type Database = {
   }
   public: {
     Tables: {
-      project_collaborators: {
+      materials: {
         Row: {
-          accepted_at: string | null
-          created_at: string | null
-          email: string
+          category: string | null
           id: string
-          invited_at: string | null
-          invited_by: string | null
-          project_id: string
-          role: string
-          status: string
+          name: string
+          project_id: string | null
+          quantity: number | null
+          specs: Json | null
+          volume: number | null
+          weight: number | null
+        }
+        Insert: {
+          category?: string | null
+          id?: string
+          name: string
+          project_id?: string | null
+          quantity?: number | null
+          specs?: Json | null
+          volume?: number | null
+          weight?: number | null
+        }
+        Update: {
+          category?: string | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          quantity?: number | null
+          specs?: Json | null
+          volume?: number | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materials_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prices: {
+        Row: {
+          amount: number
+          converted_amount: number | null
+          country: string | null
+          created_at: string | null
+          currency: string | null
+          id: number
+          material_id: string | null
+          notes: string | null
+          supplier_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          converted_amount?: number | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: number
+          material_id?: string | null
+          notes?: string | null
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          converted_amount?: number | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: number
+          material_id?: string | null
+          notes?: string | null
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prices_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
-          accepted_at?: string | null
           created_at?: string | null
-          email: string
           id?: string
-          invited_at?: string | null
-          invited_by?: string | null
-          project_id: string
-          role?: string
-          status?: string
+          name: string
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
-          accepted_at?: string | null
           created_at?: string | null
-          email?: string
           id?: string
-          invited_at?: string | null
-          invited_by?: string | null
-          project_id?: string
-          role?: string
-          status?: string
+          name?: string
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []
       }
-      project_history: {
+      suppliers: {
         Row: {
-          action_type: string
-          changes: Json | null
-          created_at: string | null
-          entity_id: string | null
-          entity_name: string | null
-          entity_type: string
           id: string
-          project_id: string
-          user_email: string
-          user_id: string | null
+          name: string
+          country: string | null
+          contact_name: string | null
+          phone: string | null
+          email: string | null
+          whatsapp: string | null
+          wechat: string | null
+          created_at: string | null
+          updated_at: string | null
         }
         Insert: {
-          action_type: string
-          changes?: Json | null
-          created_at?: string | null
-          entity_id?: string | null
-          entity_name?: string | null
-          entity_type: string
           id?: string
-          project_id: string
-          user_email: string
-          user_id?: string | null
+          name: string
+          country?: string | null
+          contact_name?: string | null
+          phone?: string | null
+          email?: string | null
+          whatsapp?: string | null
+          wechat?: string | null
+          created_at?: string | null
+          updated_at?: string | null
         }
         Update: {
-          action_type?: string
-          changes?: Json | null
-          created_at?: string | null
-          entity_id?: string | null
-          entity_name?: string | null
-          entity_type?: string
           id?: string
-          project_id?: string
-          user_email?: string
-          user_id?: string | null
+          name?: string
+          country?: string | null
+          contact_name?: string | null
+          phone?: string | null
+          email?: string | null
+          whatsapp?: string | null
+          wechat?: string | null
+          created_at?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
-      [key: string]: any
     }
     Views: {}
     Functions: {}
