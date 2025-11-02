@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, TrendingDown, TrendingUp, Ship, Package } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { ArrowLeft, Download, TrendingDown, TrendingUp, Ship, Package, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
@@ -331,8 +332,8 @@ export default function ComparisonPage() {
           </div>
         </Card>
 
-        {/* Tableau de Comparaison - Responsive */}
-        <div className="space-y-4">
+        {/* Tableau de Comparaison - Accordéon Mobile Responsive */}
+        <Accordion type="multiple" className="space-y-4">
           {materials.map(material => {
             const prices = pricesByMaterial[material.id] || [];
             const filteredPrices = selectedCountry === 'all' 
@@ -347,32 +348,51 @@ export default function ComparisonPage() {
             const quantity = material.quantity || 1;
 
             return (
-              <Card key={material.id} className="overflow-hidden">
-                {/* Header Material */}
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 border-b">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <h3 className="font-semibold text-lg">{material.name}</h3>
-                      <p className="text-sm text-gray-600">
-                        Quantité: {quantity} {quantity > 1 ? 'unités' : 'unité'}
-                      </p>
-                    </div>
-                    {bestPrice && (
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">Meilleur prix unitaire</p>
-                        <p className="text-xl font-bold text-green-600">
-                          {(bestPrice.converted_amount || bestPrice.amount).toLocaleString()} FCFA
-                        </p>
+              <AccordionItem 
+                key={material.id} 
+                value={material.id}
+                className="border-0 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all"
+              >
+                <AccordionTrigger className="hover:no-underline p-0 [&[data-state=open]>div]:bg-gradient-to-r [&[data-state=open]>div]:from-[#5B5FC7] [&[data-state=open]>div]:to-[#7B7FE8]">
+                  <div className="w-full bg-gradient-to-r from-gray-50 to-gray-100 p-4 sm:p-6 transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-base sm:text-lg text-[#2D3748] mb-1">
+                          {material.name}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-[#718096]">
+                          <Badge variant="outline" className="bg-white/50">
+                            Qté: {quantity}
+                          </Badge>
+                          {sortedPrices.length > 0 && (
+                            <Badge variant="outline" className="bg-white/50">
+                              {sortedPrices.length} prix
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    )}
+                      {bestPrice && (
+                        <div className="flex items-center gap-3 sm:gap-4">
+                          <div className="text-left sm:text-right">
+                            <p className="text-xs text-[#718096] mb-1">Meilleur prix</p>
+                            <p className="text-lg sm:text-2xl font-bold text-[#48BB78]">
+                              {(bestPrice.converted_amount || bestPrice.amount).toLocaleString()}
+                              <span className="text-sm sm:text-base ml-1">FCFA</span>
+                            </p>
+                          </div>
+                          <ChevronDown className="h-5 w-5 text-[#718096] shrink-0 transition-transform duration-200" />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </AccordionTrigger>
 
-                {/* Prix Cards - Mobile Friendly */}
-                {sortedPrices.length > 0 ? (
-                  <div className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {sortedPrices.map((price, index) => {
+                <AccordionContent className="p-0">
+                  {/* Prix Cards - Mobile Friendly */}
+                  {sortedPrices.length > 0 ? (
+                    <div className="p-4 sm:p-6 bg-gradient-to-b from-[#F8F9FF] to-white">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                        {sortedPrices.map((price, index) => {
                         const isLowest = index === 0;
                         const unitPrice = price.converted_amount || price.amount;
                         const totalPrice = unitPrice * quantity;
@@ -456,14 +476,15 @@ export default function ComparisonPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="p-8 text-center text-[#718096]">
                     <p>Aucun prix disponible pour ce matériau</p>
                   </div>
                 )}
-              </Card>
+              </AccordionContent>
+            </AccordionItem>
             );
           })}
-        </div>
+        </Accordion>
 
         {/* Footer Summary */}
         <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50">
