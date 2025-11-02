@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BarChart3, FileText, Globe, Zap, Sparkles, TrendingUp, Shield } from "lucide-react";
+import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkles, Ship, Package } from "lucide-react";
+import Image from "next/image";
 
 // Force dynamic rendering to prevent static generation issues
 export const dynamic = 'force-dynamic';
@@ -11,17 +12,16 @@ export default function Home() {
       {/* Header */}
       <header className="border-b border-[#E0E4FF] bg-white/90 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex h-20 items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] rounded-xl blur-lg opacity-30"></div>
-              <div className="relative bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] p-2 rounded-xl">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
-              CompaChantier
-            </span>
-          </div>
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Image 
+              src="/logo-byproject.png" 
+              alt="By Project" 
+              width={180} 
+              height={60}
+              className="h-12 w-auto"
+              priority
+            />
+          </Link>
           <nav className="flex items-center gap-3">
             <Link href="/login">
               <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF]">
@@ -209,21 +209,22 @@ export default function Home() {
       <footer className="border-t border-[#E0E4FF] bg-gradient-to-b from-white to-[#F8F9FF] py-8 sm:py-12">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] p-2 rounded-xl">
-                <BarChart3 className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-base sm:text-lg font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
-                CompaChantier
-              </span>
-            </div>
+            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <Image 
+                src="/logo-byproject.png" 
+                alt="By Project" 
+                width={150} 
+                height={50}
+                className="h-10 w-auto"
+              />
+            </Link>
             
             <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-[#718096]">
               <Link href="/login" className="hover:text-[#5B5FC7] transition-colors whitespace-nowrap">
                 Connexion
               </Link>
               <span className="text-[#E0E4FF] hidden sm:inline">|</span>
-              <span className="whitespace-nowrap">&copy; 2025 CompaChantier</span>
+              <span className="whitespace-nowrap">&copy; 2025 By Project</span>
             </div>
           </div>
         </div>

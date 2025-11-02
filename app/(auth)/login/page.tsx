@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -64,12 +65,19 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#F8F9FF] to-white p-4">
       <Card className="w-full max-w-md shadow-xl border-[#E0E4FF]">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8]">
-            <BarChart3 className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-4 flex items-center justify-center">
+            <Image 
+              src="/logo-byproject.png" 
+              alt="By Project" 
+              width={180} 
+              height={60}
+              className="h-16 w-auto"
+              priority
+            />
           </div>
           <CardTitle className="text-2xl font-bold text-[#2D3748]">Bon retour</CardTitle>
           <CardDescription className="text-[#718096]">
-            Connectez-vous à votre compte CompaChantier
+            Connectez-vous à votre compte By Project
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
