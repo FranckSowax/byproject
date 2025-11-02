@@ -1,0 +1,338 @@
+[
+  {
+    "id": 1,
+    "title": "Project Setup and Authentication System",
+    "status": "pending",
+    "details": "Initialize Next.js 14 project with App Router, configure TypeScript and Tailwind CSS with shadcn/ui. Set up Supabase project with PostgreSQL database, configure authentication with email/password signup and password reset. Create user roles table (Administrator, Editor, Reader) and implement role-based middleware. Design and implement responsive authentication pages (login, signup, password reset) with multi-language support (French, English, Chinese). Set up database schema for users, roles, and projects with proper indexing.",
+    "priority": "high",
+    "subtasks": [
+      {
+        "id": 1,
+        "title": "Initialize Next.js 14 Project with TypeScript and Tailwind CSS",
+        "status": "pending",
+        "details": "Run 'npx create-next-app@latest' with TypeScript and App Router options. Install and configure Tailwind CSS following Next.js documentation. Initialize shadcn/ui using 'npx shadcn-ui@latest init' and install essential components like Button, Input, Card, and Form. Set up proper TypeScript configuration with strict mode and path aliases. Create basic project structure with app/, components/, lib/, and types/ directories.",
+        "description": "Create a new Next.js 14 project with App Router, configure TypeScript for type safety, set up Tailwind CSS for styling, and integrate shadcn/ui component library for consistent UI components.",
+        "dependencies": [],
+        "testStrategy": "Verify project builds successfully with 'npm run build', check TypeScript compilation with no errors, test Tailwind classes render correctly, and confirm shadcn/ui components display properly"
+      },
+      {
+        "id": 2,
+        "title": "Set up Supabase Project and Database Schema",
+        "status": "pending",
+        "details": "Create new Supabase project and obtain API keys. Design database schema with users table (id, email, created_at, updated_at), roles table (id, name, description, permissions), user_roles junction table, and projects table. Set up Row Level Security (RLS) policies. Create proper indexes on frequently queried columns like email, role_id, and project_id. Configure database triggers for automatic timestamp updates.",
+        "description": "Create Supabase project, configure PostgreSQL database with proper schema for users, roles, and projects, including necessary indexes and relationships for optimal performance.",
+        "dependencies": [
+          1
+        ],
+        "testStrategy": "Test database connections, verify schema creation with proper constraints, validate RLS policies work correctly, and perform basic CRUD operations to ensure indexes are functioning"
+      },
+      {
+        "id": 3,
+        "title": "Implement Supabase Authentication Configuration",
+        "status": "pending",
+        "details": "Configure Supabase Auth settings in dashboard for email/password authentication. Set up email templates for signup confirmation and password reset. Create authentication utility functions using Supabase client for signup, login, logout, and password reset. Implement proper error handling for authentication failures. Configure JWT token settings and session management. Set up authentication state management using Supabase's built-in session handling.",
+        "description": "Configure Supabase authentication with email/password signup, login, and password reset functionality, including proper error handling and security measures.",
+        "dependencies": [
+          2
+        ],
+        "testStrategy": "Test email/password signup flow, verify email confirmation works, test login/logout functionality, validate password reset process, and ensure proper error messages are displayed for invalid credentials"
+      },
+      {
+        "id": 4,
+        "title": "Create Role-Based Access Control System",
+        "status": "pending",
+        "details": "Create role management functions to assign and check user roles. Implement Next.js middleware in middleware.ts to protect routes based on user roles and authentication status. Create custom hooks like useAuth() and useRole() for accessing user authentication state and permissions. Set up role-based component rendering logic. Create utility functions for checking permissions (canEdit, canDelete, canView). Implement automatic role assignment for new users (default to Reader).",
+        "description": "Implement user roles system with Administrator, Editor, and Reader permissions, create middleware for route protection, and set up role-based authorization logic throughout the application.",
+        "dependencies": [
+          3
+        ],
+        "testStrategy": "Test middleware blocks unauthorized access to protected routes, verify role-based component rendering works correctly, test permission checks for different user roles, and validate automatic role assignment for new users"
+      },
+      {
+        "id": 5,
+        "title": "Design and Implement Multi-language Authentication Pages",
+        "status": "pending",
+        "details": "Set up internationalization using next-intl or similar library for French, English, and Chinese translations. Create responsive authentication pages using shadcn/ui Form, Input, Button, and Card components. Implement form validation using react-hook-form with zod schema validation. Design mobile-first responsive layouts that work across all screen sizes. Create language switcher component and integrate with authentication flows. Add proper loading states, error handling, and success feedback for all authentication actions.",
+        "description": "Create responsive authentication UI pages (login, signup, password reset) with multi-language support for French, English, and Chinese, using shadcn/ui components and proper form validation.",
+        "dependencies": [
+          4
+        ],
+        "testStrategy": "Test all authentication pages in three languages, verify responsive design on mobile and desktop, validate form validation works correctly, test language switching functionality, and perform cross-browser compatibility testing"
+      }
+    ],
+    "description": "Set up the Next.js 14 project with TypeScript, Tailwind CSS, shadcn/ui components, and implement user authentication with role-based access control using Supabase.",
+    "dependencies": [],
+    "testStrategy": "Unit tests for authentication functions, integration tests for role-based access control, manual testing of signup/login flow in all three languages, security testing for JWT token handling."
+  },
+  {
+    "id": 2,
+    "title": "File Import and AI-Powered Column Mapping",
+    "status": "pending",
+    "details": "Create file upload component supporting PDF, CSV, Excel files and Google Sheets public URLs with 10MB size limit. Integrate OpenAI GPT-4o API through secure backend proxy for document analysis and column mapping. Build column mapping preview interface where users can review and manually adjust AI suggestions for quantity, characteristics, weight/volume fields. Implement background processing with progress indicators for large files. Add file validation and error handling for unsupported formats or corrupted files. Store uploaded files in Supabase storage with proper access controls.",
+    "priority": "high",
+    "subtasks": [
+      {
+        "id": 1,
+        "title": "Implement File Upload Component with Validation",
+        "status": "pending",
+        "details": "Build a React component with drag-and-drop functionality and file picker. Implement client-side validation for file types (PDF, CSV, XLSX, XLS) and 10MB size limit. Add support for Google Sheets public URL input with URL validation. Include file type detection using MIME types and file extensions. Implement error handling for unsupported formats, oversized files, and corrupted files with user-friendly error messages.",
+        "description": "Create a comprehensive file upload component that supports PDF, CSV, Excel files, and Google Sheets public URLs with proper validation, size limits, and error handling.",
+        "dependencies": [],
+        "testStrategy": "Unit tests for file validation functions, component testing with various file types and sizes, error handling tests for invalid files and URLs"
+      },
+      {
+        "id": 2,
+        "title": "Set Up Supabase Storage Integration",
+        "status": "pending",
+        "details": "Create a dedicated Supabase storage bucket for uploaded files with appropriate RLS policies. Implement secure file upload to Supabase storage with user-based access controls. Set up file metadata storage in database tables to track upload status, file types, and processing state. Configure automatic file cleanup for temporary files and implement file versioning if needed.",
+        "description": "Configure Supabase storage bucket for uploaded files with proper access controls, security policies, and file management capabilities.",
+        "dependencies": [
+          1
+        ],
+        "testStrategy": "Integration tests for file upload to Supabase, access control testing, storage policy validation tests"
+      },
+      {
+        "id": 3,
+        "title": "Build File Parsing and Processing Engine",
+        "status": "pending",
+        "details": "Create Node.js/Python backend services using libraries like pdf-parse for PDFs, csv-parser for CSV files, and xlsx for Excel files. Implement Google Sheets API integration to fetch data from public URLs. Build data extraction pipeline that converts all formats into a standardized JSON structure. Add background job processing using queues for large files with progress tracking. Implement error handling for parsing failures and data extraction issues.",
+        "description": "Implement backend services to parse different file formats (PDF, CSV, Excel) and extract structured data for AI analysis.",
+        "dependencies": [
+          2
+        ],
+        "testStrategy": "Unit tests for each file parser, integration tests with sample files in different formats, performance testing with large files"
+      },
+      {
+        "id": 4,
+        "title": "Integrate GPT-4o API for Column Detection and Mapping",
+        "status": "pending",
+        "details": "Create secure backend API proxy to OpenAI GPT-4o with proper API key management and rate limiting. Design prompts for GPT-4o to analyze structured data and identify columns related to quantity, characteristics, weight, and volume. Implement response parsing to extract column mapping suggestions in a standardized format. Add fallback mechanisms for API failures and implement caching for similar data structures. Include confidence scoring for AI suggestions to help users understand reliability.",
+        "description": "Implement secure backend proxy for OpenAI GPT-4o API integration to analyze extracted data and automatically detect and map columns for quantity, characteristics, and weight/volume fields.",
+        "dependencies": [
+          3
+        ],
+        "testStrategy": "Integration tests with GPT-4o API, prompt testing with various data structures, error handling tests for API failures, performance testing for response times"
+      },
+      {
+        "id": 5,
+        "title": "Create Column Mapping Preview and Manual Correction Interface",
+        "status": "pending",
+        "details": "Create a React component that displays the parsed data in a table format with AI-suggested column mappings highlighted. Implement dropdown selectors for each column allowing users to manually assign or reassign column types (quantity, characteristics, weight/volume, ignore). Add visual indicators for AI confidence levels and allow users to preview how their data will be imported. Include validation to ensure required fields are mapped and provide real-time feedback. Add progress indicators for the entire import process and confirmation dialogs before finalizing.",
+        "description": "Build an interactive user interface that displays AI-generated column mapping suggestions and allows users to review, modify, and confirm the mappings before finalizing the import.",
+        "dependencies": [
+          4
+        ],
+        "testStrategy": "Component testing for mapping interface, user interaction testing, validation testing for required field mappings, end-to-end testing of complete import workflow"
+      }
+    ],
+    "description": "Implement file upload functionality for PDF, CSV, Excel, and Google Sheets with GPT-4o integration for automatic column detection and mapping with manual correction capabilities.",
+    "dependencies": [
+      1
+    ],
+    "testStrategy": "Unit tests for file parsing functions, integration tests with GPT-4o API, end-to-end tests with sample files in different formats, performance testing with large files, error handling tests for invalid files."
+  },
+  {
+    "id": 3,
+    "title": "Product Data Management and Multi-Country Pricing",
+    "status": "pending",
+    "details": "Create database schema for products, countries, prices, and suppliers with proper relationships and indexing. Implement product data entry forms with validation for required fields (quantity, characteristics, weight/volume). Build image upload functionality for product photos with compression and storage in Supabase. Create supplier management system with contact details and references. Implement multi-currency support for CFA and RMB with manual exchange rate input. Add data validation and error handling for price entries and technical specifications. Ensure role-based permissions for data entry (Editor and Administrator only).",
+    "priority": "medium",
+    "subtasks": [
+      {
+        "id": 1,
+        "title": "Design and implement core database schema for product data management",
+        "status": "pending",
+        "details": "Design tables for products (id, name, description, weight, volume, technical_specs), countries (id, name, currency_code), suppliers (id, name, contact_info, references), and prices (product_id, country_id, price, currency). Implement foreign key relationships, create indexes on frequently queried fields, and set up proper constraints for data integrity. Use Supabase PostgreSQL features for row-level security and triggers.",
+        "description": "Create comprehensive database schema for products, countries, suppliers, and pricing with proper relationships, constraints, and indexing for optimal performance",
+        "dependencies": [],
+        "testStrategy": "Unit tests for schema validation, integration tests for relationship constraints, performance tests for query optimization with indexed fields"
+      },
+      {
+        "id": 2,
+        "title": "Build product data entry forms with comprehensive validation",
+        "status": "pending",
+        "details": "Implement React forms with controlled components for product name, description, quantity, weight, volume, and technical specifications. Add real-time validation for required fields, numeric inputs, and format constraints. Include dropdown selections for categories and suppliers. Implement form state management and error display with clear user feedback.",
+        "description": "Create user-friendly forms for product data entry with client-side and server-side validation for all required fields including quantity, characteristics, and technical specifications",
+        "dependencies": [
+          1
+        ],
+        "testStrategy": "UI tests for form interactions, validation testing with invalid inputs, accessibility testing for form elements"
+      },
+      {
+        "id": 3,
+        "title": "Implement image upload and management system",
+        "status": "pending",
+        "details": "Create image upload component with drag-and-drop interface, implement client-side image compression using canvas API, validate file types (JPEG, PNG, WebP) and sizes. Set up Supabase Storage bucket with proper security policies, implement image resizing for thumbnails, and create image gallery component for product photos with delete functionality.",
+        "description": "Build robust image upload functionality for product photos with automatic compression, format validation, and secure storage in Supabase",
+        "dependencies": [
+          1
+        ],
+        "testStrategy": "Image upload testing with various formats and sizes, compression quality verification, storage security testing, error handling for failed uploads"
+      },
+      {
+        "id": 4,
+        "title": "Create supplier management system with contact tracking",
+        "status": "pending",
+        "details": "Build supplier registration forms with fields for company name, contact person, phone, email, address, and reference documents. Implement supplier search and filtering capabilities, create supplier profile pages with contact history, and add reference document upload functionality. Include supplier status tracking (active, inactive, pending verification).",
+        "description": "Develop comprehensive supplier management interface for adding, editing, and tracking supplier information including contact details and reference management",
+        "dependencies": [
+          1
+        ],
+        "testStrategy": "CRUD operation testing for supplier data, contact information validation, reference document upload testing, search functionality verification"
+      },
+      {
+        "id": 5,
+        "title": "Implement multi-currency pricing system with role-based access control",
+        "status": "pending",
+        "details": "Create currency management system with manual exchange rate input interface, implement price entry forms for multiple currencies per product, add currency conversion display features. Set up role-based access control using Supabase Auth with Editor and Administrator roles, implement permission checks on all data entry operations, and create user management interface for role assignment.",
+        "description": "Build multi-currency support for CFA and RMB with manual exchange rate management and implement role-based permissions for data entry operations",
+        "dependencies": [
+          1,
+          2,
+          4
+        ],
+        "testStrategy": "Multi-currency calculation testing, exchange rate update verification, role permission testing for different user types, unauthorized access prevention testing"
+      }
+    ],
+    "description": "Build the core data entry system for products with country-specific pricing, supplier information, photos, and technical specifications for Gabon (CFA) and China (RMB).",
+    "dependencies": [
+      1,
+      2
+    ],
+    "testStrategy": "Unit tests for data validation functions, integration tests for database operations, UI tests for form submissions, image upload testing with various formats and sizes, role permission testing."
+  },
+  {
+    "id": 4,
+    "title": "Real-Time Comparison Dashboard and Product Details",
+    "status": "pending",
+    "details": "Build responsive comparison table component showing side-by-side country prices with automatic currency conversion. Implement real-time updates when exchange rates or prices change using optimistic UI updates. Add comprehensive filtering system (country, price range, category, supplier, gap size, search). Create sorting functionality (price ascending/descending, gap, name, supplier) with performance optimization for large datasets. Develop product detail pages with high-resolution photos, full specifications, references, and transport cost calculations based on weight/volume. Implement efficient data fetching with pagination and caching for performance under 200ms for 1000 rows.",
+    "priority": "medium",
+    "subtasks": [
+      {
+        "id": 1,
+        "title": "Build Responsive Comparison Table Component",
+        "status": "pending",
+        "details": "Implement using React with CSS Grid or Flexbox for responsive layout. Create table headers for product name, image, specifications, and country columns. Use virtual scrolling for performance with large datasets. Implement sticky headers and columns for better UX. Include loading states and error handling. Ensure accessibility with proper ARIA labels and keyboard navigation.",
+        "description": "Create the core comparison table component that displays products side-by-side with country-specific pricing in a responsive layout that works across desktop, tablet, and mobile devices.",
+        "dependencies": [],
+        "testStrategy": "Test responsive behavior on various screen sizes, verify virtual scrolling performance with 1000+ rows, validate accessibility compliance"
+      },
+      {
+        "id": 2,
+        "title": "Implement Real-Time Currency Conversion System",
+        "status": "pending",
+        "details": "Integrate with exchange rate API (e.g., ExchangeRate-API or Fixer.io). Implement WebSocket connection or polling mechanism for real-time rate updates. Create currency conversion utility functions with caching. Use optimistic updates to show immediate changes while API calls are in progress. Handle offline scenarios and rate limiting. Store user's preferred currency in local storage.",
+        "description": "Develop automatic currency conversion functionality with real-time exchange rate updates and optimistic UI updates to provide instant feedback to users.",
+        "dependencies": [
+          1
+        ],
+        "testStrategy": "Test real-time updates with simulated rate changes, verify optimistic UI behavior, validate conversion accuracy across different currencies"
+      },
+      {
+        "id": 3,
+        "title": "Create Comprehensive Filtering and Search System",
+        "status": "pending",
+        "details": "Implement filter components using controlled inputs with debounced search. Create multi-select dropdowns for countries and suppliers. Build price range slider with min/max inputs. Add category checkboxes and gap size filters. Implement fuzzy search for product names and descriptions. Use URL parameters to maintain filter state. Optimize filtering logic with memoization and indexing for performance.",
+        "description": "Build advanced filtering capabilities including country selection, price range sliders, category filters, supplier filters, gap size filters, and text-based search functionality.",
+        "dependencies": [
+          1
+        ],
+        "testStrategy": "Test all filter combinations, verify search performance with large datasets, validate filter persistence through URL parameters"
+      },
+      {
+        "id": 4,
+        "title": "Implement Advanced Sorting and Performance Optimization",
+        "status": "pending",
+        "details": "Implement multi-column sorting with visual indicators. Use efficient sorting algorithms optimized for the data structure. Add pagination with configurable page sizes. Implement data caching using React Query or SWR. Create indexes for frequently sorted columns. Use memoization for expensive calculations. Implement lazy loading for images and non-critical data. Ensure sub-200ms response times through query optimization.",
+        "description": "Add comprehensive sorting functionality for price, gap, name, and supplier with performance optimizations including pagination, caching, and efficient data fetching strategies.",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "testStrategy": "Performance testing with 1000+ products, measure sorting response times, validate pagination functionality, test caching effectiveness"
+      },
+      {
+        "id": 5,
+        "title": "Develop Product Detail Pages with Transport Cost Calculator",
+        "status": "pending",
+        "details": "Build product detail page layout with image carousel supporting zoom and multiple angles. Display comprehensive specifications in organized sections. Show supplier information with contact details and ratings. Implement transport cost calculator using shipping APIs (e.g., ShipEngine, EasyPost) with weight/volume inputs. Add cost breakdown showing base price, shipping, taxes, and total. Include comparison widget showing costs across different countries. Implement breadcrumb navigation and related products section.",
+        "description": "Create detailed product view pages featuring high-resolution image galleries, complete specifications, supplier references, and dynamic transport cost calculations based on weight, volume, and destination.",
+        "dependencies": [
+          2
+        ],
+        "testStrategy": "Validate transport cost calculations against actual shipping rates, test image loading and zoom functionality, verify specification display accuracy"
+      }
+    ],
+    "description": "Develop the interactive comparison table with real-time currency conversion, filtering, sorting capabilities, and detailed product view pages with transport cost estimates.",
+    "dependencies": [
+      3
+    ],
+    "testStrategy": "Performance testing with 1000+ products, real-time update testing, filter and sort functionality testing, responsive design testing on various devices, transport cost calculation validation."
+  },
+  {
+    "id": 5,
+    "title": "Export System and Freemium Monetization",
+    "status": "pending",
+    "details": "Create PDF export system with professional layout including logo placeholder, headers/footers, and project summary using libraries like jsPDF or Puppeteer. Implement Excel export functionality with proper formatting and data structure. Build subscription management system with free tier limitations (limited projects, products, exports) and paid tier with unlimited access. Create project management interface for saving, organizing, and sharing projects with team members. Implement usage tracking and enforcement of freemium limits. Add export history and download management. Ensure GDPR compliance with data consent and secure storage in EU region.",
+    "priority": "medium",
+    "subtasks": [
+      {
+        "id": 1,
+        "title": "Implement PDF Export System with Professional Layout",
+        "status": "pending",
+        "details": "Use jsPDF or Puppeteer library to generate PDFs. Create templates with configurable header/footer sections, logo placement areas, and structured content layout. Implement data formatting for project summaries, product listings, and analysis results. Add options for different page orientations, margins, and font styles. Ensure proper handling of large datasets with pagination.",
+        "description": "Create a comprehensive PDF export functionality that generates professional-looking documents with customizable layouts, logo placeholders, headers/footers, and project summaries.",
+        "dependencies": [],
+        "testStrategy": "Test PDF generation with various data sizes, verify layout consistency across different browsers, validate logo and branding placement, test pagination with large datasets"
+      },
+      {
+        "id": 2,
+        "title": "Develop Excel Export Functionality with Data Structure",
+        "status": "pending",
+        "details": "Implement Excel export using libraries like SheetJS or ExcelJS. Create structured worksheets with proper column headers, data types, and formatting. Include multiple sheets for different data categories (projects, products, analysis results). Add cell formatting, conditional formatting for key metrics, and data validation. Implement proper handling of special characters and large datasets.",
+        "description": "Build Excel export capabilities that properly format and structure data into spreadsheets with appropriate columns, formatting, and data organization for analysis purposes.",
+        "dependencies": [],
+        "testStrategy": "Verify Excel file integrity, test data accuracy and formatting, validate compatibility with different Excel versions, test export performance with large datasets"
+      },
+      {
+        "id": 3,
+        "title": "Build Subscription Management System with Freemium Model",
+        "status": "pending",
+        "details": "Implement user subscription status tracking with database schema for plans, usage counters, and billing cycles. Create middleware for feature access control based on subscription tier. Build usage tracking for projects, products, and exports with real-time limit enforcement. Integrate with payment processing (Stripe/PayPal) for subscription management. Add subscription upgrade/downgrade flows and billing history.",
+        "description": "Create a comprehensive subscription system that manages free and paid tiers with usage limits, billing integration, and tier-based feature access control.",
+        "dependencies": [],
+        "testStrategy": "Test subscription limit enforcement, validate payment flow integration, verify usage counter accuracy, test subscription upgrade/downgrade scenarios"
+      },
+      {
+        "id": 4,
+        "title": "Create Project Management Interface with Team Features",
+        "status": "pending",
+        "details": "Build project CRUD operations with database schema for project metadata, sharing permissions, and team member access. Implement project organization with folders, tags, and search functionality. Create team invitation system with role-based permissions (owner, editor, viewer). Add project sharing via secure links with expiration dates. Implement project templates and duplication features. Ensure subscription-based limits on project count and team size.",
+        "description": "Develop a project management system that allows users to save, organize, share projects with team members, and manage collaborative workflows within subscription limits.",
+        "dependencies": [
+          3
+        ],
+        "testStrategy": "Test project sharing permissions, validate team member access controls, verify project organization features, test collaborative editing scenarios"
+      },
+      {
+        "id": 5,
+        "title": "Implement Export History and GDPR Compliance System",
+        "status": "pending",
+        "details": "Create export history database with metadata tracking (timestamp, file type, size, user). Implement download management with secure temporary links and automatic cleanup. Build GDPR compliance features: cookie consent banners, data processing agreements, user data export/deletion tools, audit logging. Ensure EU-based data storage with encryption at rest and in transit. Add privacy policy integration and consent management dashboard.",
+        "description": "Build export history tracking, download management, and comprehensive GDPR compliance features including data consent, secure EU storage, and user data rights management.",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "testStrategy": "Validate GDPR compliance requirements, test data export/deletion functionality, verify secure file storage and cleanup, test consent management workflows"
+      }
+    ],
+    "description": "Implement professional PDF and Excel export functionality with freemium subscription model including usage limits and project management features.",
+    "dependencies": [
+      4
+    ],
+    "testStrategy": "Export functionality testing with various data sizes, subscription limit enforcement testing, payment flow testing (when integrated), GDPR compliance validation, cross-browser compatibility testing for downloads."
+  }
+]
