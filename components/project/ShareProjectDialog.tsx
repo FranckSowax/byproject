@@ -54,11 +54,11 @@ export default function ShareProjectDialog({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Vérifier si l'utilisateur existe
+      // Vérifier si l'utilisateur existe dans la table users
       const { data: existingUser } = await supabase
-        .from('auth.users')
+        .from('users')
         .select('id')
-        .eq('email', email)
+        .eq('email', email.toLowerCase())
         .single();
 
       // Créer l'invitation
@@ -69,8 +69,8 @@ export default function ShareProjectDialog({
           email: email.toLowerCase(),
           role,
           invited_by: user?.id,
-          user_id: existingUser?.id || null,
-          status: existingUser ? 'pending' : 'pending'
+          user_id: (existingUser as any)?.id || null,
+          status: 'pending'
         });
 
       if (error) {
