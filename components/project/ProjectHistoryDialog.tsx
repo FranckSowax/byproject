@@ -12,11 +12,14 @@ import { fr } from 'date-fns/locale';
 interface HistoryEntry {
   id: string;
   user_email: string;
-  action_type: string; // Changed from literal union to string to match Supabase types
+  user_id?: string | null;
+  action_type: string;
   entity_type: string;
-  entity_name: string;
+  entity_name: string | null;
+  entity_id: string | null;
+  project_id?: string;
   changes: any;
-  created_at: string;
+  created_at: string | null;
 }
 
 interface ProjectHistoryDialogProps {
