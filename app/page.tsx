@@ -51,61 +51,56 @@ export default function Home() {
               <span className="text-sm font-medium text-[#4A5568]">Plateforme IA pour la comparaison de prix</span>
             </div>
             
-            <h1 className="text-6xl md:text-7xl font-bold tracking-tight">
-              <span className="text-[#2D3748]">Comparez les prix </span>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight px-4">
+              <span className="text-[#2D3748]">Optimisez les prix </span>
               <span className="bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] bg-clip-text text-transparent">
-                entre pays
+                de votre projet en Chine
               </span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-[#718096] max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl md:text-2xl text-[#718096] max-w-3xl mx-auto leading-relaxed px-4">
               Plateforme intelligente pour comparer les prix des matériaux entre le Gabon et la Chine. 
               Importez vos listes, obtenez une analyse instantanée et prenez des décisions éclairées.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
-              <Link href="/signup">
-                <Button size="lg" className="bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-lg">
-                  Essai Gratuit <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href="/login">
-                <Button size="lg" variant="outline" className="border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF] text-[#4A5568] px-8 py-6 text-lg">
-                  Se Connecter
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 px-4">
+              <Link href="/login" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-base sm:text-lg">
+                  Commencer <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             </div>
             
-            <div className="flex items-center justify-center gap-8 pt-8 text-sm text-[#718096]">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 pt-8 text-xs sm:text-sm text-[#718096] px-4">
               <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-[#48BB78]" />
-                <span>Sécurisé</span>
+                <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-[#48BB78]" />
+                <span className="whitespace-nowrap">Sécurisé</span>
               </div>
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-[#5B5FC7]" />
-                <span>IA Avancée</span>
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#5B5FC7]" />
+                <span className="whitespace-nowrap">IA Avancée</span>
               </div>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-[#FF9B7B]" />
-                <span>Rapide</span>
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-[#FF9B7B]" />
+                <span className="whitespace-nowrap">Rapide</span>
               </div>
             </div>
           </div>
         </section>
 
         {/* Features Section */}
-        <section className="bg-gradient-to-b from-white to-[#F8F9FF] py-24">
-          <div className="container mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold text-[#2D3748] mb-4">
+        <section className="bg-gradient-to-b from-white to-[#F8F9FF] py-16 sm:py-24">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#2D3748] mb-4 px-4">
                 Fonctionnalités <span className="bg-gradient-to-r from-[#5B5FC7] to-[#FF9B7B] bg-clip-text text-transparent">Puissantes</span>
               </h2>
-              <p className="text-lg text-[#718096] max-w-2xl mx-auto">
+              <p className="text-base sm:text-lg text-[#718096] max-w-2xl mx-auto px-4">
                 Tous les outils dont vous avez besoin pour optimiser vos achats
               </p>
             </div>
             
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-[#E0E4FF] hover:border-[#5B5FC7]">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#5B5FC7]/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="relative">
@@ -162,11 +157,11 @@ export default function Home() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-24 relative overflow-hidden">
+        <section className="py-16 sm:py-24 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] opacity-5"></div>
-          <div className="container mx-auto px-6 text-center relative">
+          <div className="container mx-auto px-4 sm:px-6 text-center relative">
             <div className="mx-auto max-w-4xl">
-              <div className="relative bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] rounded-3xl p-12 md:p-16 shadow-2xl overflow-hidden">
+              <div className="relative bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] rounded-2xl sm:rounded-3xl p-8 sm:p-12 md:p-16 shadow-2xl overflow-hidden">
                 {/* Decorative elements */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl"></div>
@@ -177,35 +172,30 @@ export default function Home() {
                     <span className="text-sm font-medium text-white">Commencez gratuitement</span>
                   </div>
                   
-                  <h2 className="text-4xl md:text-5xl font-bold text-white">
-                    Prêt à optimiser vos achats ?
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white px-4">
+                    Prêt à optimiser vos achats en Chine ?
                   </h2>
                   
-                  <p className="text-xl text-white/90 max-w-2xl mx-auto leading-relaxed">
+                  <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto leading-relaxed px-4">
                     Rejoignez les équipes qui prennent des décisions d'achat plus intelligentes avec CompaChantier.
                   </p>
                   
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                    <Link href="/signup">
-                      <Button size="lg" className="bg-white text-[#5B5FC7] hover:bg-white/90 shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-lg font-semibold">
-                        Créer un Compte Gratuit <ArrowRight className="ml-2 h-5 w-5" />
-                      </Button>
-                    </Link>
-                    <Link href="/login">
-                      <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10 backdrop-blur-sm px-8 py-6 text-lg">
-                        Déjà inscrit ? Connectez-vous
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4 px-4">
+                    <Link href="/login" className="w-full sm:w-auto">
+                      <Button size="lg" className="w-full sm:w-auto bg-white text-[#5B5FC7] hover:bg-white/90 shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-base sm:text-lg font-semibold">
+                        Commencer Maintenant <ArrowRight className="ml-2 h-5 w-5" />
                       </Button>
                     </Link>
                   </div>
                   
-                  <div className="flex items-center justify-center gap-6 pt-6 text-sm text-white/80">
+                  <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-6 text-xs sm:text-sm text-white/80 px-4">
                     <div className="flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      <span>Sans carte bancaire</span>
+                      <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="whitespace-nowrap">Sans carte bancaire</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5" />
-                      <span>Configuration en 2 minutes</span>
+                      <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="whitespace-nowrap">Configuration en 2 minutes</span>
                     </div>
                   </div>
                 </div>
@@ -216,27 +206,24 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#E0E4FF] bg-gradient-to-b from-white to-[#F8F9FF] py-12">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+      <footer className="border-t border-[#E0E4FF] bg-gradient-to-b from-white to-[#F8F9FF] py-8 sm:py-12">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
             <div className="flex items-center gap-3">
               <div className="bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] p-2 rounded-xl">
                 <BarChart3 className="h-5 w-5 text-white" />
               </div>
-              <span className="text-lg font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
+              <span className="text-base sm:text-lg font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
                 CompaChantier
               </span>
             </div>
             
-            <div className="flex items-center gap-6 text-sm text-[#718096]">
-              <Link href="/login" className="hover:text-[#5B5FC7] transition-colors">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-[#718096]">
+              <Link href="/login" className="hover:text-[#5B5FC7] transition-colors whitespace-nowrap">
                 Connexion
               </Link>
-              <Link href="/signup" className="hover:text-[#5B5FC7] transition-colors">
-                Inscription
-              </Link>
-              <span className="text-[#E0E4FF]">|</span>
-              <span>&copy; 2025 CompaChantier</span>
+              <span className="text-[#E0E4FF] hidden sm:inline">|</span>
+              <span className="whitespace-nowrap">&copy; 2025 CompaChantier</span>
             </div>
           </div>
         </div>
