@@ -373,36 +373,33 @@ export default function ComparisonPage() {
                 value={material.id}
                 className="border-0 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all"
               >
-                <AccordionTrigger className="hover:no-underline p-0 [&[data-state=open]>div]:bg-gradient-to-r [&[data-state=open]>div]:from-[#5B5FC7] [&[data-state=open]>div]:to-[#7B7FE8]">
-                  <div className="w-full bg-gradient-to-r from-gray-50 to-gray-100 p-4 sm:p-6 transition-all">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-base sm:text-lg text-[#2D3748] mb-1">
-                          {material.name}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-[#718096]">
+                <AccordionTrigger className="hover:no-underline p-0 [&[data-state=open]>div]:bg-gradient-to-r [&[data-state=open]>div]:from-[#5B5FC7] [&[data-state=open]>div]:to-[#7B7FE8] [&>svg]:hidden">
+                  <div className="w-full bg-gradient-to-r from-gray-50 to-gray-100 transition-all flex items-center">
+                    {/* Titre et infos - 3/4 de la largeur - aligné à gauche */}
+                    <div className="flex-1 p-4 sm:p-6 text-left">
+                      <h3 className="font-bold text-base sm:text-lg text-[#2D3748] mb-2">
+                        {material.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-[#718096]">
+                        <Badge variant="outline" className="bg-white/50">
+                          Qté: {quantity}
+                        </Badge>
+                        {sortedPrices.length > 0 && (
                           <Badge variant="outline" className="bg-white/50">
-                            Qté: {quantity}
+                            {sortedPrices.length} prix
                           </Badge>
-                          {sortedPrices.length > 0 && (
-                            <Badge variant="outline" className="bg-white/50">
-                              {sortedPrices.length} prix
-                            </Badge>
-                          )}
-                        </div>
+                        )}
+                        {bestPrice && (
+                          <Badge variant="outline" className="bg-[#48BB78]/10 text-[#48BB78] border-[#48BB78]/30">
+                            Meilleur: {(bestPrice.converted_amount || bestPrice.amount).toLocaleString()} FCFA
+                          </Badge>
+                        )}
                       </div>
-                      {bestPrice && (
-                        <div className="flex items-center gap-3 sm:gap-4">
-                          <div className="text-left sm:text-right">
-                            <p className="text-xs text-[#718096] mb-1">Meilleur prix</p>
-                            <p className="text-lg sm:text-2xl font-bold text-[#48BB78]">
-                              {(bestPrice.converted_amount || bestPrice.amount).toLocaleString()}
-                              <span className="text-sm sm:text-base ml-1">FCFA</span>
-                            </p>
-                          </div>
-                          <ChevronDown className="h-5 w-5 text-[#718096] shrink-0 transition-transform duration-200" />
-                        </div>
-                      )}
+                    </div>
+                    
+                    {/* Zone chevron - 1/4 de la largeur */}
+                    <div className="w-1/4 min-w-[80px] bg-[#5B5FC7]/5 hover:bg-[#5B5FC7]/10 transition-colors flex items-center justify-center h-full py-4 sm:py-6 border-l border-[#E0E4FF]">
+                      <ChevronDown className="h-6 w-6 sm:h-7 sm:w-7 text-[#5B5FC7] shrink-0 transition-transform duration-200" />
                     </div>
                   </div>
                 </AccordionTrigger>
