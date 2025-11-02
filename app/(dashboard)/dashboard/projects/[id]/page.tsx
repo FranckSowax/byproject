@@ -573,18 +573,28 @@ export default function ProjectPage() {
         }
       }
 
-      // Si le pays a changé, mettre à jour aussi le fournisseur
-      if (editingPrice.supplier && editingPrice.supplier.country !== editingPrice.country) {
-        const { error: supplierError } = await supabase
-          .from('suppliers')
-          .update({
-            country: editingPrice.country,
-          })
-          .eq('id', editingPrice.supplier.id);
+      // Synchroniser le fournisseur avec les modifications du prix
+      // Cela garantit la cohérence des données entre prix et fournisseur
+      if (editingPrice.supplier && editingPrice.supplier.id) {
+        const supplierUpdates: any = {};
+        
+        // Mettre à jour le pays du fournisseur si changé
+        if (editingPrice.supplier.country !== editingPrice.country) {
+          supplierUpdates.country = editingPrice.country;
+        }
+        
+        // Si des mises à jour sont nécessaires, les appliquer
+        if (Object.keys(supplierUpdates).length > 0) {
+          const { error: supplierError } = await supabase
+            .from('suppliers')
+            .update(supplierUpdates)
+            .eq('id', editingPrice.supplier.id);
 
-        if (supplierError) {
-          console.error("Supplier update error:", supplierError);
-          // Ne pas bloquer si l'update du fournisseur échoue
+          if (supplierError) {
+            console.error("Supplier sync error:", supplierError);
+            // Ne pas bloquer la mise à jour du prix si la sync fournisseur échoue
+            toast.warning("Prix mis à jour mais synchronisation fournisseur échouée");
+          }
         }
       }
 
