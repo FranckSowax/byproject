@@ -538,45 +538,71 @@ export default function ProjectPage() {
       return;
     }
 
+    if (!editingPrice.id) {
+      console.error("Missing price ID:", editingPrice);
+      toast.error("ID du prix manquant");
+      return;
+    }
+
     try {
       setIsSaving(true);
 
       // Calculer le montant converti en FCFA
       let convertedAmount = parseFloat(editingPrice.amount);
       if (editingPrice.currency !== 'FCFA') {
-        const { data: rateData } = await supabase
+        const { data: rateData, error: rateError } = await supabase
           .from('exchange_rates')
           .select('rate')
           .eq('from_currency', editingPrice.currency)
           .eq('to_currency', 'FCFA')
           .single();
 
-        if (rateData) {
+        if (rateError) {
+          console.error("Exchange rate error:", rateError);
+          // Utiliser un taux par défaut si non trouvé
+          const defaultRates: Record<string, number> = {
+            'CNY': 85,
+            'USD': 600,
+            'EUR': 650,
+            'TRY': 20,
+            'AED': 163,
+          };
+          convertedAmount = parseFloat(editingPrice.amount) * (defaultRates[editingPrice.currency] || 1);
+        } else if (rateData) {
           convertedAmount = parseFloat(editingPrice.amount) * rateData.rate;
         }
       }
 
       // Mettre à jour le prix
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('prices')
         .update({
           country: editingPrice.country,
           amount: parseFloat(editingPrice.amount),
           currency: editingPrice.currency,
           converted_amount: convertedAmount,
-          notes: editingPrice.notes,
+          notes: editingPrice.notes || null,
         })
         .eq('id', editingPrice.id);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error("Update error:", updateError);
+        throw updateError;
+      }
 
       // Upload et sauvegarde des nouvelles photos
       if (uploadedPhotos.length > 0) {
-        const photoUrls = await uploadPhotosToStorage(editingPrice.id);
-        await savePhotosToDatabase(editingPrice.id, photoUrls);
+        try {
+          const photoUrls = await uploadPhotosToStorage(editingPrice.id);
+          await savePhotosToDatabase(editingPrice.id, photoUrls);
+        } catch (photoError) {
+          console.error("Photo upload error:", photoError);
+          // Ne pas bloquer la mise à jour si les photos échouent
+          toast.warning("Prix mis à jour mais erreur lors de l'upload des photos");
+        }
       }
 
-      toast.success("Prix mis à jour");
+      toast.success("Prix mis à jour avec succès");
       setIsEditPriceDialogOpen(false);
       setEditingPrice(null);
       setUploadedPhotos([]);
@@ -584,9 +610,9 @@ export default function ProjectPage() {
       if (selectedMaterial) {
         await loadPrices(selectedMaterial.id);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating price:", error);
-      toast.error("Erreur lors de la mise à jour");
+      toast.error(error.message || "Erreur lors de la mise à jour");
     } finally {
       setIsSaving(false);
     }
