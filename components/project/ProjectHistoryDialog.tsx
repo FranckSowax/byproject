@@ -229,10 +229,13 @@ export default function ProjectHistoryDialog({
 
                       {/* Date */}
                       <p className="text-xs text-[#718096] mt-2">
-                        {formatDistanceToNow(new Date(entry.created_at), { 
-                          addSuffix: true,
-                          locale: fr 
-                        })}
+                        {entry.created_at 
+                          ? formatDistanceToNow(new Date(entry.created_at as string), { 
+                              addSuffix: true,
+                              locale: fr 
+                            })
+                          : 'Date inconnue'
+                        }
                       </p>
                     </div>
                   </div>
