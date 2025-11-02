@@ -16,6 +16,7 @@ import {
 import { BarChart3, FolderOpen, Settings, LogOut, User } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 
 interface MockUser {
   id: string;
@@ -120,9 +121,15 @@ export default function DashboardLayout({
       <header className="sticky top-0 z-50 border-b bg-white">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-8">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">CompaChantier</span>
+            <Link href="/dashboard" className="flex items-center hover:opacity-80 transition-opacity">
+              <Image 
+                src="/logo-byproject.png" 
+                alt="By Project" 
+                width={150} 
+                height={50}
+                className="h-10 w-auto"
+                priority
+              />
             </Link>
             <nav className="hidden md:flex items-center gap-6">
               {navigation.map((item) => {

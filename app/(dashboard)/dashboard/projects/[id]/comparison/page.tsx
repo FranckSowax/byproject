@@ -182,29 +182,34 @@ export default function ComparisonPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#F8F9FF] to-[#E8EEFF] p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header moderne */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
             <Link href={`/dashboard/projects/${params.id}`}>
               <Button
                 variant="ghost"
-                className="mb-2 hover:bg-white/50 rounded-xl"
+                className="hover:bg-white/50 rounded-xl"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Retour
               </Button>
             </Link>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
-              Comparaison des Prix
-            </h1>
-            <p className="text-[#718096] mt-2">{project?.name}</p>
           </div>
-          <Button 
-            onClick={handleExportPDF}
-            className="w-full sm:w-auto bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 transition-all hover:scale-105"
-          >
-            <Download className="mr-2 h-5 w-5" />
-            Exporter PDF
-          </Button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
+                Comparaison des Prix
+              </h1>
+              <p className="text-[#718096] mt-2">{project?.name}</p>
+            </div>
+            <Button 
+              onClick={handleExportPDF}
+              className="w-full sm:w-auto bg-white hover:bg-white text-[#5B5FC7] border-2 border-[#5B5FC7] hover:border-[#7B7FE8] shadow-lg rounded-xl px-6 py-6 transition-all hover:shadow-xl hover:shadow-[#5B5FC7]/20 relative overflow-hidden group"
+            >
+              <span className="absolute inset-0 border-2 border-[#5B5FC7] rounded-xl animate-pulse opacity-50"></span>
+              <Download className="mr-2 h-5 w-5 relative z-10" />
+              <span className="relative z-10">Exporter PDF</span>
+            </Button>
+          </div>
         </div>
 
         {/* Résumé Global - Style moderne */}
@@ -306,26 +311,41 @@ export default function ComparisonPage() {
         </div>
 
         {/* Filtres */}
-        <Card className="p-4">
-          <div className="flex flex-wrap gap-2">
+        <Card className="p-4 sm:p-6 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Button
               variant={selectedCountry === 'all' ? 'default' : 'outline'}
-              size="sm"
+              size="lg"
               onClick={() => setSelectedCountry('all')}
+              className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
+                selectedCountry === 'all' 
+                  ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white shadow-lg hover:shadow-xl' 
+                  : 'border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF]'
+              }`}
             >
               Tous les pays
             </Button>
             <Button
               variant={selectedCountry === 'Cameroun' ? 'default' : 'outline'}
-              size="sm"
+              size="lg"
               onClick={() => setSelectedCountry('Cameroun')}
+              className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
+                selectedCountry === 'Cameroun' 
+                  ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white shadow-lg hover:shadow-xl' 
+                  : 'border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF]'
+              }`}
             >
               📍 Cameroun
             </Button>
             <Button
               variant={selectedCountry === 'Chine' ? 'default' : 'outline'}
-              size="sm"
+              size="lg"
               onClick={() => setSelectedCountry('Chine')}
+              className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
+                selectedCountry === 'Chine' 
+                  ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white shadow-lg hover:shadow-xl' 
+                  : 'border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF]'
+              }`}
             >
               🇨🇳 Chine
             </Button>
