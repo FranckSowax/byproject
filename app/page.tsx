@@ -48,7 +48,7 @@ export default function Home() {
           <div className="relative mx-auto max-w-4xl space-y-10">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#F5F6FF] to-[#FFF5F2] border border-[#E0E4FF]">
               <Sparkles className="h-4 w-4 text-[#5B5FC7]" />
-              <span className="text-sm font-medium text-[#4A5568]">Plateforme IA pour la comparaison de prix</span>
+              <span className="text-sm font-medium text-[#4A5568]">Plateforme d'organisation et de comparaison</span>
             </div>
             
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight px-4">
@@ -59,8 +59,8 @@ export default function Home() {
             </h1>
             
             <p className="text-lg sm:text-xl md:text-2xl text-[#718096] max-w-3xl mx-auto leading-relaxed px-4">
-              Plateforme intelligente pour comparer les prix des matériaux entre le Gabon et la Chine. 
-              Importez vos listes, obtenez une analyse instantanée et prenez des décisions éclairées.
+              Plateforme pour organiser et comparer vos prix de matériaux entre le Gabon et la Chine. 
+              Importez vos listes, saisissez vos prix, et visualisez les meilleures opportunités d'achat.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 px-4">
@@ -107,9 +107,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] mb-6 shadow-lg">
                     <Zap className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Mapping IA</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Import Intelligent</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Importez PDF, CSV ou Excel. GPT-4o détecte et mappe automatiquement vos colonnes.
+                    Importez PDF, CSV ou Excel. L'IA détecte vos colonnes, vous saisissez les prix manuellement.
                   </p>
                 </div>
               </div>

@@ -61,39 +61,40 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-white p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#F8F9FF] to-white p-4">
+      <Card className="w-full max-w-md shadow-xl border-[#E0E4FF]">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            <BarChart3 className="h-6 w-6 text-blue-600" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8]">
+            <BarChart3 className="h-6 w-6 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>
-            Sign in to your CompaChantier account
+          <CardTitle className="text-2xl font-bold text-[#2D3748]">Bon retour</CardTitle>
+          <CardDescription className="text-[#718096]">
+            Connectez-vous à votre compte CompaChantier
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-[#4A5568]">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="nom@exemple.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                className="border-[#E0E4FF] focus:border-[#5B5FC7]"
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-[#4A5568]">Mot de passe</Label>
                 <Link
                   href="/forgot-password"
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm text-[#5B5FC7] hover:underline"
                 >
-                  Forgot password?
+                  Mot de passe oublié ?
                 </Link>
               </div>
               <Input
@@ -103,21 +104,22 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
+                className="border-[#E0E4FF] focus:border-[#5B5FC7]"
               />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white"
               disabled={isLoading}
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? "Connexion..." : "Se connecter"}
             </Button>
-            <p className="text-center text-sm text-gray-600">
-              Don&apos;t have an account?{" "}
-              <Link href="/signup" className="text-blue-600 hover:underline">
-                Sign up
+            <p className="text-center text-sm text-[#718096]">
+              Pas encore de compte ?{" "}
+              <Link href="/signup" className="text-[#5B5FC7] hover:underline font-medium">
+                S&apos;inscrire
               </Link>
             </p>
           </CardFooter>
