@@ -573,6 +573,21 @@ export default function ProjectPage() {
         }
       }
 
+      // Si le pays a changé, mettre à jour aussi le fournisseur
+      if (editingPrice.supplier && editingPrice.supplier.country !== editingPrice.country) {
+        const { error: supplierError } = await supabase
+          .from('suppliers')
+          .update({
+            country: editingPrice.country,
+          })
+          .eq('id', editingPrice.supplier.id);
+
+        if (supplierError) {
+          console.error("Supplier update error:", supplierError);
+          // Ne pas bloquer si l'update du fournisseur échoue
+        }
+      }
+
       // Mettre à jour le prix
       const { error: updateError } = await supabase
         .from('prices')
