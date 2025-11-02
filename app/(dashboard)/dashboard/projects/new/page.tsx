@@ -173,63 +173,63 @@ export default function NewProjectPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Nouveau Projet</h1>
-          <p className="text-gray-600">Créez un projet de comparaison de prix</p>
+    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FF] to-[#E8EEFF] p-4 md:p-6 lg:p-8">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4">
+          <Link href="/dashboard">
+            <Button
+              variant="ghost"
+              className="hover:bg-white/50 rounded-xl w-fit"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Retour
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
+              Nouveau Projet
+            </h1>
+            <p className="text-[#718096] mt-2">Créez un projet de comparaison de prix</p>
+          </div>
         </div>
-      </div>
 
-      {/* Form */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Informations du projet */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <FolderPlus className="h-5 w-5 text-blue-600" />
-              <CardTitle>Informations du projet</CardTitle>
-            </div>
-            <CardDescription>
-              Donnez un nom et une description à votre projet
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form - Single column layout */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Informations du projet */}
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8]" />
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#5B5FC7]/10 to-[#7B7FE8]/10 rounded-xl flex items-center justify-center">
+                  <FolderPlus className="h-6 w-6 text-[#5B5FC7]" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl text-[#2D3748]">Informations du projet</CardTitle>
+                  <CardDescription className="text-[#718096]">
+                    Donnez un nom à votre projet
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 p-6">
               <div className="space-y-2">
-                <Label htmlFor="name">
+                <Label htmlFor="name" className="text-[#4A5568] font-semibold">
                   Nom du projet <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="name"
-                  placeholder="Ex: Comparaison équipements Gabon-Chine 2025"
+                  placeholder="Ex: Comparaison matériaux Gabon-Chine 2025"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                   disabled={isLoading}
+                  className="border-[#E0E4FF] focus:border-[#5B5FC7] rounded-xl py-6"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description (optionnel)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Décrivez votre projet..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  disabled={isLoading}
-                  rows={4}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="sourceUrl">
+                <Label htmlFor="sourceUrl" className="text-[#4A5568] font-semibold">
                   <div className="flex items-center gap-2">
                     <LinkIcon className="h-4 w-4" />
                     URL Google Sheets (optionnel)
@@ -242,106 +242,113 @@ export default function NewProjectPage() {
                   value={formData.sourceUrl}
                   onChange={(e) => setFormData({ ...formData, sourceUrl: e.target.value })}
                   disabled={isLoading}
+                  className="border-[#E0E4FF] focus:border-[#5B5FC7] rounded-xl py-6"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-[#718096]">
                   Vous pouvez lier une Google Sheet existante
                 </p>
               </div>
+            </CardContent>
+          </Card>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Création..." : "Créer le projet"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Upload de fichier */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-emerald-600" />
-              <CardTitle>Importer un fichier</CardTitle>
-            </div>
-            <CardDescription>
-              Uploadez votre liste de matériaux (optionnel)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="file">Fichier</Label>
-              <Input
-                id="file"
-                type="file"
-                accept=".pdf,.csv,.xlsx,.xls"
-                onChange={handleFileChange}
-                disabled={isLoading}
-              />
-              <p className="text-xs text-gray-500">
-                Formats acceptés: PDF, CSV, Excel (max 10MB)
-              </p>
-            </div>
-
-            {selectedFile && (
-              <div className="rounded-lg bg-emerald-50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                    <Upload className="h-5 w-5 text-emerald-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-emerald-900">{selectedFile.name}</p>
-                    <p className="text-sm text-emerald-700">
-                      {(selectedFile.size / 1024).toFixed(2)} KB
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedFile(null)}
-                    disabled={isLoading}
-                  >
-                    Retirer
-                  </Button>
+          {/* Upload de fichier */}
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-[#48BB78] to-[#38A169]" />
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#48BB78]/10 to-[#38A169]/10 rounded-xl flex items-center justify-center">
+                  <Upload className="h-6 w-6 text-[#48BB78]" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl text-[#2D3748]">Importer un fichier</CardTitle>
+                  <CardDescription className="text-[#718096]">
+                    Uploadez votre liste de matériaux (optionnel)
+                  </CardDescription>
                 </div>
               </div>
-            )}
+            </CardHeader>
+            <CardContent className="space-y-4 p-6">
+              <div className="space-y-2">
+                <Label htmlFor="file" className="text-[#4A5568] font-semibold">Fichier</Label>
+                <Input
+                  id="file"
+                  type="file"
+                  accept=".pdf,.csv,.xlsx,.xls"
+                  onChange={handleFileChange}
+                  disabled={isLoading}
+                  className="border-[#E0E4FF] focus:border-[#5B5FC7] rounded-xl cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#5B5FC7] file:text-white hover:file:bg-[#4A4DA6]"
+                />
+                <p className="text-xs text-[#718096]">
+                  Formats acceptés: PDF, CSV, Excel (max 10MB)
+                </p>
+              </div>
 
-            <div className="rounded-lg bg-blue-50 p-4">
-              <h4 className="mb-2 font-semibold text-blue-900">
-                🤖 Mapping automatique par IA
-              </h4>
-              <p className="text-sm text-blue-800">
-                Si vous uploadez un fichier, GPT-4o détectera automatiquement les colonnes 
-                (nom, quantité, prix, etc.) et vous proposera un mapping intelligent.
-              </p>
-            </div>
+              {selectedFile && (
+                <div className="rounded-xl bg-[#48BB78]/10 border-2 border-[#48BB78]/30 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#48BB78]/20">
+                      <Upload className="h-6 w-6 text-[#48BB78]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-[#2D3748]">{selectedFile.name}</p>
+                      <p className="text-sm text-[#718096]">
+                        {(selectedFile.size / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedFile(null)}
+                      disabled={isLoading}
+                      className="hover:bg-red-50 hover:text-red-600 rounded-xl"
+                    >
+                      Retirer
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-            <div className="space-y-2">
-              <h4 className="font-semibold">Ou créez manuellement</h4>
-              <p className="text-sm text-gray-600">
-                Vous pouvez aussi créer un projet vide et ajouter les matériaux manuellement 
-                depuis le dashboard du projet.
-              </p>
+              <div className="rounded-xl bg-gradient-to-r from-[#5B5FC7]/10 to-[#7B7FE8]/10 border border-[#5B5FC7]/20 p-4">
+                <h4 className="mb-2 font-semibold text-[#5B5FC7] flex items-center gap-2">
+                  <span className="text-xl">🤖</span>
+                  Mapping automatique par IA
+                </h4>
+                <p className="text-sm text-[#4A5568]">
+                  Si vous uploadez un fichier, l'IA détectera automatiquement les colonnes 
+                  (nom, quantité, prix, etc.) et vous proposera un mapping intelligent.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bouton de création - en dessous */}
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 text-base sm:text-lg font-semibold transition-all hover:scale-105"
+          >
+            <FolderPlus className="mr-2 h-5 w-5" />
+            {isLoading ? "Création en cours..." : "Créer le Projet"}
+          </Button>
+        </form>
+
+        {/* Info box */}
+        <Card className="border-0 bg-gradient-to-r from-[#FF9B7B]/10 to-[#FFB599]/10 border-[#FF9B7B]/20 shadow-lg rounded-2xl">
+          <CardContent className="p-6">
+            <div className="flex gap-4">
+              <div className="text-3xl">💡</div>
+              <div className="space-y-2">
+                <h4 className="font-semibold text-[#2D3748]">Conseil</h4>
+                <p className="text-sm text-[#4A5568]">
+                  Pour de meilleurs résultats avec le mapping IA, assurez-vous que votre fichier 
+                  contient des en-têtes de colonnes clairs (ex: "Nom du produit", "Quantité", "Prix unitaire").
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Info box */}
-      <Card className="border-amber-200 bg-amber-50">
-        <CardContent className="pt-6">
-          <div className="flex gap-3">
-            <div className="text-2xl">💡</div>
-            <div className="space-y-2">
-              <h4 className="font-semibold text-amber-900">Conseil</h4>
-              <p className="text-sm text-amber-800">
-                Pour de meilleurs résultats avec le mapping IA, assurez-vous que votre fichier 
-                contient des en-têtes de colonnes clairs (ex: "Nom du produit", "Quantité", "Prix unitaire").
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
