@@ -52,7 +52,7 @@ export default function Home() {
             </div>
             
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight px-4">
-              <span className="text-[#2D3748]">Optimisez les prix </span>
+              <span className="text-[#2D3748]">Optimisez le budget </span>
               <span className="bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] bg-clip-text text-transparent">
                 de votre projet en Chine
               </span>
@@ -173,7 +173,7 @@ export default function Home() {
                   </div>
                   
                   <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white px-4">
-                    Prêt à optimiser vos achats en Chine ?
+                    Prêt à optimiser le budget de votre projet ?
                   </h2>
                   
                   <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto leading-relaxed px-4">
