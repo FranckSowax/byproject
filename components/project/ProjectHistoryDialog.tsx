@@ -12,7 +12,7 @@ import { fr } from 'date-fns/locale';
 interface HistoryEntry {
   id: string;
   user_email: string;
-  action_type: 'create' | 'update' | 'delete' | 'share' | 'unshare';
+  action_type: string; // Changed from literal union to string to match Supabase types
   entity_type: string;
   entity_name: string;
   changes: any;
