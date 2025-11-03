@@ -882,11 +882,6 @@ export default function ProjectPage() {
           </div>
         </div>
 
-        {/* Historique du projet */}
-        {showHistory && (
-          <ProjectHistory projectId={params.id as string} />
-        )}
-
       {/* Status */}
       {project.mapping_status && (
         <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl">
@@ -1145,6 +1140,11 @@ export default function ProjectPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Historique du projet */}
+      {showHistory && (
+        <ProjectHistory projectId={params.id as string} />
+      )}
 
       {/* Info */}
       {project.mapping_status === 'completed' && (
