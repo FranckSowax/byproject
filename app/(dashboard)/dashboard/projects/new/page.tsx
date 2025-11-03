@@ -7,15 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, FolderPlus, Upload, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, FolderPlus, Upload, Link as LinkIcon, List, FileUp } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+
+type CreationMode = 'select' | 'file' | 'manual';
 
 export default function NewProjectPage() {
   const router = useRouter();
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [creationMode, setCreationMode] = useState<CreationMode>('select');
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -59,6 +62,12 @@ export default function NewProjectPage() {
       return;
     }
 
+    // Validation selon le mode
+    if (creationMode === 'file' && !selectedFile) {
+      toast.error("Veuillez sélectionner un fichier");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -78,7 +87,7 @@ export default function NewProjectPage() {
         const mockProjectId = `mock-${Date.now()}`;
         
         // Si fichier uploadé, sauvegarder pour simulation
-        if (selectedFile) {
+        if (creationMode === 'file' && selectedFile) {
           // Lire le fichier localement
           const reader = new FileReader();
           reader.onload = async (e) => {
@@ -95,18 +104,19 @@ export default function NewProjectPage() {
           };
           reader.readAsText(selectedFile);
         } else {
+          // Mode manuel - créer le projet et rediriger
           toast.success("Projet créé avec succès!");
-          router.push("/dashboard");
+          router.push(`/dashboard/projects/${mockProjectId}`);
         }
         
         setIsLoading(false);
         return;
       }
 
-      // Upload du fichier si présent
+      // Upload du fichier si présent et mode fichier
       let filePath = null;
       let fileName = null;
-      if (selectedFile) {
+      if (creationMode === 'file' && selectedFile) {
         const fileExt = selectedFile.name.split('.').pop();
         fileName = selectedFile.name;
         const storagePath = `${user.id}/${Date.now()}.${fileExt}`;
@@ -126,21 +136,27 @@ export default function NewProjectPage() {
       }
 
       // Créer le projet dans la base de données
+      const projectData: any = {
+        user_id: user.id,
+        name: formData.name,
+        source_url: formData.sourceUrl || null,
+      };
+
+      // Ajouter file_path et mapping_status uniquement si en mode fichier
+      if (creationMode === 'file') {
+        projectData.file_path = filePath;
+        projectData.mapping_status = 'pending';
+      }
+
       const { data: project, error: projectError } = await supabase
         .from('projects')
-        .insert({
-          user_id: user.id,
-          name: formData.name,
-          source_url: formData.sourceUrl || null,
-          file_path: filePath,
-          mapping_status: selectedFile ? 'pending' : null,
-        })
+        .insert(projectData)
         .select()
         .single();
 
       if (projectError) {
         console.error("Project creation error:", projectError);
-        toast.error("Erreur lors de la création du projet");
+        toast.error(`Erreur lors de la création du projet: ${projectError.message}`);
         setIsLoading(false);
         return;
       }
@@ -148,25 +164,25 @@ export default function NewProjectPage() {
       toast.success("Projet créé avec succès!");
       
       // Sauvegarder les infos du fichier pour l'analyse
-      if (selectedFile && filePath) {
+      if (creationMode === 'file' && selectedFile && filePath) {
         localStorage.setItem(`project_${project.id}`, JSON.stringify({
           filePath,
           fileName,
         }));
       }
       
-      // Rediriger vers la page du projet
-      if (selectedFile) {
+      // Rediriger selon le mode
+      if (creationMode === 'file' && selectedFile) {
         // Si fichier uploadé, aller vers la page d'analyse IA
         router.push(`/dashboard/projects/${project.id}/mapping`);
       } else {
-        // Sinon, aller directement au projet
+        // Mode manuel - aller directement au projet pour ajouter des matériaux
         router.push(`/dashboard/projects/${project.id}`);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error:", error);
-      toast.error("Une erreur est survenue");
+      toast.error(`Une erreur est survenue: ${error.message || 'Erreur inconnue'}`);
     } finally {
       setIsLoading(false);
     }
@@ -194,8 +210,75 @@ export default function NewProjectPage() {
           </div>
         </div>
 
+        {/* Mode Selection */}
+        {creationMode === 'select' && (
+          <div className="space-y-6">
+            <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
+              <div className="h-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8]" />
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#2D3748]">Comment souhaitez-vous créer votre projet ?</CardTitle>
+                <CardDescription className="text-[#718096]">
+                  Choisissez la méthode qui vous convient le mieux
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                {/* Option 1: Avec fichier */}
+                <Card 
+                  className="group border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer"
+                  onClick={() => setCreationMode('file')}
+                >
+                  <div className="h-2 bg-gradient-to-r from-[#38B2AC] to-[#319795]" />
+                  <CardHeader className="text-center">
+                    <div className="mx-auto w-20 h-20 bg-gradient-to-br from-[#38B2AC]/10 to-[#319795]/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <FileUp className="h-10 w-10 text-[#38B2AC]" />
+                    </div>
+                    <CardTitle className="text-xl text-[#2D3748] group-hover:text-[#38B2AC] transition-colors">
+                      Importer un fichier
+                    </CardTitle>
+                    <CardDescription className="text-[#718096] mt-2">
+                      Uploadez une liste de matériaux (PDF, CSV, Excel) et laissez l'IA faire le mapping automatiquement
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center pb-6">
+                    <div className="inline-flex items-center gap-2 text-sm text-[#38B2AC] font-semibold">
+                      <span className="text-2xl">🤖</span>
+                      Mapping automatique par IA
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Option 2: Manuel */}
+                <Card 
+                  className="group border-2 border-[#E0E4FF] hover:border-[#48BB78] hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer"
+                  onClick={() => setCreationMode('manual')}
+                >
+                  <div className="h-2 bg-gradient-to-r from-[#48BB78] to-[#38A169]" />
+                  <CardHeader className="text-center">
+                    <div className="mx-auto w-20 h-20 bg-gradient-to-br from-[#48BB78]/10 to-[#38A169]/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <List className="h-10 w-10 text-[#48BB78]" />
+                    </div>
+                    <CardTitle className="text-xl text-[#2D3748] group-hover:text-[#48BB78] transition-colors">
+                      Ajout manuel
+                    </CardTitle>
+                    <CardDescription className="text-[#718096] mt-2">
+                      Créez votre projet et ajoutez vos matériaux manuellement un par un
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center pb-6">
+                    <div className="inline-flex items-center gap-2 text-sm text-[#48BB78] font-semibold">
+                      <span className="text-2xl">✍️</span>
+                      Contrôle total
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Form - Single column layout */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {creationMode !== 'select' && (
+          <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informations du projet */}
           <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
             <div className="h-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8]" />
@@ -251,23 +334,24 @@ export default function NewProjectPage() {
             </CardContent>
           </Card>
 
-          {/* Upload de fichier */}
-          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
-            <div className="h-2 bg-gradient-to-r from-[#48BB78] to-[#38A169]" />
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#48BB78]/10 to-[#38A169]/10 rounded-xl flex items-center justify-center">
-                  <Upload className="h-6 w-6 text-[#48BB78]" />
+          {/* Upload de fichier - Only in file mode */}
+          {creationMode === 'file' && (
+            <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
+              <div className="h-2 bg-gradient-to-r from-[#48BB78] to-[#38A169]" />
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#48BB78]/10 to-[#38A169]/10 rounded-xl flex items-center justify-center">
+                    <Upload className="h-6 w-6 text-[#48BB78]" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl text-[#2D3748]">Importer un fichier</CardTitle>
+                    <CardDescription className="text-[#718096]">
+                      Uploadez votre liste de matériaux <span className="text-red-500">*</span>
+                    </CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-xl text-[#2D3748]">Importer un fichier</CardTitle>
-                  <CardDescription className="text-[#718096]">
-                    Uploadez votre liste de matériaux (optionnel)
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 p-6">
+              </CardHeader>
+              <CardContent className="space-y-4 p-6">
               <div className="space-y-2">
                 <Label htmlFor="file" className="text-[#4A5568] font-semibold">Fichier</Label>
                 <Input
@@ -315,39 +399,73 @@ export default function NewProjectPage() {
                   Mapping automatique par IA
                 </h4>
                 <p className="text-sm text-[#4A5568]">
-                  Si vous uploadez un fichier, l'IA détectera automatiquement les colonnes 
-                  (nom, quantité, prix, etc.) et vous proposera un mapping intelligent.
+                  L'IA détectera automatiquement les colonnes (nom, quantité, prix, etc.) 
+                  et vous proposera un mapping intelligent.
                 </p>
               </div>
             </CardContent>
           </Card>
+          )}
 
-          {/* Bouton de création - en dessous */}
-          <Button 
-            type="submit" 
-            disabled={isLoading}
-            className="w-full bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 text-base sm:text-lg font-semibold transition-all hover:scale-105"
-          >
-            <FolderPlus className="mr-2 h-5 w-5" />
-            {isLoading ? "Création en cours..." : "Créer le Projet"}
-          </Button>
+          {/* Info for manual mode */}
+          {creationMode === 'manual' && (
+            <Card className="border-0 bg-gradient-to-r from-[#48BB78]/10 to-[#38A169]/10 border-[#48BB78]/20 shadow-lg rounded-2xl">
+              <CardContent className="p-6">
+                <div className="flex gap-4">
+                  <div className="text-3xl">✍️</div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-[#2D3748]">Mode manuel</h4>
+                    <p className="text-sm text-[#4A5568]">
+                      Après la création du projet, vous pourrez ajouter vos matériaux un par un 
+                      et gérer les prix pour chaque matériau.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex gap-4">
+            <Button 
+              type="button"
+              variant="outline"
+              onClick={() => setCreationMode('select')}
+              disabled={isLoading}
+              className="border-2 border-[#E0E4FF] hover:border-[#5B5FC7] rounded-xl px-6 py-6 font-semibold"
+            >
+              <ArrowLeft className="mr-2 h-5 w-5" />
+              Retour
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="flex-1 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 text-base sm:text-lg font-semibold transition-all hover:scale-105"
+            >
+              <FolderPlus className="mr-2 h-5 w-5" />
+              {isLoading ? "Création en cours..." : "Créer le Projet"}
+            </Button>
+          </div>
         </form>
+        )}
 
-        {/* Info box */}
-        <Card className="border-0 bg-gradient-to-r from-[#FF9B7B]/10 to-[#FFB599]/10 border-[#FF9B7B]/20 shadow-lg rounded-2xl">
-          <CardContent className="p-6">
-            <div className="flex gap-4">
-              <div className="text-3xl">💡</div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-[#2D3748]">Conseil</h4>
-                <p className="text-sm text-[#4A5568]">
-                  Pour de meilleurs résultats avec le mapping IA, assurez-vous que votre fichier 
-                  contient des en-têtes de colonnes clairs (ex: "Nom du produit", "Quantité", "Prix unitaire").
-                </p>
+        {/* Info box for file mode */}
+        {creationMode === 'file' && (
+          <Card className="border-0 bg-gradient-to-r from-[#FF9B7B]/10 to-[#FFB599]/10 border-[#FF9B7B]/20 shadow-lg rounded-2xl">
+            <CardContent className="p-6">
+              <div className="flex gap-4">
+                <div className="text-3xl">💡</div>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-[#2D3748]">Conseil</h4>
+                  <p className="text-sm text-[#4A5568]">
+                    Pour de meilleurs résultats avec le mapping IA, assurez-vous que votre fichier 
+                    contient des en-têtes de colonnes clairs (ex: "Nom du produit", "Quantité", "Prix unitaire").
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
