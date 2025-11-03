@@ -6,10 +6,13 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, History } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { ShareProjectDialog } from "@/components/collaboration/ShareProjectDialog";
+import { MaterialComments } from "@/components/collaboration/MaterialComments";
+import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
 import {
   Dialog,
   DialogContent,
@@ -114,6 +117,13 @@ export default function ProjectPage() {
   const [importProgress, setImportProgress] = useState(0);
   const [importStatus, setImportStatus] = useState<string>('');
   const [importedCount, setImportedCount] = useState(0);
+
+  // États pour la collaboration
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [commentsMaterialId, setCommentsMaterialId] = useState<string | null>(null);
+  const [commentsMaterialName, setCommentsMaterialName] = useState<string>('');
 
   useEffect(() => {
     loadProject();
@@ -839,6 +849,24 @@ export default function ProjectPage() {
             <Button 
               variant="outline" 
               size="icon"
+              onClick={() => setIsShareDialogOpen(true)}
+              className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
+              title="Partager le projet"
+            >
+              <Users className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => setShowHistory(!showHistory)}
+              className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
+              title="Historique du projet"
+            >
+              <History className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
               className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
             >
               <Settings className="h-5 w-5" />
@@ -853,6 +881,11 @@ export default function ProjectPage() {
             </Button>
           </div>
         </div>
+
+        {/* Historique du projet */}
+        {showHistory && (
+          <ProjectHistory projectId={params.id as string} />
+        )}
 
       {/* Status */}
       {project.mapping_status && (
@@ -1046,6 +1079,19 @@ export default function ProjectPage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setCommentsMaterialId(material.id);
+                            setCommentsMaterialName(material.name);
+                            setShowComments(true);
+                          }}
+                          title="Commentaires"
+                          className="w-10 h-10 rounded-xl bg-purple-500/10 hover:bg-purple-500 text-purple-500 hover:text-white transition-all hover:scale-110"
+                        >
+                          <MessageSquare className="h-5 w-5" />
+                        </Button>
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -2405,6 +2451,35 @@ export default function ProjectPage() {
               </Button>
             )}
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de partage de projet */}
+      <ShareProjectDialog
+        projectId={params.id as string}
+        projectName={project?.name || ''}
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+        onSuccess={() => {
+          toast.success("Collaborateur invité avec succès");
+        }}
+      />
+
+      {/* Dialog des commentaires */}
+      <Dialog open={showComments} onOpenChange={setShowComments}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Commentaires</DialogTitle>
+            <DialogDescription>
+              Discussion sur le matériau
+            </DialogDescription>
+          </DialogHeader>
+          {commentsMaterialId && (
+            <MaterialComments
+              materialId={commentsMaterialId}
+              materialName={commentsMaterialName}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
