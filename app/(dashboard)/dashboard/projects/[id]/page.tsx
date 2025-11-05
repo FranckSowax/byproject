@@ -530,9 +530,43 @@ export default function ProjectPage() {
 
   const loadSuppliers = async () => {
     try {
+      // Récupérer tous les IDs de matériaux du projet
+      const { data: projectMaterials, error: materialsError } = await supabase
+        .from('materials')
+        .select('id')
+        .eq('project_id', params.id);
+
+      if (materialsError) throw materialsError;
+
+      const materialIds = projectMaterials?.map(m => m.id) || [];
+
+      if (materialIds.length === 0) {
+        setSuppliers([]);
+        return;
+      }
+
+      // Récupérer les fournisseurs qui ont des prix pour les matériaux de ce projet
+      const { data: prices, error: pricesError } = await supabase
+        .from('prices')
+        .select('supplier_id')
+        .in('material_id', materialIds)
+        .not('supplier_id', 'is', null);
+
+      if (pricesError) throw pricesError;
+
+      // Extraire les IDs uniques des fournisseurs
+      const supplierIds = [...new Set(prices?.map(p => p.supplier_id).filter(Boolean))];
+
+      if (supplierIds.length === 0) {
+        setSuppliers([]);
+        return;
+      }
+
+      // Charger les détails des fournisseurs
       const { data, error } = await supabase
         .from('suppliers')
         .select('*')
+        .in('id', supplierIds)
         .order('name', { ascending: true });
 
       if (error) throw error;
