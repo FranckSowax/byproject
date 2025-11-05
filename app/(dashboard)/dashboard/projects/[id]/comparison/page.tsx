@@ -45,7 +45,7 @@ export default function ComparisonPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [pricesByMaterial, setPricesByMaterial] = useState<Record<string, Price[]>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCountry, setSelectedCountry] = useState<'all' | 'Cameroun' | 'Chine'>('all');
+  const [selectedCountry, setSelectedCountry] = useState<string>('all');
 
   useEffect(() => {
     loadData();
@@ -107,7 +107,7 @@ export default function ComparisonPage() {
 
   const getBestPrice = (materialId: string, country?: string) => {
     const prices = pricesByMaterial[materialId] || [];
-    const filtered = country ? prices.filter(p => p.country === country) : prices;
+    const filtered = country ? prices.filter(p => p.supplier?.country === country) : prices;
     if (filtered.length === 0) return null;
     return filtered.reduce((min, p) => 
       (p.converted_amount || p.amount) < (min.converted_amount || min.amount) ? p : min
@@ -155,17 +155,26 @@ export default function ComparisonPage() {
     return shippingUSD * 600;
   };
 
-  const totalLocal = calculateTotal('Cameroun');
+  // Extraire dynamiquement les pays des fournisseurs
+  const countries = Array.from(
+    new Set(
+      Object.values(pricesByMaterial)
+        .flat()
+        .map(p => p.supplier?.country)
+        .filter(Boolean)
+    )
+  ).sort() as string[];
+
+  // Calculer le coût local avec les meilleurs prix disponibles (tous pays confondus)
+  const totalLocal = calculateTotal();
   const totalChina = calculateTotal('Chine');
-  const volumeLocal = calculateVolume('Cameroun');
+  const volumeLocal = calculateVolume();
   const volumeChina = calculateVolume('Chine');
   const shippingCostChina = calculateShippingCost(volumeChina, 'Chine');
   
   const totalChinaWithShipping = totalChina + shippingCostChina;
   const savings = totalLocal - totalChinaWithShipping;
   const savingsPercentage = totalLocal > 0 ? (savings / totalLocal * 100).toFixed(1) : 0;
-
-  const countries = ['Cameroun', 'Chine'];
 
   if (isLoading) {
     return (
@@ -481,30 +490,35 @@ export default function ComparisonPage() {
             >
               Tous les pays
             </Button>
-            <Button
-              variant={selectedCountry === 'Cameroun' ? 'default' : 'outline'}
-              size="lg"
-              onClick={() => setSelectedCountry('Cameroun')}
-              className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
-                selectedCountry === 'Cameroun' 
-                  ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white shadow-lg hover:shadow-xl' 
-                  : 'border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF]'
-              }`}
-            >
-              📍 Cameroun
-            </Button>
-            <Button
-              variant={selectedCountry === 'Chine' ? 'default' : 'outline'}
-              size="lg"
-              onClick={() => setSelectedCountry('Chine')}
-              className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
-                selectedCountry === 'Chine' 
-                  ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white shadow-lg hover:shadow-xl' 
-                  : 'border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF]'
-              }`}
-            >
-              🇨🇳 Chine
-            </Button>
+            {countries.map(country => {
+              const countryFlags: Record<string, string> = {
+                'Cameroun': '🇨🇲',
+                'Chine': '🇨🇳',
+                'Dubai': '🇦🇪',
+                'Turquie': '🇹🇷',
+                'France': '🇫🇷',
+                'Allemagne': '🇩🇪',
+                'Italie': '🇮🇹',
+                'Espagne': '🇪🇸',
+              };
+              const flag = countryFlags[country] || '📍';
+              
+              return (
+                <Button
+                  key={country}
+                  variant={selectedCountry === country ? 'default' : 'outline'}
+                  size="lg"
+                  onClick={() => setSelectedCountry(country)}
+                  className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
+                    selectedCountry === country 
+                      ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white shadow-lg hover:shadow-xl' 
+                      : 'border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF]'
+                  }`}
+                >
+                  {flag} {country}
+                </Button>
+              );
+            })}
           </div>
         </Card>
 
@@ -514,7 +528,7 @@ export default function ComparisonPage() {
             const prices = pricesByMaterial[material.id] || [];
             const filteredPrices = selectedCountry === 'all' 
               ? prices 
-              : prices.filter(p => p.country === selectedCountry);
+              : prices.filter(p => p.supplier?.country === selectedCountry);
             
             const sortedPrices = [...filteredPrices].sort((a, b) => 
               (a.converted_amount || a.amount) - (b.converted_amount || b.amount)
