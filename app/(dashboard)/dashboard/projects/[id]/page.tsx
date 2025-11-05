@@ -321,8 +321,8 @@ export default function ProjectPage() {
       setImportStatus('Lecture du fichier...');
 
       const fileText = await importFile.text();
-      setImportProgress(30);
-      setImportStatus('Analyse des données...');
+      setImportProgress(20);
+      setImportStatus('Analyse avec l\'IA...');
 
       // Parse CSV
       const lines = fileText.split('\n').filter(line => line.trim());
@@ -330,31 +330,61 @@ export default function ProjectPage() {
         throw new Error('Fichier vide ou invalide');
       }
 
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const headers = lines[0].split(',').map(h => h.trim());
+      
+      // Préparer un échantillon pour l'IA (premières lignes)
+      const sampleLines = lines.slice(0, Math.min(6, lines.length));
+      const sampleData = sampleLines.join('\n');
+
+      // Appel à l'IA pour mapper les colonnes
+      setImportProgress(30);
+      setImportStatus('🤖 L\'IA analyse les colonnes...');
+
+      const mappingResponse = await fetch('/api/ai/map-columns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          headers,
+          sampleData,
+          targetFields: ['name', 'category', 'quantity', 'unit', 'weight', 'volume', 'specs']
+        }),
+      });
+
+      if (!mappingResponse.ok) {
+        throw new Error('Erreur lors du mapping IA');
+      }
+
+      const { mapping } = await mappingResponse.json();
+      console.log('Mapping IA:', mapping);
+
       setImportProgress(50);
       setImportStatus('Création des matériaux...');
 
       let imported = 0;
       const totalLines = lines.length - 1;
 
+      // Importer les matériaux avec le mapping IA
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim());
-        const nameIndex = headers.findIndex(h => h.includes('nom') || h.includes('name') || h.includes('matériau') || h.includes('material'));
         
-        if (nameIndex === -1 || !values[nameIndex]) continue;
-
-        const categoryIndex = headers.findIndex(h => h.includes('catégorie') || h.includes('category') || h.includes('type'));
-        const quantityIndex = headers.findIndex(h => h.includes('quantité') || h.includes('quantity') || h.includes('qté'));
-        const weightIndex = headers.findIndex(h => h.includes('poids') || h.includes('weight'));
-        const volumeIndex = headers.findIndex(h => h.includes('volume'));
+        // Utiliser le mapping IA pour extraire les données
+        const nameValue = mapping.name !== null && mapping.name < values.length ? values[mapping.name] : null;
+        
+        if (!nameValue) continue;
 
         const materialData = {
           project_id: params.id,
-          name: values[nameIndex],
-          category: categoryIndex !== -1 ? values[categoryIndex] : null,
-          quantity: quantityIndex !== -1 && values[quantityIndex] ? parseFloat(values[quantityIndex]) : null,
-          weight: weightIndex !== -1 && values[weightIndex] ? parseFloat(values[weightIndex]) : null,
-          volume: volumeIndex !== -1 && values[volumeIndex] ? parseFloat(values[volumeIndex]) : null,
+          name: nameValue,
+          category: mapping.category !== null && mapping.category < values.length ? values[mapping.category] : null,
+          quantity: mapping.quantity !== null && mapping.quantity < values.length && values[mapping.quantity] 
+            ? parseFloat(values[mapping.quantity]) 
+            : null,
+          weight: mapping.weight !== null && mapping.weight < values.length && values[mapping.weight]
+            ? parseFloat(values[mapping.weight])
+            : null,
+          volume: mapping.volume !== null && mapping.volume < values.length && values[mapping.volume]
+            ? parseFloat(values[mapping.volume])
+            : null,
           specs: {},
         };
 
@@ -373,10 +403,10 @@ export default function ProjectPage() {
       }
 
       setImportProgress(100);
-      setImportStatus('Import terminé !');
+      setImportStatus('✅ Import terminé !');
       
       setTimeout(() => {
-        toast.success(`${imported} matériaux importés avec succès`);
+        toast.success(`${imported} matériaux importés avec succès grâce à l'IA`);
         setIsImportDialogOpen(false);
         setIsImporting(false);
         setImportFile(null);

@@ -162,33 +162,19 @@ export function HowItWorksSlider() {
               </div>
 
               {/* Right Side - Screenshot */}
-              <div className="relative">
+              <div className="relative group">
                 <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-[#F5F6FF] to-[#FFF5F2] border-2 border-[#E0E4FF] shadow-xl">
-                  {/* Placeholder for screenshot */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center space-y-4 p-8">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] mx-auto shadow-lg">
-                        {step.icon}
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-[#718096]">
-                          Capture d'écran à venir
-                        </p>
-                        <p className="text-xs text-[#A0AEC0]">
-                          {step.imagePath}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* When you add real screenshots, use this: */}
-                  {/* <Image
+                  {/* Image avec animation de zoom au survol */}
+                  <Image
                     src={step.imagePath}
                     alt={step.title}
                     fill
-                    className="object-cover"
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                     priority={currentStep === 0}
-                  /> */}
+                  />
+                  
+                  {/* Overlay subtil au survol */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#5B5FC7]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
 
                 {/* Decorative elements */}
