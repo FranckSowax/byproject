@@ -166,8 +166,8 @@ export default function DashboardPage() {
           </div>
           <Link href="/dashboard/projects/new">
             <Button className="gap-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 transition-all hover:scale-105">
-              <Plus className="h-5 w-5" />
-              Nouveau Projet
+              <Plus className="h-5 w-5 text-white" />
+              <span className="text-white font-semibold">Nouveau Projet</span>
             </Button>
           </Link>
         </div>
@@ -186,8 +186,8 @@ export default function DashboardPage() {
               </p>
               <Link href="/dashboard/projects/new">
                 <Button className="gap-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-8 py-6 text-lg transition-all hover:scale-105">
-                  <Plus className="h-5 w-5" />
-                  Créer un Projet
+                  <Plus className="h-5 w-5 text-white" />
+                  <span className="text-white font-semibold">Créer un Projet</span>
                 </Button>
               </Link>
             </CardContent>
