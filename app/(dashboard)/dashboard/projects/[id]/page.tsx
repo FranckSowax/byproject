@@ -39,6 +39,7 @@ interface Material {
   name: string;
   category: string | null;
   quantity: number | null;
+  surface: number | null;
   weight: number | null;
   volume: number | null;
   specs: any;
@@ -64,6 +65,7 @@ export default function ProjectPage() {
     name: '',
     category: null,
     quantity: null,
+    surface: null,
     weight: null,
     volume: null,
     specs: {},
@@ -271,6 +273,7 @@ export default function ProjectPage() {
           name: editingMaterial.name,
           category: editingMaterial.category,
           quantity: editingMaterial.quantity,
+          surface: editingMaterial.surface,
           weight: editingMaterial.weight,
           volume: editingMaterial.volume,
           specs: editingMaterial.specs,
@@ -430,6 +433,7 @@ export default function ProjectPage() {
       name: '',
       category: null,
       quantity: null,
+      surface: null,
       weight: null,
       volume: null,
       specs: {},
@@ -453,6 +457,7 @@ export default function ProjectPage() {
           name: newMaterial.name,
           category: newMaterial.category,
           quantity: newMaterial.quantity,
+          surface: newMaterial.surface,
           weight: newMaterial.weight,
           volume: newMaterial.volume,
           specs: newMaterial.specs || {},
@@ -466,6 +471,7 @@ export default function ProjectPage() {
         name: '',
         category: null,
         quantity: null,
+        surface: null,
         weight: null,
         volume: null,
         specs: {},
@@ -1178,6 +1184,24 @@ export default function ProjectPage() {
                               {material.quantity}
                             </div>
                           )}
+                          {material.surface && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-sm font-semibold">
+                              <span className="text-xs">📐</span>
+                              {material.surface} m²
+                            </div>
+                          )}
+                          {material.weight && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-semibold">
+                              <span className="text-xs">⚖️</span>
+                              {material.weight} kg
+                            </div>
+                          )}
+                          {material.volume && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-purple-500/10 text-purple-600 rounded-lg text-sm font-semibold">
+                              <span className="text-xs">📦</span>
+                              {material.volume} m³
+                            </div>
+                          )}
                           {material.specs && Object.keys(material.specs).length > 0 && (
                             <div className="flex items-center gap-1 px-3 py-1 bg-[#718096]/10 text-[#718096] rounded-lg text-sm">
                               <FileText className="h-3 w-3" />
@@ -1322,7 +1346,7 @@ export default function ProjectPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="quantity">Quantité</Label>
                   <Input
@@ -1334,6 +1358,19 @@ export default function ProjectPage() {
                   />
                 </div>
 
+                <div className="grid gap-2">
+                  <Label htmlFor="surface">Surface (m²)</Label>
+                  <Input
+                    id="surface"
+                    type="number"
+                    value={editingMaterial.surface || ''}
+                    onChange={(e) => setEditingMaterial({ ...editingMaterial, surface: parseFloat(e.target.value) || null })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="weight">Poids (kg)</Label>
                   <Input
@@ -1409,7 +1446,7 @@ export default function ProjectPage() {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="new-quantity">Quantité</Label>
                 <Input
@@ -1421,6 +1458,19 @@ export default function ProjectPage() {
                 />
               </div>
 
+              <div className="grid gap-2">
+                <Label htmlFor="new-surface">Surface (m²)</Label>
+                <Input
+                  id="new-surface"
+                  type="number"
+                  value={newMaterial.surface || ''}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, surface: parseFloat(e.target.value) || null })}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="new-weight">Poids (kg)</Label>
                 <Input
@@ -1454,6 +1504,7 @@ export default function ProjectPage() {
                   name: '',
                   category: null,
                   quantity: null,
+                  surface: null,
                   weight: null,
                   volume: null,
                   specs: {},
