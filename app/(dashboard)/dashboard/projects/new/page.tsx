@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, FolderPlus, Upload, Link as LinkIcon, List, FileUp } from "lucide-react";
+import { ArrowLeft, FolderPlus, Upload, Link as LinkIcon, List, FileUp, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +25,8 @@ export default function NewProjectPage() {
     sourceUrl: "",
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -51,6 +53,37 @@ export default function NewProjectPage() {
       
       setSelectedFile(file);
       toast.success(`Fichier sélectionné: ${file.name}`);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Vérifier le type de fichier
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+      
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Type d'image non supporté. Utilisez JPG, PNG ou WebP.");
+        return;
+      }
+      
+      // Vérifier la taille (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("L'image est trop volumineuse (max 5MB)");
+        return;
+      }
+      
+      setSelectedImage(file);
+      
+      // Créer un aperçu
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      toast.success(`Image sélectionnée: ${file.name}`);
     }
   };
 
@@ -113,6 +146,31 @@ export default function NewProjectPage() {
         return;
       }
 
+      // Upload de l'image de présentation si présente
+      let imageUrl = null;
+      if (selectedImage) {
+        const imageExt = selectedImage.name.split('.').pop();
+        const imageStoragePath = `${user.id}/images/${Date.now()}.${imageExt}`;
+        
+        const { error: imageUploadError } = await supabase.storage
+          .from('project-images')
+          .upload(imageStoragePath, selectedImage);
+
+        if (imageUploadError) {
+          console.error("Image upload error:", imageUploadError);
+          toast.error("Erreur lors de l'upload de l'image");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Obtenir l'URL publique de l'image
+        const { data: { publicUrl } } = supabase.storage
+          .from('project-images')
+          .getPublicUrl(imageStoragePath);
+        
+        imageUrl = publicUrl;
+      }
+
       // Upload du fichier si présent et mode fichier
       let filePath = null;
       let fileName = null;
@@ -140,6 +198,7 @@ export default function NewProjectPage() {
         user_id: user.id,
         name: formData.name,
         source_url: formData.sourceUrl || null,
+        image_url: imageUrl,
       };
 
       // Ajouter file_path et mapping_status uniquement si en mode fichier
@@ -329,6 +388,65 @@ export default function NewProjectPage() {
                 />
                 <p className="text-xs text-[#718096]">
                   Vous pouvez lier une Google Sheet existante
+                </p>
+              </div>
+
+              {/* Upload d'image de présentation */}
+              <div className="space-y-2">
+                <Label htmlFor="projectImage" className="text-[#4A5568] font-semibold">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    Image de présentation (optionnel)
+                  </div>
+                </Label>
+                <div className="space-y-3">
+                  {imagePreview ? (
+                    <div className="relative w-full h-48 rounded-xl overflow-hidden border-2 border-[#E0E4FF]">
+                      <img 
+                        src={imagePreview} 
+                        alt="Aperçu" 
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setSelectedImage(null);
+                          setImagePreview(null);
+                        }}
+                      >
+                        Supprimer
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        id="projectImage"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/jpg"
+                        onChange={handleImageChange}
+                        disabled={isLoading}
+                        className="hidden"
+                      />
+                      <Label
+                        htmlFor="projectImage"
+                        className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-[#E0E4FF] rounded-xl cursor-pointer hover:border-[#5B5FC7] hover:bg-[#F5F6FF] transition-all"
+                      >
+                        <ImageIcon className="h-12 w-12 text-[#5B5FC7] mb-3" />
+                        <span className="text-sm font-semibold text-[#5B5FC7]">
+                          Cliquez pour sélectionner une image
+                        </span>
+                        <span className="text-xs text-[#718096] mt-1">
+                          JPG, PNG ou WebP (max 5MB)
+                        </span>
+                      </Label>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-[#718096]">
+                  Cette image sera affichée en haut de la carte du projet
                 </p>
               </div>
             </CardContent>
