@@ -37,6 +37,7 @@ interface Project {
 interface Material {
   id: string;
   name: string;
+  description: string | null;
   category: string | null;
   quantity: number | null;
   surface: number | null;
@@ -63,6 +64,7 @@ export default function ProjectPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newMaterial, setNewMaterial] = useState<Partial<Material>>({
     name: '',
+    description: null,
     category: null,
     quantity: null,
     surface: null,
@@ -271,6 +273,7 @@ export default function ProjectPage() {
         .from('materials')
         .update({
           name: editingMaterial.name,
+          description: editingMaterial.description,
           category: editingMaterial.category,
           quantity: editingMaterial.quantity,
           surface: editingMaterial.surface,
@@ -431,6 +434,7 @@ export default function ProjectPage() {
   const handleAddMaterial = () => {
     setNewMaterial({
       name: '',
+      description: null,
       category: null,
       quantity: null,
       surface: null,
@@ -455,6 +459,7 @@ export default function ProjectPage() {
         .insert({
           project_id: params.id,
           name: newMaterial.name,
+          description: newMaterial.description,
           category: newMaterial.category,
           quantity: newMaterial.quantity,
           surface: newMaterial.surface,
@@ -469,6 +474,7 @@ export default function ProjectPage() {
       setIsAddDialogOpen(false);
       setNewMaterial({
         name: '',
+        description: null,
         category: null,
         quantity: null,
         surface: null,
@@ -1206,6 +1212,11 @@ export default function ProjectPage() {
                         >
                           {material.name}
                         </h4>
+                        {material.description && (
+                          <p className="text-sm text-gray-600 italic mt-1 line-clamp-2">
+                            {material.description}
+                          </p>
+                        )}
                         <div className="mt-2 flex flex-wrap gap-2">
                           {material.category && (
                             <Badge className="bg-gradient-to-r from-[#5B5FC7]/10 to-[#7B7FE8]/10 text-[#5B5FC7] border-[#5B5FC7]/20 hover:bg-[#5B5FC7]/20 font-semibold">
@@ -1371,6 +1382,17 @@ export default function ProjectPage() {
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={editingMaterial.description || ''}
+                  onChange={(e) => setEditingMaterial({ ...editingMaterial, description: e.target.value || null })}
+                  placeholder="Spécifications, caractéristiques, notes..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid gap-2">
                 <Label htmlFor="category">Catégorie</Label>
                 <Input
                   id="category"
@@ -1471,6 +1493,17 @@ export default function ProjectPage() {
             </div>
 
             <div className="grid gap-2">
+              <Label htmlFor="new-description">Description</Label>
+              <Textarea
+                id="new-description"
+                value={newMaterial.description || ''}
+                onChange={(e) => setNewMaterial({ ...newMaterial, description: e.target.value || null })}
+                placeholder="Spécifications, caractéristiques, notes..."
+                rows={3}
+              />
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="new-category">Catégorie</Label>
               <Input
                 id="new-category"
@@ -1536,6 +1569,7 @@ export default function ProjectPage() {
                 setIsAddDialogOpen(false);
                 setNewMaterial({
                   name: '',
+                  description: null,
                   category: null,
                   quantity: null,
                   surface: null,
