@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkles, Ship, Package } from "lucide-react";
 import Image from "next/image";
+import { HowItWorksSlider } from "@/components/home/HowItWorksSlider";
 
 // Force dynamic rendering to prevent static generation issues
 export const dynamic = 'force-dynamic';
@@ -48,19 +49,19 @@ export default function Home() {
           <div className="relative mx-auto max-w-4xl space-y-10">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#F5F6FF] to-[#FFF5F2] border border-[#E0E4FF]">
               <Sparkles className="h-4 w-4 text-[#5B5FC7]" />
-              <span className="text-sm font-medium text-[#4A5568]">Plateforme d'organisation et de comparaison</span>
+              <span className="text-sm font-medium text-[#4A5568]">Assistant de mission pour acheteurs en Chine</span>
             </div>
             
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight px-4">
-              <span className="text-[#2D3748]">Optimisez le budget </span>
+              <span className="text-[#2D3748]">Gérez vos missions </span>
               <span className="bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] bg-clip-text text-transparent">
-                de votre projet en Chine
+                d'achat en Chine
               </span>
             </h1>
             
             <p className="text-lg sm:text-xl md:text-2xl text-[#718096] max-w-3xl mx-auto leading-relaxed px-4">
-              Plateforme pour organiser et comparer vos prix de matériaux entre le Gabon et la Chine. 
-              Importez vos listes, saisissez vos prix, et visualisez les meilleures opportunités d'achat.
+              L'outil indispensable pour préparer, suivre et optimiser vos visites fournisseurs en Chine. 
+              Collectez les prix sur place, comparez en temps réel, et prenez les bonnes décisions.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 px-4">
@@ -88,6 +89,9 @@ export default function Home() {
           </div>
         </section>
 
+        {/* How It Works Slider */}
+        <HowItWorksSlider />
+
         {/* Features Section */}
         <section className="bg-gradient-to-b from-white to-[#F8F9FF] py-16 sm:py-24">
           <div className="container mx-auto px-4 sm:px-6">
@@ -107,9 +111,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] mb-6 shadow-lg">
                     <Zap className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Import Intelligent</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Préparation Mission</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Importez PDF, CSV ou Excel. L'IA détecte vos colonnes, vous saisissez les prix manuellement.
+                    Importez votre liste de matériaux avant le départ. L'IA organise vos données pour optimiser vos visites fournisseurs.
                   </p>
                 </div>
               </div>
@@ -120,9 +124,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9B7B] to-[#FFB599] mb-6 shadow-lg">
                     <Globe className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Multi-Devises</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Saisie Sur Place</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Comparez les prix en CFA et RMB avec contrôle manuel du taux de change.
+                    Collectez les prix directement chez les fournisseurs. Enregistrez coordonnées, photos et notes de visite en temps réel.
                   </p>
                 </div>
               </div>
@@ -133,9 +137,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#6B8AFF] to-[#9B7BFF] mb-6 shadow-lg">
                     <BarChart3 className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Comparaison Temps Réel</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Comparaison Instantanée</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Tableaux de comparaison avec filtrage, tri et mises à jour instantanées.
+                    Entre deux rendez-vous, comparez les offres des fournisseurs. Négociez en connaissance de cause avec les données en main.
                   </p>
                 </div>
               </div>
@@ -146,9 +150,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#48BB78] to-[#7BFFA8] mb-6 shadow-lg">
                     <FileText className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Rapports Professionnels</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Rapport de Mission</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Exportez de beaux rapports PDF et Excel avec votre image de marque.
+                    De retour au bureau, générez un rapport complet avec prix, fournisseurs et photos. Présentez vos résultats à votre équipe.
                   </p>
                 </div>
               </div>
@@ -173,11 +177,11 @@ export default function Home() {
                   </div>
                   
                   <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white px-4">
-                    Prêt à optimiser le budget de votre projet ?
+                    Prêt pour votre prochaine mission en Chine ?
                   </h2>
                   
                   <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto leading-relaxed px-4">
-                    Rejoignez les équipes qui prennent des décisions d'achat plus intelligentes avec CompaChantier.
+                    Rejoignez les acheteurs professionnels qui optimisent leurs visites fournisseurs avec CompaChantier.
                   </p>
                   
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4 px-4">
@@ -195,7 +199,7 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
-                      <span className="whitespace-nowrap">Configuration en 2 minutes</span>
+                      <span className="whitespace-nowrap">Prêt en 2 minutes</span>
                     </div>
                   </div>
                 </div>
