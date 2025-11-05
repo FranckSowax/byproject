@@ -223,7 +223,7 @@ export default function ComparisonPage() {
         startY: 60,
         head: [['Indicateur', 'Valeur']],
         body: [
-          ['Coût Total Local (Cameroun)', `${formatNumber(totalLocal)} FCFA`],
+          ['Coût Total Local (Meilleurs Prix)', `${formatNumber(totalLocal)} FCFA`],
           ['Coût Matériaux Chine', `${formatNumber(totalChina)} FCFA`],
           ['Volume Chine', `${volumeChina.toFixed(3)} CBM`],
           ['Frais Transport Maritime', `${formatNumber(shippingCostChina)} FCFA`],
