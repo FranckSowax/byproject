@@ -10,6 +10,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { ArrowLeft, Download, TrendingDown, TrendingUp, Ship, Package, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Material {
   id: string;
@@ -174,8 +176,157 @@ export default function ComparisonPage() {
   }
 
   const handleExportPDF = () => {
-    toast.success('Export PDF en cours de développement');
-    // TODO: Implémenter l'export PDF avec jsPDF ou react-pdf
+    try {
+      const doc = new jsPDF();
+      
+      // Configuration des couleurs
+      const primaryColor: [number, number, number] = [91, 95, 199]; // #5B5FC7
+      const accentColor: [number, number, number] = [255, 155, 123]; // #FF9B7B
+      
+      // En-tête
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, 210, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.text('Rapport de Comparaison', 105, 20, { align: 'center' });
+      
+      doc.setFontSize(12);
+      doc.text(project?.name || 'Projet', 105, 30, { align: 'center' });
+      
+      // Date
+      const today = new Date().toLocaleDateString('fr-FR');
+      doc.setFontSize(10);
+      doc.text(`Généré le ${today}`, 105, 36, { align: 'center' });
+      
+      // Résumé Global
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(16);
+      doc.text('Résumé Global', 14, 55);
+      
+      // Tableau résumé
+      autoTable(doc, {
+        startY: 60,
+        head: [['Indicateur', 'Valeur']],
+        body: [
+          ['Coût Total Local (Cameroun)', `${totalLocal.toLocaleString()} FCFA`],
+          ['Coût Matériaux Chine', `${totalChina.toLocaleString()} FCFA`],
+          ['Volume Chine', `${volumeChina.toFixed(3)} CBM`],
+          ['Frais Transport Maritime', `${shippingCostChina.toLocaleString()} FCFA`],
+          ['Coût Total Chine (avec transport)', `${totalChinaWithShipping.toLocaleString()} FCFA`],
+          ['Économie / Surcoût', `${savings > 0 ? '-' : '+'}${Math.abs(savings).toLocaleString()} FCFA (${savingsPercentage}%)`],
+        ],
+        headStyles: { fillColor: primaryColor, textColor: 255 },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        margin: { left: 14, right: 14 },
+      });
+      
+      // Recommandation
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(14);
+      doc.text('Recommandation', 14, finalY);
+      
+      doc.setFontSize(11);
+      if (savings > 0) {
+        doc.setTextColor(34, 139, 34);
+        doc.text('✓ Acheter en Chine est plus avantageux', 14, finalY + 8);
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text(
+          `Vous économiserez ${savingsPercentage}% en important de Chine, soit ${savings.toLocaleString()} FCFA.`,
+          14,
+          finalY + 15,
+          { maxWidth: 180 }
+        );
+      } else {
+        doc.setTextColor(65, 105, 225);
+        doc.text('ℹ Acheter localement est préférable', 14, finalY + 8);
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text('Les prix locaux sont compétitifs pour ce projet.', 14, finalY + 15);
+      }
+      
+      // Nouvelle page pour le détail des matériaux
+      doc.addPage();
+      doc.setFontSize(16);
+      doc.text('Détail par Matériau', 14, 20);
+      
+      let currentY = 30;
+      
+      materials.forEach((material, index) => {
+        const prices = pricesByMaterial[material.id] || [];
+        const sortedPrices = [...prices].sort((a, b) => 
+          (a.converted_amount || a.amount) - (b.converted_amount || b.amount)
+        );
+        
+        // Vérifier si on a besoin d'une nouvelle page
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
+        }
+        
+        // Nom du matériau
+        doc.setFontSize(12);
+        doc.setTextColor(...primaryColor);
+        doc.text(`${index + 1}. ${material.name}`, 14, currentY);
+        currentY += 7;
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Quantité: ${material.quantity || 1}`, 14, currentY);
+        currentY += 5;
+        
+        if (sortedPrices.length > 0) {
+          // Tableau des prix pour ce matériau
+          const priceRows = sortedPrices.slice(0, 5).map((price, idx) => [
+            idx === 0 ? '🏆 ' + (price.supplier?.name || 'N/A') : price.supplier?.name || 'N/A',
+            price.country,
+            `${(price.converted_amount || price.amount).toLocaleString()} FCFA`,
+            `${((price.converted_amount || price.amount) * (material.quantity || 1)).toLocaleString()} FCFA`,
+          ]);
+          
+          autoTable(doc, {
+            startY: currentY,
+            head: [['Fournisseur', 'Pays', 'Prix Unitaire', 'Total']],
+            body: priceRows,
+            headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            alternateRowStyles: { fillColor: [248, 249, 255] },
+            margin: { left: 14, right: 14 },
+            theme: 'grid',
+          });
+          
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        } else {
+          doc.setTextColor(150, 150, 150);
+          doc.text('Aucun prix disponible', 14, currentY);
+          currentY += 10;
+        }
+      });
+      
+      // Footer sur toutes les pages
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `CompaChantier - Page ${i}/${pageCount}`,
+          105,
+          290,
+          { align: 'center' }
+        );
+      }
+      
+      // Télécharger le PDF
+      const fileName = `comparaison-${project?.name || 'projet'}-${today.replace(/\//g, '-')}.pdf`;
+      doc.save(fileName);
+      
+      toast.success('PDF généré avec succès !');
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      toast.error('Erreur lors de la génération du PDF');
+    }
   };
 
   return (
