@@ -312,6 +312,89 @@ export default function ProjectPage() {
     }
   };
 
+  const handleFileImport = async () => {
+    if (!importFile) return;
+
+    try {
+      setIsImporting(true);
+      setImportProgress(10);
+      setImportStatus('Lecture du fichier...');
+
+      const fileText = await importFile.text();
+      setImportProgress(30);
+      setImportStatus('Analyse des données...');
+
+      // Parse CSV
+      const lines = fileText.split('\n').filter(line => line.trim());
+      if (lines.length < 2) {
+        throw new Error('Fichier vide ou invalide');
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      setImportProgress(50);
+      setImportStatus('Création des matériaux...');
+
+      let imported = 0;
+      const totalLines = lines.length - 1;
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        const nameIndex = headers.findIndex(h => h.includes('nom') || h.includes('name') || h.includes('matériau') || h.includes('material'));
+        
+        if (nameIndex === -1 || !values[nameIndex]) continue;
+
+        const categoryIndex = headers.findIndex(h => h.includes('catégorie') || h.includes('category') || h.includes('type'));
+        const quantityIndex = headers.findIndex(h => h.includes('quantité') || h.includes('quantity') || h.includes('qté'));
+        const weightIndex = headers.findIndex(h => h.includes('poids') || h.includes('weight'));
+        const volumeIndex = headers.findIndex(h => h.includes('volume'));
+
+        const materialData = {
+          project_id: params.id,
+          name: values[nameIndex],
+          category: categoryIndex !== -1 ? values[categoryIndex] : null,
+          quantity: quantityIndex !== -1 && values[quantityIndex] ? parseFloat(values[quantityIndex]) : null,
+          weight: weightIndex !== -1 && values[weightIndex] ? parseFloat(values[weightIndex]) : null,
+          volume: volumeIndex !== -1 && values[volumeIndex] ? parseFloat(values[volumeIndex]) : null,
+          specs: {},
+        };
+
+        const { error } = await supabase
+          .from('materials')
+          .insert([materialData]);
+
+        if (error) {
+          console.error('Error inserting material:', error);
+          continue;
+        }
+
+        imported++;
+        setImportedCount(imported);
+        setImportProgress(50 + Math.floor((imported / totalLines) * 50));
+      }
+
+      setImportProgress(100);
+      setImportStatus('Import terminé !');
+      
+      setTimeout(() => {
+        toast.success(`${imported} matériaux importés avec succès`);
+        setIsImportDialogOpen(false);
+        setIsImporting(false);
+        setImportFile(null);
+        setImportProgress(0);
+        setImportStatus('');
+        setImportedCount(0);
+        loadMaterials();
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error importing file:', error);
+      toast.error('Erreur lors de l\'import du fichier');
+      setIsImporting(false);
+      setImportProgress(0);
+      setImportStatus('');
+    }
+  };
+
   const handleAddMaterial = () => {
     setNewMaterial({
       name: '',
@@ -2426,10 +2509,7 @@ export default function ProjectPage() {
                   Annuler
                 </Button>
                 <Button
-                  onClick={() => {
-                    // TODO: Implémenter la fonction d'import
-                    console.log('Import:', importFile);
-                  }}
+                  onClick={handleFileImport}
                   disabled={!importFile}
                   className="bg-gradient-to-r from-[#38B2AC] to-[#319795] hover:from-[#319795] hover:to-[#2C7A7B] text-white"
                 >

@@ -179,6 +179,11 @@ export default function ComparisonPage() {
     try {
       const doc = new jsPDF();
       
+      // Fonction pour formater les nombres avec espaces (compatible PDF)
+      const formatNumber = (num: number): string => {
+        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      };
+      
       // Configuration des couleurs
       const primaryColor: [number, number, number] = [91, 95, 199]; // #5B5FC7
       const accentColor: [number, number, number] = [255, 155, 123]; // #FF9B7B
@@ -209,12 +214,12 @@ export default function ComparisonPage() {
         startY: 60,
         head: [['Indicateur', 'Valeur']],
         body: [
-          ['Coût Total Local (Cameroun)', `${totalLocal.toLocaleString()} FCFA`],
-          ['Coût Matériaux Chine', `${totalChina.toLocaleString()} FCFA`],
+          ['Coût Total Local (Cameroun)', `${formatNumber(totalLocal)} FCFA`],
+          ['Coût Matériaux Chine', `${formatNumber(totalChina)} FCFA`],
           ['Volume Chine', `${volumeChina.toFixed(3)} CBM`],
-          ['Frais Transport Maritime', `${shippingCostChina.toLocaleString()} FCFA`],
-          ['Coût Total Chine (avec transport)', `${totalChinaWithShipping.toLocaleString()} FCFA`],
-          ['Économie / Surcoût', `${savings > 0 ? '-' : '+'}${Math.abs(savings).toLocaleString()} FCFA (${savingsPercentage}%)`],
+          ['Frais Transport Maritime', `${formatNumber(shippingCostChina)} FCFA`],
+          ['Coût Total Chine (avec transport)', `${formatNumber(totalChinaWithShipping)} FCFA`],
+          ['Économie / Surcoût', `${savings > 0 ? '-' : '+'}${formatNumber(Math.abs(savings))} FCFA (${savingsPercentage}%)`],
         ],
         headStyles: { fillColor: primaryColor, textColor: 255 },
         alternateRowStyles: { fillColor: [248, 249, 255] },
@@ -233,7 +238,7 @@ export default function ComparisonPage() {
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(10);
         doc.text(
-          `Vous économiserez ${savingsPercentage}% en important de Chine, soit ${savings.toLocaleString()} FCFA.`,
+          `Vous économiserez ${savingsPercentage}% en important de Chine, soit ${formatNumber(savings)} FCFA.`,
           14,
           finalY + 15,
           { maxWidth: 180 }
@@ -281,8 +286,8 @@ export default function ComparisonPage() {
           const priceRows = sortedPrices.slice(0, 5).map((price, idx) => [
             idx === 0 ? '🏆 ' + (price.supplier?.name || 'N/A') : price.supplier?.name || 'N/A',
             price.country,
-            `${(price.converted_amount || price.amount).toLocaleString()} FCFA`,
-            `${((price.converted_amount || price.amount) * (material.quantity || 1)).toLocaleString()} FCFA`,
+            `${formatNumber(price.converted_amount || price.amount)} FCFA`,
+            `${formatNumber((price.converted_amount || price.amount) * (material.quantity || 1))} FCFA`,
           ]);
           
           autoTable(doc, {
