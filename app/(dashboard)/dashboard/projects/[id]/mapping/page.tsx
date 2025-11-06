@@ -85,6 +85,8 @@ export default function MappingPage() {
         return;
       }
 
+      console.log('🚀 Starting AI analysis...', { projectId: params.id, fileName });
+
       const response = await fetch('/api/ai/analyze-file', {
         method: 'POST',
         headers: {
@@ -98,12 +100,23 @@ export default function MappingPage() {
       });
 
       const data = await response.json();
+      
+      console.log('📊 AI Analysis Response:', {
+        success: data.success,
+        materialsCount: data.materialsCount,
+        mapping: data.mapping,
+        fullResponse: data
+      });
 
       setProgress(100);
 
       if (data.success) {
         setStatus('completed');
         setResult(data);
+        console.log('✅ Analysis completed successfully!', {
+          materials: data.materialsCount,
+          columns: data.mapping?.columns?.length || 0
+        });
         toast.success(`${data.materialsCount} matériaux détectés!`);
         
         // Rediriger vers le projet après 2 secondes
@@ -113,6 +126,7 @@ export default function MappingPage() {
       } else {
         setStatus('error');
         setResult(data);
+        console.error('❌ Analysis failed:', data.error);
         toast.error(data.error || 'Erreur lors de l\'analyse');
       }
 
