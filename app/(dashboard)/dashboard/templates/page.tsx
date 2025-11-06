@@ -55,7 +55,7 @@ export default function TemplatesPage() {
   });
 
   const handleCategoryToggle = (cat: string) => {
-    setSelectedCategories(prev => prev.includes(cat) ? prev.filter(c => c \!== cat) : [...prev, cat]);
+    setSelectedCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
   };
 
   const clearFilters = () => {
@@ -64,15 +64,15 @@ export default function TemplatesPage() {
   };
 
   const handlePurchase = async () => {
-    if (\!selectedTemplate) return;
+    if (!selectedTemplate) return;
     setIsPurchasing(true);
     try {
       await new Promise(r => setTimeout(r, 1500));
       const { data: { user } } = await supabase.auth.getUser();
-      if (\!user) { toast.error('Connexion requise'); return; }
+      if (!user) { toast.error('Connexion requise'); return; }
       const { data: project, error } = await supabase.from('projects').insert({ name: selectedTemplate.title, user_id: user.id }).select().single();
       if (error) throw error;
-      toast.success('Template acheté \!');
+      toast.success('Template acheté !');
       setSelectedTemplate(null);
       setTimeout(() => router.push(`/dashboard/projects/${project.id}`), 1000);
     } catch (error) {
@@ -204,7 +204,7 @@ export default function TemplatesPage() {
       </main>
 
       {/* Modal */}
-      <Dialog open={\!\!selectedTemplate} onOpenChange={() => setSelectedTemplate(null)}>
+      <Dialog open={!!selectedTemplate} onOpenChange={() => setSelectedTemplate(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedTemplate && (
             <>
