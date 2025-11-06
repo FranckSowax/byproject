@@ -90,19 +90,6 @@ export function DashboardNav() {
                 Projets
               </Button>
             </Link>
-            <Link href="/dashboard/services">
-              <Button 
-                variant="ghost" 
-                className={`gap-2 font-medium transition-colors ${
-                  isActive('/dashboard/services')
-                    ? 'text-[#5B5FC7] bg-[#F5F6FF]' 
-                    : 'text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF]'
-                }`}
-              >
-                <Briefcase className="h-4 w-4" />
-                Services
-              </Button>
-            </Link>
             <Link href="/dashboard/settings">
               <Button 
                 variant="ghost" 

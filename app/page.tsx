@@ -38,16 +38,6 @@ export default function Home() {
                   Fonctionnalités
                 </Button>
               </Link>
-              <Link href="#pricing">
-                <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
-                  Tarifs
-                </Button>
-              </Link>
-              <Link href="#services">
-                <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
-                  Services
-                </Button>
-              </Link>
             </nav>
 
             {/* Auth Buttons */}
