@@ -30,6 +30,7 @@ import {
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { nanoid } from 'nanoid';
 
 interface Project {
   id: string;
@@ -106,12 +107,18 @@ export default function QuoteRequestPage() {
         projectId = newProject.id;
       }
 
+      // Générer un numéro de demande unique
+      const requestNumber = `REQ-${Date.now()}-${nanoid(6).toUpperCase()}`;
+      const publicToken = nanoid(32);
+
       // Créer la demande de cotation
       const { error: requestError } = await supabase
         .from('supplier_requests' as any)
         .insert({
           project_id: projectId,
           user_id: user.id,
+          request_number: requestNumber,
+          public_token: publicToken,
           status: 'pending_admin',
           num_suppliers: parseInt(formData.numSuppliers),
           materials_data: {},
