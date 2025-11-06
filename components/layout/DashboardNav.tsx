@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FolderOpen, Settings, Briefcase, LogOut, User } from "lucide-react";
+import { FolderOpen, Settings, Briefcase, LogOut, User, FileText } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -81,13 +81,26 @@ export function DashboardNav() {
               <Button 
                 variant="ghost" 
                 className={`gap-2 font-medium transition-colors ${
-                  isActive('/dashboard') && !pathname.includes('/projects/')
+                  isActive('/dashboard') && !pathname.includes('/projects/') && !pathname.includes('/templates')
                     ? 'text-[#5B5FC7] bg-[#F5F6FF]' 
                     : 'text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF]'
                 }`}
               >
                 <FolderOpen className="h-4 w-4" />
                 Projets
+              </Button>
+            </Link>
+            <Link href="/dashboard/templates">
+              <Button 
+                variant="ghost" 
+                className={`gap-2 font-medium transition-colors ${
+                  isActive('/dashboard/templates')
+                    ? 'text-[#5B5FC7] bg-[#F5F6FF]' 
+                    : 'text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF]'
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                Templates
               </Button>
             </Link>
             <Link href="/dashboard/settings">
