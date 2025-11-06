@@ -79,8 +79,13 @@ export async function POST(request: NextRequest) {
     // 5. Créer les matériaux détectés
     if (analysis.materials && analysis.materials.length > 0) {
       const materialsToInsert = analysis.materials.map((material: any) => {
-        // Enrichir les specs avec l'unité si présente
+        // Enrichir les specs avec l'unité et la description si présentes
         const specs = material.specs || {};
+        
+        if (material.description) {
+          specs.description = material.description;
+        }
+        
         if (material.unit) {
           specs.unit = material.unit;
         }
@@ -424,12 +429,12 @@ ${fileContent.substring(0, 8000)}
   },
   "materials": [
     {
-      "name": "Nom exact du matériau (OBLIGATOIRE)",
+      "name": "Nom court du matériau (OBLIGATOIRE)",
+      "description": "Description détaillée extraite du nom ou null",
       "category": "Catégorie déduite (électricité, construction, peinture, etc.) ou null",
       "quantity": nombre ou null,
       "unit": "unité (Sac, Barre, m², Pièce, etc.) ou null",
       "specs": {
-        "description": "description si disponible",
         "autres_infos": "valeur"
       }
     }
@@ -441,6 +446,23 @@ ${fileContent.substring(0, 8000)}
   },
   "suggestions": ["Conseil 1", "Conseil 2"]
 }
+
+**EXTRACTION DU NOM ET DESCRIPTION**:
+Sépare intelligemment le nom court de la description détaillée:
+
+Exemples:
+1. "Ciment CPI 35" → name: "Ciment", description: "CPI 35"
+2. "Fer à béton Ø8" → name: "Fer à béton", description: "Diamètre 8mm"
+3. "Peinture acrylique 20L blanc mat" → name: "Peinture acrylique", description: "20L blanc mat"
+4. "Ampoule LED E27 12W blanc chaud" → name: "Ampoule LED", description: "E27 12W blanc chaud"
+5. "Interrupteur va-et-vient" → name: "Interrupteur", description: "va-et-vient"
+6. "Câble électrique 3x2.5mm²" → name: "Câble électrique", description: "3x2.5mm²"
+7. "Carreaux 60x60 grès cérame" → name: "Carreaux", description: "60x60 grès cérame"
+
+**RÈGLES**:
+- name = Type de matériau (court, générique)
+- description = Spécifications techniques, dimensions, modèle, couleur, etc.
+- Si pas de détails → description: null
 
 **EXEMPLE DE DÉTECTION**:
 Si tu vois:
