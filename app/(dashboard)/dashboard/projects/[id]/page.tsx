@@ -422,21 +422,70 @@ export default function ProjectPage() {
       setImportProgress(10);
       setImportStatus('Lecture du fichier...');
 
-      const fileText = await importFile.text();
-      setImportProgress(20);
-      setImportStatus('Analyse avec l\'IA...');
+      const fileName = importFile.name.toLowerCase();
+      const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+      const isCsv = fileName.endsWith('.csv');
 
-      // Parse CSV
-      const lines = fileText.split('\n').filter(line => line.trim());
-      if (lines.length < 2) {
-        throw new Error('Fichier vide ou invalide');
+      let headers: string[] = [];
+      let lines: string[] = [];
+      let sampleData = '';
+
+      if (isExcel) {
+        // Parser Excel avec XLSX
+        console.log('📊 Parsing Excel file...');
+        const XLSX = await import('xlsx');
+        const arrayBuffer = await importFile.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convertir en CSV pour le traitement
+        const csvText = XLSX.utils.sheet_to_csv(worksheet);
+        lines = csvText.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          throw new Error('Fichier Excel vide ou invalide');
+        }
+        
+        headers = lines[0].split(',').map(h => h.trim());
+        
+        // Préparer échantillon pour l'IA
+        const sampleLines = lines.slice(0, Math.min(6, lines.length));
+        sampleData = sampleLines.join('\n');
+        
+        console.log('✅ Excel parsed:', {
+          sheet: firstSheetName,
+          rows: lines.length,
+          columns: headers.length,
+          headers
+        });
+      } else if (isCsv) {
+        // Parser CSV
+        console.log('📄 Parsing CSV file...');
+        const fileText = await importFile.text();
+        lines = fileText.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          throw new Error('Fichier CSV vide ou invalide');
+        }
+        
+        headers = lines[0].split(',').map(h => h.trim());
+        
+        // Préparer échantillon pour l'IA
+        const sampleLines = lines.slice(0, Math.min(6, lines.length));
+        sampleData = sampleLines.join('\n');
+        
+        console.log('✅ CSV parsed:', {
+          rows: lines.length,
+          columns: headers.length,
+          headers
+        });
+      } else {
+        throw new Error('Format de fichier non supporté. Utilisez .xlsx, .xls ou .csv');
       }
 
-      const headers = lines[0].split(',').map(h => h.trim());
-      
-      // Préparer un échantillon pour l'IA (premières lignes)
-      const sampleLines = lines.slice(0, Math.min(6, lines.length));
-      const sampleData = sampleLines.join('\n');
+      setImportProgress(20);
+      setImportStatus('Analyse avec l\'IA...');
 
       // Appel à l'IA pour mapper les colonnes
       setImportProgress(30);
