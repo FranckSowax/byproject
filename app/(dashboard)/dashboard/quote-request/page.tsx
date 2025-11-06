@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -13,23 +14,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import {
   Globe,
-  Package,
-  Ship,
-  FileText,
-  Plus,
   ArrowLeft,
   Send,
+  Sparkles,
+  Zap,
+  Shield,
+  Target,
+  Info,
+  CheckCircle2,
   Clock,
-  CheckCircle,
-  TrendingUp
+  Users
 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 
 interface Project {
   id: string;
@@ -37,27 +37,13 @@ interface Project {
   created_at: string;
 }
 
-interface QuoteRequest {
-  id: string;
-  request_number: string;
-  status: string;
-  num_suppliers: number;
-  progress_percentage: number;
-  created_at: string;
-  projects?: {
-    name: string;
-  };
-}
-
 export default function QuoteRequestPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [myRequests, setMyRequests] = useState<QuoteRequest[]>([]);
   
   // Form state
   const [formData, setFormData] = useState({
-    requestType: 'existing', // 'existing' or 'new'
+    requestType: 'existing',
     projectId: '',
     newProjectName: '',
     newProjectDescription: '',
@@ -69,7 +55,6 @@ export default function QuoteRequestPage() {
 
   useEffect(() => {
     loadProjects();
-    loadMyRequests();
   }, []);
 
   const loadProjects = async () => {
@@ -89,29 +74,6 @@ export default function QuoteRequestPage() {
       setProjects(data || []);
     } catch (error) {
       console.error('Error loading projects:', error);
-    }
-  };
-
-  const loadMyRequests = async () => {
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('supplier_requests' as any)
-        .select(`
-          *,
-          projects:project_id (name)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setMyRequests(data || []);
-    } catch (error) {
-      console.error('Error loading requests:', error);
     }
   };
 
@@ -144,15 +106,15 @@ export default function QuoteRequestPage() {
         projectId = newProject.id;
       }
 
-      // Créer la demande de cotation (statut: pending_admin)
-      const { data: request, error: requestError } = await supabase
+      // Créer la demande de cotation
+      const { error: requestError } = await supabase
         .from('supplier_requests' as any)
         .insert({
           project_id: projectId,
           user_id: user.id,
-          status: 'pending_admin', // En attente de traitement admin
+          status: 'pending_admin',
           num_suppliers: parseInt(formData.numSuppliers),
-          materials_data: {}, // Vide pour l'instant
+          materials_data: {},
           total_materials: 0,
           filled_materials: 0,
           progress_percentage: 0,
@@ -161,13 +123,13 @@ export default function QuoteRequestPage() {
             shipping_type: formData.shippingType,
             notes: formData.notes,
           }
-        })
-        .select()
-        .single();
+        });
 
       if (requestError) throw requestError;
 
-      toast.success('Demande de cotation envoyée !');
+      toast.success('Demande envoyée avec succès !', {
+        description: 'Notre équipe va traiter votre demande sous 24-48h'
+      });
       
       // Réinitialiser le formulaire
       setFormData({
@@ -181,105 +143,156 @@ export default function QuoteRequestPage() {
         notes: '',
       });
 
-      // Recharger les demandes
-      loadMyRequests();
+      loadProjects();
     } catch (error: any) {
       console.error('Error submitting request:', error);
-      toast.error(error.message || 'Erreur lors de l\'envoi de la demande');
+      toast.error('Erreur lors de l\'envoi', {
+        description: error.message || 'Veuillez réessayer'
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const statusConfig = {
-    pending_admin: {
-      label: 'En attente',
-      color: 'bg-yellow-100 text-yellow-700',
-      icon: Clock,
-    },
-    sent: {
-      label: 'Envoyé',
-      color: 'bg-blue-100 text-blue-700',
-      icon: Send,
-    },
-    in_progress: {
-      label: 'En cours',
-      color: 'bg-purple-100 text-purple-700',
-      icon: TrendingUp,
-    },
-    completed: {
-      label: 'Complété',
-      color: 'bg-green-100 text-green-700',
-      icon: CheckCircle,
-    },
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <Link href="/dashboard">
-              <Button variant="ghost" className="mb-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Retour
-              </Button>
-            </Link>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-              <Globe className="h-8 w-8 text-blue-600" />
+        <div className="mb-8">
+          <Link href="/dashboard">
+            <Button variant="ghost" className="mb-6 hover:bg-white/80">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour au dashboard
+            </Button>
+          </Link>
+          
+          <div className="text-center max-w-3xl mx-auto">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 mb-6 shadow-lg">
+              <Globe className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 bg-clip-text text-transparent mb-4">
               Cotation en Ligne
             </h1>
-            <p className="text-slate-600 mt-1">Demandez des cotations à nos partenaires fournisseurs chinois et étrangers</p>
+            <p className="text-lg text-slate-600 leading-relaxed">
+              Obtenez des devis compétitifs de fournisseurs internationaux pour vos projets de construction.
+              <br />
+              <span className="font-semibold">Processus simple, rapide et sécurisé.</span>
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Features Banner */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Zap className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-1">Rapide</h3>
+                  <p className="text-sm text-slate-600">Recevez vos devis sous 48-72h</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                  <Shield className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-1">Sécurisé</h3>
+                  <p className="text-sm text-slate-600">Fournisseurs vérifiés et certifiés</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <Target className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-1">Compétitif</h3>
+                  <p className="text-sm text-slate-600">Comparez jusqu'à 5 fournisseurs</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Formulaire */}
           <div className="lg:col-span-2">
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle>Nouvelle Demande</CardTitle>
-                <CardDescription>
-                  Remplissez le formulaire ci-dessous pour soumettre votre demande
-                </CardDescription>
+            <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm">
+              <CardHeader className="space-y-3 pb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl">Nouvelle Demande de Cotation</CardTitle>
+                    <CardDescription className="text-base mt-1">
+                      Complétez les informations ci-dessous pour recevoir des devis personnalisés
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Type de demande */}
-                  <div className="space-y-2">
-                    <Label>Type de demande</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-base font-semibold">Type de demande</Label>
+                      <div className="group relative">
+                        <Info className="h-4 w-4 text-slate-400 cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl z-10">
+                          Sélectionnez un projet existant ou créez-en un nouveau pour cette demande de cotation
+                        </div>
+                      </div>
+                    </div>
                     <Select
                       value={formData.requestType}
                       onValueChange={(value) => setFormData({ ...formData, requestType: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="existing">Projet existant</SelectItem>
-                        <SelectItem value="new">Nouveau projet</SelectItem>
+                        <SelectItem value="existing">📁 Projet existant</SelectItem>
+                        <SelectItem value="new">✨ Nouveau projet</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {/* Projet existant */}
                   {formData.requestType === 'existing' && (
-                    <div className="space-y-2">
-                      <Label>Sélectionner un projet</Label>
+                    <div className="space-y-3 p-4 bg-blue-50/50 rounded-lg border border-blue-100">
+                      <Label className="text-base font-semibold">Sélectionner un projet</Label>
                       <Select
                         value={formData.projectId}
                         onValueChange={(value) => setFormData({ ...formData, projectId: value })}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choisir un projet" />
+                        <SelectTrigger className="h-12 bg-white">
+                          <SelectValue placeholder="Choisir un projet existant" />
                         </SelectTrigger>
                         <SelectContent>
-                          {projects.map((project) => (
-                            <SelectItem key={project.id} value={project.id}>
-                              {project.name}
-                            </SelectItem>
-                          ))}
+                          {projects.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-slate-500">
+                              Aucun projet disponible. Créez-en un nouveau.
+                            </div>
+                          ) : (
+                            projects.map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                📁 {project.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -287,36 +300,48 @@ export default function QuoteRequestPage() {
 
                   {/* Nouveau projet */}
                   {formData.requestType === 'new' && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Nom du projet</Label>
+                    <div className="space-y-4 p-4 bg-purple-50/50 rounded-lg border border-purple-100">
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold">Nom du projet *</Label>
                         <Input
                           value={formData.newProjectName}
                           onChange={(e) => setFormData({ ...formData, newProjectName: e.target.value })}
                           placeholder="Ex: Construction Villa Moderne"
+                          className="h-12 bg-white"
                           required
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Description (optionnel)</Label>
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold">Description (optionnel)</Label>
                         <Textarea
                           value={formData.newProjectDescription}
                           onChange={(e) => setFormData({ ...formData, newProjectDescription: e.target.value })}
-                          placeholder="Décrivez brièvement votre projet..."
-                          rows={3}
+                          placeholder="Décrivez brièvement votre projet : type de construction, localisation, besoins spécifiques..."
+                          rows={4}
+                          className="bg-white resize-none"
                         />
                       </div>
                     </div>
                   )}
 
+                  <Separator className="my-6" />
+
                   {/* Pays */}
-                  <div className="space-y-2">
-                    <Label>Pays du fournisseur</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-base font-semibold">Pays du fournisseur *</Label>
+                      <div className="group relative">
+                        <Info className="h-4 w-4 text-slate-400 cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl z-10">
+                          Sélectionnez le pays d'origine des fournisseurs que vous souhaitez contacter
+                        </div>
+                      </div>
+                    </div>
                     <Select
                       value={formData.country}
                       onValueChange={(value) => setFormData({ ...formData, country: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -335,139 +360,207 @@ export default function QuoteRequestPage() {
                   </div>
 
                   {/* Nombre de fournisseurs */}
-                  <div className="space-y-2">
-                    <Label>Nombre de fournisseurs souhaités</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-base font-semibold">Nombre de fournisseurs *</Label>
+                      <div className="group relative">
+                        <Info className="h-4 w-4 text-slate-400 cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl z-10">
+                          Plus vous contactez de fournisseurs, plus vous aurez de chances d'obtenir le meilleur prix
+                        </div>
+                      </div>
+                    </div>
                     <Select
                       value={formData.numSuppliers}
                       onValueChange={(value) => setFormData({ ...formData, numSuppliers: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">1 fournisseur</SelectItem>
-                        <SelectItem value="2">2 fournisseurs</SelectItem>
-                        <SelectItem value="3">3 fournisseurs</SelectItem>
-                        <SelectItem value="5">5 fournisseurs</SelectItem>
+                        <SelectItem value="2">2 fournisseurs (Recommandé)</SelectItem>
+                        <SelectItem value="3">3 fournisseurs (Optimal)</SelectItem>
+                        <SelectItem value="5">5 fournisseurs (Maximum)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {/* Type d'expédition */}
-                  <div className="space-y-2">
-                    <Label>Type d'expédition</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-base font-semibold">Type d'expédition *</Label>
+                      <div className="group relative">
+                        <Info className="h-4 w-4 text-slate-400 cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl z-10">
+                          Le mode d'expédition influence le coût et le délai de livraison
+                        </div>
+                      </div>
+                    </div>
                     <Select
                       value={formData.shippingType}
                       onValueChange={(value) => setFormData({ ...formData, shippingType: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="sea">Maritime (économique)</SelectItem>
-                        <SelectItem value="air">Aérien (rapide)</SelectItem>
-                        <SelectItem value="express">Express (très rapide)</SelectItem>
+                        <SelectItem value="sea">🚢 Maritime (30-45 jours, économique)</SelectItem>
+                        <SelectItem value="air">✈️ Aérien (7-15 jours, rapide)</SelectItem>
+                        <SelectItem value="express">⚡ Express (3-7 jours, premium)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
+                  <Separator className="my-6" />
+
                   {/* Notes */}
-                  <div className="space-y-2">
-                    <Label>Notes additionnelles (optionnel)</Label>
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">Notes et exigences spécifiques (optionnel)</Label>
                     <Textarea
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder="Informations supplémentaires, exigences spéciales..."
-                      rows={4}
+                      placeholder="Ajoutez ici toute information importante : certifications requises, normes spécifiques, délais particuliers, volumes estimés, etc."
+                      rows={5}
+                      className="resize-none"
                     />
                   </div>
 
-                  <Button
-                    type="submit"
-                    disabled={loading || (formData.requestType === 'existing' && !formData.projectId) || (formData.requestType === 'new' && !formData.newProjectName)}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    {loading ? 'Envoi en cours...' : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Envoyer la demande
-                      </>
-                    )}
-                  </Button>
+                  <div className="pt-6">
+                    <Button
+                      type="submit"
+                      disabled={loading || (formData.requestType === 'existing' && !formData.projectId) || (formData.requestType === 'new' && !formData.newProjectName)}
+                      className="w-full h-14 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                          Envoi en cours...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-5 w-5 mr-3" />
+                          Envoyer ma demande de cotation
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-center text-slate-500 mt-4">
+                      En soumettant ce formulaire, vous acceptez d'être contacté par nos partenaires fournisseurs
+                    </p>
+                  </div>
                 </form>
               </CardContent>
             </Card>
           </div>
 
-          {/* Mes demandes */}
-          <div>
-            <Card className="border-0 shadow-xl">
+          {/* Sidebar Info */}
+          <div className="space-y-6">
+            {/* Comment ça marche */}
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-purple-50">
               <CardHeader>
-                <CardTitle>Mes Demandes</CardTitle>
-                <CardDescription>Suivi de vos cotations</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-blue-600" />
+                  Comment ça marche ?
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {myRequests.length === 0 ? (
-                    <div className="text-center py-8 text-slate-500">
-                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                      <p className="text-sm">Aucune demande</p>
-                    </div>
-                  ) : (
-                    myRequests.map((request) => {
-                      const statusInfo = statusConfig[request.status as keyof typeof statusConfig] || statusConfig.pending_admin;
-                      const StatusIcon = statusInfo.icon;
-
-                      return (
-                        <div
-                          key={request.id}
-                          className="p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1">
-                              <p className="font-medium text-sm text-slate-900">
-                                {(request.projects as any)?.name || 'Projet'}
-                              </p>
-                              <p className="text-xs text-slate-500 font-mono">
-                                {request.request_number}
-                              </p>
-                            </div>
-                            <Badge className={`${statusInfo.color} text-xs`}>
-                              <StatusIcon className="h-3 w-3 mr-1" />
-                              {statusInfo.label}
-                            </Badge>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-600">Fournisseurs</span>
-                              <span className="font-medium">{request.num_suppliers}</span>
-                            </div>
-                            
-                            {request.status !== 'pending_admin' && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-slate-600">Progression</span>
-                                  <span className="font-medium">{Math.round(request.progress_percentage)}%</span>
-                                </div>
-                                <div className="w-full bg-slate-200 rounded-full h-1.5">
-                                  <div
-                                    className="bg-gradient-to-r from-blue-600 to-purple-600 h-1.5 rounded-full transition-all"
-                                    style={{ width: `${request.progress_percentage}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <p className="text-xs text-slate-500 mt-2">
-                            {new Date(request.created_at).toLocaleDateString('fr-FR')}
-                          </p>
-                        </div>
-                      );
-                    })
-                  )}
+              <CardContent className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold flex-shrink-0 text-sm">
+                    1
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">Soumettez votre demande</p>
+                    <p className="text-sm text-slate-600 mt-1">Remplissez le formulaire avec les détails de votre projet</p>
+                  </div>
                 </div>
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold flex-shrink-0 text-sm">
+                    2
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">Validation par notre équipe</p>
+                    <p className="text-sm text-slate-600 mt-1">Nous vérifions et transmettons votre demande aux fournisseurs qualifiés</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold flex-shrink-0 text-sm">
+                    3
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">Recevez vos devis</p>
+                    <p className="text-sm text-slate-600 mt-1">Comparez les offres et choisissez le meilleur fournisseur</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Avantages */}
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  Nos Avantages
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-slate-700">Réseau de fournisseurs vérifiés et certifiés</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-slate-700">Traduction automatique de vos besoins</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-slate-700">Suivi en temps réel de vos demandes</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-slate-700">Support client dédié</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Délais */}
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-yellow-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-orange-600" />
+                  Délais Moyens
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-700">Traitement de la demande</span>
+                  <span className="font-semibold text-orange-600">24-48h</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-700">Réception des devis</span>
+                  <span className="font-semibold text-orange-600">48-72h</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-700">Livraison maritime</span>
+                  <span className="font-semibold text-orange-600">30-45 jours</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Support */}
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-slate-100">
+              <CardContent className="p-6 text-center">
+                <Users className="h-8 w-8 text-slate-600 mx-auto mb-3" />
+                <h3 className="font-semibold text-slate-900 mb-2">Besoin d'aide ?</h3>
+                <p className="text-sm text-slate-600 mb-4">
+                  Notre équipe est là pour vous accompagner
+                </p>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/dashboard/settings">
+                    Contacter le support
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           </div>
