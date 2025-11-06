@@ -172,33 +172,6 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Card Demande de Cotation Chinoise */}
-        <Card className="border-0 bg-gradient-to-r from-blue-600 to-purple-600 shadow-xl rounded-2xl overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <Globe className="h-7 w-7 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-1">
-                    Demande de Cotation Fournisseur Chinois
-                  </h3>
-                  <p className="text-white/80 text-sm">
-                    Obtenez des prix compétitifs de nos partenaires en Chine
-                  </p>
-                </div>
-              </div>
-              <Link href="/dashboard/quote-request">
-                <Button className="bg-white text-blue-600 hover:bg-white/90 shadow-lg gap-2 px-6 py-6 rounded-xl transition-all hover:scale-105">
-                  <span className="font-semibold">Faire une demande</span>
-                  <ArrowRight className="h-5 w-5" />
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
         {projects.length === 0 ? (
           <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
             <CardContent className="flex flex-col items-center justify-center py-20">

@@ -228,9 +228,9 @@ export default function QuoteRequestPage() {
             </Link>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <Globe className="h-8 w-8 text-blue-600" />
-              Demande de Cotation Fournisseur Chinois
+              Cotation en Ligne
             </h1>
-            <p className="text-slate-600 mt-1">Envoyez votre projet à nos partenaires fournisseurs</p>
+            <p className="text-slate-600 mt-1">Demandez des cotations à nos partenaires fournisseurs chinois et étrangers</p>
           </div>
         </div>
 
@@ -311,7 +311,7 @@ export default function QuoteRequestPage() {
 
                   {/* Pays */}
                   <div className="space-y-2">
-                    <Label>Pays de destination</Label>
+                    <Label>Pays du fournisseur</Label>
                     <Select
                       value={formData.country}
                       onValueChange={(value) => setFormData({ ...formData, country: value })}
@@ -320,10 +320,16 @@ export default function QuoteRequestPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="China">Chine</SelectItem>
-                        <SelectItem value="Vietnam">Vietnam</SelectItem>
-                        <SelectItem value="Thailand">Thaïlande</SelectItem>
-                        <SelectItem value="India">Inde</SelectItem>
+                        <SelectItem value="China">🇨🇳 Chine</SelectItem>
+                        <SelectItem value="Vietnam">🇻🇳 Vietnam</SelectItem>
+                        <SelectItem value="Thailand">🇹🇭 Thaïlande</SelectItem>
+                        <SelectItem value="India">🇮🇳 Inde</SelectItem>
+                        <SelectItem value="Turkey">🇹🇷 Turquie</SelectItem>
+                        <SelectItem value="Bangladesh">🇧🇩 Bangladesh</SelectItem>
+                        <SelectItem value="Pakistan">🇵🇰 Pakistan</SelectItem>
+                        <SelectItem value="Indonesia">🇮🇩 Indonésie</SelectItem>
+                        <SelectItem value="Malaysia">🇲🇾 Malaisie</SelectItem>
+                        <SelectItem value="Other">🌍 Autre</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
