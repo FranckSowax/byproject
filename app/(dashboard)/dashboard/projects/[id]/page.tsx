@@ -1198,64 +1198,69 @@ export default function ProjectPage() {
                 {materials.map((material) => (
                   <div 
                     key={material.id} 
-                    className="group relative bg-gradient-to-br from-white to-[#F8F9FF] border-2 border-[#E0E4FF] hover:border-[#5B5FC7] rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:scale-[1.02]"
+                    className="group relative bg-white border border-[#E0E4FF] hover:border-[#5B5FC7] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl"
                   >
-                    {/* Indicateur coloré */}
-                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#5B5FC7] to-[#FF9B7B] rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {/* Barre de couleur en haut */}
+                    <div className="h-1 bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B]" />
                     
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h4 
-                          className="font-bold text-lg text-[#4A5568] group-hover:text-[#5B5FC7] cursor-pointer transition-colors truncate"
-                          onClick={() => handleOpenDetailView(material)}
-                          title="Voir les prix et fournisseurs"
-                        >
+                    {/* Contenu principal */}
+                    <div className="p-4 space-y-3">
+                      {/* En-tête avec titre et description */}
+                      <div 
+                        className="cursor-pointer"
+                        onClick={() => handleOpenDetailView(material)}
+                      >
+                        <h4 className="font-bold text-base text-[#2D3748] group-hover:text-[#5B5FC7] transition-colors leading-tight">
                           {material.name}
                         </h4>
                         {material.description && (
-                          <p className="text-sm text-gray-600 italic mt-1 line-clamp-2">
+                          <p className="text-xs text-gray-500 italic mt-1.5 leading-relaxed">
                             {material.description}
                           </p>
                         )}
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {material.category && (
-                            <Badge className="bg-gradient-to-r from-[#5B5FC7]/10 to-[#7B7FE8]/10 text-[#5B5FC7] border-[#5B5FC7]/20 hover:bg-[#5B5FC7]/20 font-semibold">
-                              {material.category}
-                            </Badge>
-                          )}
-                          {material.quantity && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-[#FF9B7B]/10 text-[#FF9B7B] rounded-lg text-sm font-semibold">
-                              <Package className="h-3 w-3" />
-                              {material.quantity}
-                            </div>
-                          )}
-                          {material.surface && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-sm font-semibold">
-                              <span className="text-xs">📐</span>
-                              {material.surface} m²
-                            </div>
-                          )}
-                          {material.weight && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-semibold">
-                              <span className="text-xs">⚖️</span>
-                              {material.weight} kg
-                            </div>
-                          )}
-                          {material.volume && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-purple-500/10 text-purple-600 rounded-lg text-sm font-semibold">
-                              <span className="text-xs">📦</span>
-                              {material.volume} m³
-                            </div>
-                          )}
-                          {material.specs && Object.keys(material.specs).length > 0 && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-[#718096]/10 text-[#718096] rounded-lg text-sm">
-                              <FileText className="h-3 w-3" />
-                              {Object.keys(material.specs).length} spec{Object.keys(material.specs).length > 1 ? 's' : ''}
-                            </div>
-                          )}
-                        </div>
                       </div>
-                      <div className="flex gap-2">
+
+                      {/* Badges et métriques */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {material.category && (
+                          <Badge className="bg-[#5B5FC7]/10 text-[#5B5FC7] border-0 text-xs font-medium px-2 py-0.5">
+                            {material.category}
+                          </Badge>
+                        )}
+                        {material.quantity && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-[#FF9B7B]/10 text-[#FF9B7B] rounded-md text-xs font-medium">
+                            <Package className="h-3 w-3" />
+                            {material.quantity}
+                          </div>
+                        )}
+                        {material.surface && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-xs font-medium">
+                            <span className="text-[10px]">📐</span>
+                            {material.surface} m²
+                          </div>
+                        )}
+                        {material.weight && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md text-xs font-medium">
+                            <span className="text-[10px]">⚖️</span>
+                            {material.weight} kg
+                          </div>
+                        )}
+                        {material.volume && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-600 rounded-md text-xs font-medium">
+                            <span className="text-[10px]">📦</span>
+                            {material.volume} m³
+                          </div>
+                        )}
+                        {material.specs && Object.keys(material.specs).length > 0 && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-600 rounded-md text-xs">
+                            <FileText className="h-3 w-3" />
+                            {Object.keys(material.specs).length}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions - Grid 4 colonnes sur mobile */}
+                      <div className="grid grid-cols-4 gap-2 pt-2 border-t border-gray-100">
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -1264,26 +1269,23 @@ export default function ProjectPage() {
                             setCommentsMaterialName(material.name);
                             setShowComments(true);
                           }}
-                          title="Commentaires"
-                          className="w-10 h-10 rounded-xl bg-purple-500/10 hover:bg-purple-500 text-purple-500 hover:text-white transition-all hover:scale-110"
+                          className="h-10 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-600 transition-colors p-0"
                         >
-                          <MessageSquare className="h-5 w-5" />
+                          <MessageSquare className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="sm"
                           onClick={() => handleOpenPriceDialog(material)}
-                          title="Gérer les prix"
-                          className="w-10 h-10 rounded-xl bg-[#48BB78]/10 hover:bg-[#48BB78] text-[#48BB78] hover:text-white transition-all hover:scale-110"
+                          className="h-10 rounded-xl bg-green-50 hover:bg-green-100 text-green-600 transition-colors p-0"
                         >
-                          <DollarSign className="h-5 w-5" />
+                          <DollarSign className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="sm"
                           onClick={() => handleEditMaterial(material)}
-                          title="Éditer"
-                          className="w-10 h-10 rounded-xl bg-[#5B5FC7]/10 hover:bg-[#5B5FC7] text-[#5B5FC7] hover:text-white transition-all hover:scale-110"
+                          className="h-10 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors p-0"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -1291,10 +1293,9 @@ export default function ProjectPage() {
                           variant="ghost" 
                           size="sm"
                           onClick={() => handleDeleteMaterial(material.id, material.name)}
-                          title="Supprimer"
-                          className="w-10 h-10 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all hover:scale-110"
+                          className="h-10 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors p-0"
                         >
-                          <Trash2 className="h-5 w-5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
