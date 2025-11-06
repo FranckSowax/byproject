@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { createServiceClient } from '@/lib/supabase/service';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { nanoid } from 'nanoid';
 
 interface SupplierRequest {
   id: string;
@@ -55,6 +57,11 @@ interface SupplierRequest {
 }
 
 const statusConfig = {
+  pending_admin: {
+    label: 'En attente admin',
+    color: 'bg-orange-100 text-orange-700 border-orange-200',
+    icon: Clock,
+  },
   pending: {
     label: 'En attente',
     color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
@@ -112,6 +119,67 @@ export default function AdminSupplierRequestsPage() {
       console.error('Error loading requests:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendToSuppliers = async (requestId: string) => {
+    try {
+      const supabase = createServiceClient();
+      
+      // Récupérer la demande avec les matériaux du projet
+      const { data: request, error: requestError } = await supabase
+        .from('supplier_requests' as any)
+        .select('*, projects:project_id(id, name)')
+        .eq('id', requestId)
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Récupérer les matériaux du projet
+      const { data: materials, error: materialsError } = await supabase
+        .from('materials')
+        .select('*')
+        .eq('project_id', request.project_id);
+
+      if (materialsError) throw materialsError;
+
+      // Traduire les matériaux (appel API de traduction)
+      const translateResponse = await fetch('/api/translate', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ materials }),
+      });
+
+      if (!translateResponse.ok) throw new Error('Translation failed');
+      
+      const { materialsEn, materialsZh } = await translateResponse.json();
+
+      // Générer un token public
+      const publicToken = nanoid(32);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30); // 30 jours
+
+      // Mettre à jour la demande
+      const { error: updateError } = await supabase
+        .from('supplier_requests' as any)
+        .update({
+          status: 'sent',
+          public_token: publicToken,
+          expires_at: expiresAt.toISOString(),
+          materials_data: materials,
+          materials_translated_en: materialsEn,
+          materials_translated_zh: materialsZh,
+          total_materials: materials.length,
+        })
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      toast.success('Demande envoyée aux fournisseurs !');
+      loadRequests(); // Recharger la liste
+    } catch (error: any) {
+      console.error('Error sending to suppliers:', error);
+      toast.error(error.message || 'Erreur lors de l\'envoi');
     }
   };
 
@@ -358,18 +426,28 @@ export default function AdminSupplierRequestsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <a
-                              href={`${window.location.origin}/supplier-quote/${request.public_token}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Button variant="ghost" size="sm">
-                                <ExternalLink className="h-4 w-4" />
+                            {request.status === 'pending_admin' && (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                className="bg-gradient-to-r from-blue-600 to-purple-600"
+                                onClick={() => handleSendToSuppliers(request.id)}
+                              >
+                                <Send className="h-4 w-4 mr-1" />
+                                Envoyer
                               </Button>
-                            </a>
+                            )}
+                            {request.public_token && (
+                              <a
+                                href={`${window.location.origin}/supplier-quote/${request.public_token}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button variant="ghost" size="sm">
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </a>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
