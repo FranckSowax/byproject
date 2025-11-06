@@ -136,11 +136,100 @@ export default function ProjectPage() {
     sourceUrl: ''
   });
 
+  // États pour les permissions
+  const [permissions, setPermissions] = useState({
+    canView: false,
+    canEdit: false,
+    canDelete: false,
+    canManage: false,
+    role: null as 'owner' | 'editor' | 'viewer' | null,
+  });
+  const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
+
   useEffect(() => {
     loadProject();
     loadMaterials();
     loadAllPrices();
+    checkPermissions();
   }, [params.id]);
+
+  // Vérifier les permissions de l'utilisateur
+  const checkPermissions = async () => {
+    try {
+      setIsLoadingPermissions(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setPermissions({
+          canView: false,
+          canEdit: false,
+          canDelete: false,
+          canManage: false,
+          role: null,
+        });
+        return;
+      }
+
+      // Vérifier si propriétaire du projet
+      const { data: project } = await supabase
+        .from('projects')
+        .select('user_id')
+        .eq('id', params.id)
+        .single();
+
+      if (project?.user_id === user.id) {
+        setPermissions({
+          canView: true,
+          canEdit: true,
+          canDelete: true,
+          canManage: true,
+          role: 'owner',
+        });
+        return;
+      }
+
+      // Vérifier le rôle de collaborateur
+      const { data: collab } = await supabase
+        .from('project_collaborators' as any)
+        .select('role, status')
+        .eq('project_id', params.id)
+        .eq('user_id', user.id)
+        .eq('status', 'accepted')
+        .single();
+
+      if (!collab) {
+        setPermissions({
+          canView: false,
+          canEdit: false,
+          canDelete: false,
+          canManage: false,
+          role: null,
+        });
+        return;
+      }
+
+      const role = collab.role as 'owner' | 'editor' | 'viewer';
+
+      setPermissions({
+        canView: true,
+        canEdit: role === 'editor' || role === 'owner',
+        canDelete: role === 'owner',
+        canManage: role === 'owner',
+        role: role,
+      });
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      setPermissions({
+        canView: false,
+        canEdit: false,
+        canDelete: false,
+        canManage: false,
+        role: null,
+      });
+    } finally {
+      setIsLoadingPermissions(false);
+    }
+  };
 
   const loadProject = async () => {
     try {
@@ -1022,6 +1111,33 @@ export default function ProjectPage() {
     );
   }
 
+  // Vérifier les permissions après le chargement
+  if (!isLoadingPermissions && !permissions.canView) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F8F9FF] to-[#E8EEFF] p-4 md:p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl">
+            <CardContent className="py-12 text-center">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500/10 to-orange-500/10">
+                <Shield className="h-10 w-10 text-red-500" />
+              </div>
+              <h3 className="mb-2 text-2xl font-bold text-[#4A5568]">Accès refusé</h3>
+              <p className="mb-8 text-[#718096] max-w-md mx-auto">
+                Vous n'avez pas les permissions nécessaires pour accéder à ce projet.
+              </p>
+              <Link href="/dashboard">
+                <Button className="bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7]">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Retour au dashboard
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F8F9FF] to-[#E8EEFF] p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -1051,15 +1167,34 @@ export default function ProjectPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => setIsShareDialogOpen(true)}
-              className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
-              title="Partager le projet"
-            >
-              <Users className="h-5 w-5" />
-            </Button>
+            {/* Badge de rôle */}
+            {permissions.role && (
+              <Badge 
+                variant="outline"
+                className={
+                  permissions.role === 'owner'
+                    ? 'border-purple-300 text-purple-700 bg-purple-50'
+                    : permissions.role === 'editor'
+                    ? 'border-green-300 text-green-700 bg-green-50'
+                    : 'border-blue-300 text-blue-700 bg-blue-50'
+                }
+              >
+                {permissions.role === 'owner' ? '👑 Propriétaire' :
+                 permissions.role === 'editor' ? '✏️ Éditeur' : '👁️ Lecteur'}
+              </Badge>
+            )}
+            
+            {permissions.canManage && (
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setIsShareDialogOpen(true)}
+                className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
+                title="Partager le projet"
+              >
+                <Users className="h-5 w-5" />
+              </Button>
+            )}
             <Button 
               variant="outline" 
               size="icon"
@@ -1069,23 +1204,28 @@ export default function ProjectPage() {
             >
               <History className="h-5 w-5" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={handleOpenEditProject}
-              className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
-              title="Éditer le projet"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleDelete}
-              className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-red-500 hover:bg-red-500 hover:text-white transition-all"
-            >
-              <Trash2 className="h-5 w-5" />
-            </Button>
+            {permissions.canManage && (
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={handleOpenEditProject}
+                className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
+                title="Éditer le projet"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+            )}
+            {permissions.canDelete && (
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleDelete}
+                className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-red-500 hover:bg-red-500 hover:text-white transition-all"
+                title="Supprimer le projet"
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1416,33 +1556,39 @@ export default function ProjectPage() {
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleOpenPriceDialog(material)}
-                          title="Gérer les prix"
-                          className="h-8 w-8 rounded-lg bg-[#48BB78]/10 hover:bg-[#48BB78] text-[#48BB78] hover:text-white transition-all p-0"
-                        >
-                          <DollarSign className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleEditMaterial(material)}
-                          title="Éditer"
-                          className="h-8 w-8 rounded-lg bg-[#5B5FC7]/10 hover:bg-[#5B5FC7] text-[#5B5FC7] hover:text-white transition-all p-0"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleDeleteMaterial(material.id, material.name)}
-                          title="Supprimer"
-                          className="h-8 w-8 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all p-0"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {permissions.canEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleOpenPriceDialog(material)}
+                            title="Gérer les prix"
+                            className="h-8 w-8 rounded-lg bg-[#48BB78]/10 hover:bg-[#48BB78] text-[#48BB78] hover:text-white transition-all p-0"
+                          >
+                            <DollarSign className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {permissions.canEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditMaterial(material)}
+                            title="Éditer"
+                            className="h-8 w-8 rounded-lg bg-[#5B5FC7]/10 hover:bg-[#5B5FC7] text-[#5B5FC7] hover:text-white transition-all p-0"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {permissions.canEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteMaterial(material.id, material.name)}
+                            title="Supprimer"
+                            className="h-8 w-8 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all p-0"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1456,15 +1602,19 @@ export default function ProjectPage() {
               </div>
               <h3 className="mb-2 text-2xl font-bold text-[#4A5568]">Aucun matériau</h3>
               <p className="mb-8 text-[#718096] max-w-md mx-auto">
-                Commencez par ajouter des matériaux à ce projet pour comparer les prix
+                {permissions.canEdit 
+                  ? "Commencez par ajouter des matériaux à ce projet pour comparer les prix"
+                  : "Ce projet ne contient pas encore de matériaux"}
               </p>
-              <Button 
-                onClick={handleAddMaterial}
-                className="bg-gradient-to-r from-[#48BB78] to-[#38A169] hover:from-[#38A169] hover:to-[#2F855A] text-white shadow-lg shadow-[#48BB78]/30 rounded-xl px-8 py-6 text-lg transition-all hover:scale-105"
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                Ajouter un matériau
-              </Button>
+              {permissions.canEdit && (
+                <Button 
+                  onClick={handleAddMaterial}
+                  className="bg-gradient-to-r from-[#48BB78] to-[#38A169] hover:from-[#38A169] hover:to-[#2F855A] text-white shadow-lg shadow-[#48BB78]/30 rounded-xl px-8 py-6 text-lg transition-all hover:scale-105"
+                >
+                  <Plus className="mr-2 h-5 w-5" />
+                  Ajouter un matériau
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
