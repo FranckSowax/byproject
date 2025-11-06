@@ -133,19 +133,19 @@ export default function SignupPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
             <BarChart3 className="h-6 w-6 text-blue-600" />
           </div>
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+          <CardTitle className="text-2xl font-bold">Créer un compte</CardTitle>
           <CardDescription>
-            Start comparing construction equipment prices today
+            Commencez à comparer les prix des matériaux de construction dès aujourd'hui
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">Nom complet</Label>
               <Input
                 id="fullName"
                 type="text"
-                placeholder="John Doe"
+                placeholder="Jean Dupont"
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                 required
@@ -157,7 +157,7 @@ export default function SignupPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="nom@exemple.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
@@ -165,7 +165,7 @@ export default function SignupPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="language">Preferred Language</Label>
+              <Label htmlFor="language">Langue préférée</Label>
               <Select
                 value={formData.language}
                 onValueChange={(value) => setFormData({ ...formData, language: value })}
@@ -182,7 +182,7 @@ export default function SignupPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Mot de passe</Label>
               <Input
                 id="password"
                 type="password"
@@ -192,10 +192,10 @@ export default function SignupPage() {
                 disabled={isLoading}
                 minLength={8}
               />
-              <p className="text-xs text-gray-500">Must be at least 8 characters</p>
+              <p className="text-xs text-gray-500">Minimum 8 caractères</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -212,12 +212,12 @@ export default function SignupPage() {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? "Creating account..." : "Create Account"}
+              {isLoading ? "Création du compte..." : "Créer un compte"}
             </Button>
             <p className="text-center text-sm text-gray-600">
-              Already have an account?{" "}
+              Vous avez déjà un compte ?{" "}
               <Link href="/login" className="text-blue-600 hover:underline">
-                Sign in
+                Se connecter
               </Link>
             </p>
           </CardFooter>
