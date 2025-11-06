@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkles, Ship, Package } from "lucide-react";
+import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkles, Ship, Package, Home as HomeIcon, DollarSign, Briefcase, LogIn, UserPlus } from "lucide-react";
 import Image from "next/image";
 import { HowItWorksSlider } from "@/components/home/HowItWorksSlider";
 
@@ -10,31 +10,67 @@ export const dynamic = 'force-dynamic';
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F9FF] via-[#E8EEFF] to-white">
-      {/* Header */}
-      <header className="border-b border-[#E0E4FF] bg-white/90 backdrop-blur-md sticky top-0 z-50">
-        <div className="container mx-auto flex h-20 items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <Image 
-              src="/logo-byproject.png" 
-              alt="By Project" 
-              width={180} 
-              height={60}
-              className="h-12 w-auto"
-              priority
-            />
-          </Link>
-          <nav className="flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF]">
-                Connexion
-              </Button>
+      {/* Header - Navigation Moderne */}
+      <header className="border-b border-[#E0E4FF] bg-white/95 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-6">
+          <div className="flex h-20 items-center justify-between">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <Image 
+                src="/logo-byproject.png" 
+                alt="By Project" 
+                width={180} 
+                height={60}
+                className="h-12 w-auto"
+                priority
+              />
             </Link>
-            <Link href="/signup">
-              <Button className="bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white shadow-lg hover:shadow-xl transition-all">
-                Commencer <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </nav>
+
+            {/* Navigation Menu */}
+            <nav className="hidden md:flex items-center gap-1">
+              <Link href="/">
+                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
+                  <HomeIcon className="h-4 w-4" />
+                  Accueil
+                </Button>
+              </Link>
+              <Link href="#features">
+                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
+                  <Sparkles className="h-4 w-4" />
+                  Fonctionnalités
+                </Button>
+              </Link>
+              <Link href="#pricing">
+                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
+                  <DollarSign className="h-4 w-4" />
+                  Tarifs
+                </Button>
+              </Link>
+              <Link href="#services">
+                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
+                  <Briefcase className="h-4 w-4" />
+                  Services
+                </Button>
+              </Link>
+            </nav>
+
+            {/* Auth Buttons */}
+            <div className="flex items-center gap-3">
+              <Link href="/login" className="hidden sm:block">
+                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
+                  <LogIn className="h-4 w-4" />
+                  Connexion
+                </Button>
+              </Link>
+              <Link href="/signup">
+                <Button className="gap-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white shadow-lg hover:shadow-xl transition-all">
+                  <UserPlus className="h-4 w-4" />
+                  <span className="hidden sm:inline">S'inscrire</span>
+                  <span className="sm:hidden">Inscription</span>
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </header>
 
