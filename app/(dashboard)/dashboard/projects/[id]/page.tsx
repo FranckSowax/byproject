@@ -2781,8 +2781,9 @@ export default function ProjectPage() {
               </Button>
             </div>
           )}
+          </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 p-6 border-t">
             <Button
               onClick={() => {
                 setIsDetailViewOpen(false);
