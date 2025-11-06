@@ -29,26 +29,22 @@ export default function Home() {
             {/* Navigation Menu */}
             <nav className="hidden md:flex items-center gap-1">
               <Link href="/">
-                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
-                  <HomeIcon className="h-4 w-4" />
+                <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
                   Accueil
                 </Button>
               </Link>
               <Link href="#features">
-                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
-                  <Sparkles className="h-4 w-4" />
+                <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
                   Fonctionnalités
                 </Button>
               </Link>
               <Link href="#pricing">
-                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
-                  <DollarSign className="h-4 w-4" />
+                <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
                   Tarifs
                 </Button>
               </Link>
               <Link href="#services">
-                <Button variant="ghost" className="gap-2 text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
-                  <Briefcase className="h-4 w-4" />
+                <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
                   Services
                 </Button>
               </Link>
