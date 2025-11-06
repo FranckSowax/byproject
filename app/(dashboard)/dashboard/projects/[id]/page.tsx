@@ -129,6 +129,13 @@ export default function ProjectPage() {
   const [commentsMaterialId, setCommentsMaterialId] = useState<string | null>(null);
   const [commentsMaterialName, setCommentsMaterialName] = useState<string>('');
 
+  // États pour l'édition du projet
+  const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
+  const [editProjectData, setEditProjectData] = useState({
+    name: '',
+    sourceUrl: ''
+  });
+
   useEffect(() => {
     loadProject();
     loadMaterials();
@@ -954,6 +961,45 @@ export default function ProjectPage() {
     }
   };
 
+  const handleOpenEditProject = () => {
+    if (project) {
+      setEditProjectData({
+        name: project.name,
+        sourceUrl: project.source_url || ''
+      });
+      setIsEditProjectDialogOpen(true);
+    }
+  };
+
+  const handleSaveProject = async () => {
+    if (!editProjectData.name.trim()) {
+      toast.error("Le nom du projet est requis");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          name: editProjectData.name,
+          source_url: editProjectData.sourceUrl || null
+        })
+        .eq('id', params.id);
+
+      if (error) throw error;
+
+      toast.success("Projet mis à jour");
+      setIsEditProjectDialogOpen(false);
+      loadProject(); // Recharger le projet
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Erreur lors de la mise à jour");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -1026,7 +1072,9 @@ export default function ProjectPage() {
             <Button 
               variant="outline" 
               size="icon"
+              onClick={handleOpenEditProject}
               className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
+              title="Éditer le projet"
             >
               <Settings className="h-5 w-5" />
             </Button>
@@ -2818,6 +2866,62 @@ export default function ProjectPage() {
               materialName={commentsMaterialName}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog d'édition du projet */}
+      <Dialog open={isEditProjectDialogOpen} onOpenChange={setIsEditProjectDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#2D3748]">
+              Éditer le projet
+            </DialogTitle>
+            <DialogDescription>
+              Modifiez les informations de votre projet
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-project-name" className="text-[#4A5568] font-semibold">
+                Nom du projet *
+              </Label>
+              <Input
+                id="edit-project-name"
+                value={editProjectData.name}
+                onChange={(e) => setEditProjectData({ ...editProjectData, name: e.target.value })}
+                placeholder="Ex: Rénovation Maison"
+                className="border-[#E0E4FF] focus:border-[#5B5FC7]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-project-url" className="text-[#4A5568] font-semibold">
+                URL source (optionnel)
+              </Label>
+              <Input
+                id="edit-project-url"
+                value={editProjectData.sourceUrl}
+                onChange={(e) => setEditProjectData({ ...editProjectData, sourceUrl: e.target.value })}
+                placeholder="https://..."
+                className="border-[#E0E4FF] focus:border-[#5B5FC7]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditProjectDialogOpen(false)}
+              disabled={isSaving}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSaveProject}
+              disabled={isSaving}
+              className="bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white"
+            >
+              {isSaving ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
