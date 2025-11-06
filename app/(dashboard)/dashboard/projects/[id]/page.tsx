@@ -1198,14 +1198,17 @@ export default function ProjectPage() {
                 {materials.map((material) => (
                   <div 
                     key={material.id} 
-                    className="group relative bg-white border border-[#E0E4FF] hover:border-[#5B5FC7] rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl"
+                    className="group relative bg-gradient-to-br from-white to-[#F8F9FF] border-2 border-[#E0E4FF] hover:border-[#5B5FC7] rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-[1.01]
+                               md:rounded-2xl md:overflow-hidden md:border md:hover:scale-100"
                   >
-                    {/* Barre de couleur en haut */}
-                    <div className="h-1 bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B]" />
+                    {/* Barre de couleur en haut - Mobile only */}
+                    <div className="h-1 bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] md:hidden" />
                     
-                    {/* Contenu principal */}
-                    <div className="p-4 space-y-3">
-                      {/* En-tête avec titre et description */}
+                    {/* Indicateur coloré - Desktop only */}
+                    <div className="hidden md:block absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#5B5FC7] to-[#FF9B7B] rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    
+                    {/* Contenu - Mobile */}
+                    <div className="p-4 space-y-3 md:hidden">
                       <div 
                         className="cursor-pointer"
                         onClick={() => handleOpenDetailView(material)}
@@ -1220,7 +1223,6 @@ export default function ProjectPage() {
                         )}
                       </div>
 
-                      {/* Badges et métriques */}
                       <div className="flex flex-wrap gap-1.5">
                         {material.category && (
                           <Badge className="bg-[#5B5FC7]/10 text-[#5B5FC7] border-0 text-xs font-medium px-2 py-0.5">
@@ -1259,7 +1261,6 @@ export default function ProjectPage() {
                         )}
                       </div>
 
-                      {/* Actions - Grid 4 colonnes sur mobile */}
                       <div className="grid grid-cols-4 gap-2 pt-2 border-t border-gray-100">
                         <Button 
                           variant="ghost" 
@@ -1299,6 +1300,103 @@ export default function ProjectPage() {
                         </Button>
                       </div>
                     </div>
+
+                    {/* Contenu - Desktop */}
+                    <div className="hidden md:flex items-start justify-between gap-4 p-4">
+                      <div className="flex-1 min-w-0">
+                        <h4 
+                          className="font-bold text-lg text-[#4A5568] group-hover:text-[#5B5FC7] cursor-pointer transition-colors truncate"
+                          onClick={() => handleOpenDetailView(material)}
+                          title="Voir les prix et fournisseurs"
+                        >
+                          {material.name}
+                        </h4>
+                        {material.description && (
+                          <p className="text-sm text-gray-600 italic mt-1 line-clamp-2">
+                            {material.description}
+                          </p>
+                        )}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {material.category && (
+                            <Badge className="bg-gradient-to-r from-[#5B5FC7]/10 to-[#7B7FE8]/10 text-[#5B5FC7] border-[#5B5FC7]/20 hover:bg-[#5B5FC7]/20 font-semibold">
+                              {material.category}
+                            </Badge>
+                          )}
+                          {material.quantity && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-[#FF9B7B]/10 text-[#FF9B7B] rounded-lg text-sm font-semibold">
+                              <Package className="h-3 w-3" />
+                              {material.quantity}
+                            </div>
+                          )}
+                          {material.surface && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-sm font-semibold">
+                              <span className="text-xs">📐</span>
+                              {material.surface} m²
+                            </div>
+                          )}
+                          {material.weight && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-semibold">
+                              <span className="text-xs">⚖️</span>
+                              {material.weight} kg
+                            </div>
+                          )}
+                          {material.volume && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-purple-500/10 text-purple-600 rounded-lg text-sm font-semibold">
+                              <span className="text-xs">📦</span>
+                              {material.volume} m³
+                            </div>
+                          )}
+                          {material.specs && Object.keys(material.specs).length > 0 && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-[#718096]/10 text-[#718096] rounded-lg text-sm">
+                              <FileText className="h-3 w-3" />
+                              {Object.keys(material.specs).length} spec{Object.keys(material.specs).length > 1 ? 's' : ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setCommentsMaterialId(material.id);
+                            setCommentsMaterialName(material.name);
+                            setShowComments(true);
+                          }}
+                          title="Commentaires"
+                          className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500 text-purple-500 hover:text-white transition-all p-0"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleOpenPriceDialog(material)}
+                          title="Gérer les prix"
+                          className="h-8 w-8 rounded-lg bg-[#48BB78]/10 hover:bg-[#48BB78] text-[#48BB78] hover:text-white transition-all p-0"
+                        >
+                          <DollarSign className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEditMaterial(material)}
+                          title="Éditer"
+                          className="h-8 w-8 rounded-lg bg-[#5B5FC7]/10 hover:bg-[#5B5FC7] text-[#5B5FC7] hover:text-white transition-all p-0"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteMaterial(material.id, material.name)}
+                          title="Supprimer"
+                          className="h-8 w-8 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all p-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1324,10 +1422,20 @@ export default function ProjectPage() {
         </CardContent>
       </Card>
 
-      {/* Historique du projet */}
-      {showHistory && (
-        <ProjectHistory projectId={params.id as string} />
-      )}
+      {/* Historique du projet - Modal */}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#2D3748]">
+              Historique du projet
+            </DialogTitle>
+            <DialogDescription>
+              Consultez l'historique complet des modifications apportées à ce projet
+            </DialogDescription>
+          </DialogHeader>
+          <ProjectHistory projectId={params.id as string} />
+        </DialogContent>
+      </Dialog>
 
       {/* Info */}
       {project.mapping_status === 'completed' && (
