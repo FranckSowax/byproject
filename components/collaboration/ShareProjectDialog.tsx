@@ -85,50 +85,24 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
         return;
       }
 
-      // Vérifier si l'utilisateur existe déjà dans la base
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email.toLowerCase())
-        .single();
-
-      let invitedUserId = existingUser?.id || null;
-
-      // Si l'utilisateur n'existe pas, l'inviter via Supabase Auth
-      if (!existingUser) {
-        try {
-          // Créer une invitation Supabase Auth
-          const redirectUrl = `${window.location.origin}/dashboard/projects/${projectId}`;
-          
-          // Note: Cette fonctionnalité nécessite les permissions admin
-          // Pour l'instant, on crée juste l'entrée dans project_collaborators
-          // L'email sera envoyé via les email templates de Supabase
-          toast.info("Invitation en cours d'envoi...");
-        } catch (authError) {
-          console.error('Auth invite error:', authError);
-          // Continue quand même pour créer l'invitation
-        }
-      }
-
       // Créer l'invitation dans project_collaborators
+      // Note: user_id sera null pour les nouveaux utilisateurs
+      // Il sera mis à jour quand l'utilisateur acceptera l'invitation
       const { error: inviteError } = await supabase
         .from('project_collaborators')
         .insert({
           project_id: projectId,
           email: email.toLowerCase(),
-          user_id: invitedUserId,
+          user_id: null,
           role: role,
           invited_by: user.id,
-          status: existingUser ? 'pending' : 'pending',
+          status: 'pending',
         });
 
       if (inviteError) throw inviteError;
 
-      if (existingUser) {
-        toast.success(`Invitation envoyée à ${email} (utilisateur existant)`);
-      } else {
-        toast.success(`Invitation envoyée à ${email}. Un email a été envoyé pour créer un compte.`);
-      }
+      toast.success(`Invitation envoyée à ${email}`);
+      toast.info("L'utilisateur recevra un email pour accepter l'invitation");
       
       setEmail("");
       setRole("viewer");
