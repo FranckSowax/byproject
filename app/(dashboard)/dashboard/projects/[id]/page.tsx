@@ -1138,8 +1138,8 @@ export default function ProjectPage() {
           <CardContent>
             <Link href={`/dashboard/projects/${params.id}/comparison`}>
               <Button className="w-full bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl py-6 font-semibold transition-all hover:scale-105">
-                <BarChart3 className="mr-2 h-5 w-5" />
-                Voir
+                <BarChart3 className="mr-2 h-5 w-5 text-white" />
+                <span className="text-white font-semibold">Voir</span>
               </Button>
             </Link>
           </CardContent>
