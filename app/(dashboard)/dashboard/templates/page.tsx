@@ -23,12 +23,12 @@ interface Template {
 }
 
 const TEMPLATES: Template[] = [
-  { id: '1', title: 'Villa 150m²', description: 'Construction complète villa moderne', longDescription: 'Template complet pour villa 150m² avec gros œuvre, second œuvre et finitions. 4 chambres, 2 salles de bain, salon-salle à manger, cuisine équipée.', category: 'residential', price: 29000, materials_count: 127, estimated_budget: 45000000, surface: 150, author: 'Architecte Pro', rating: 4.8, downloads: 234, location: 'Abidjan, Côte d\'Ivoire', images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800'], videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', tags: ['Villa', 'Résidentiel', 'Moderne'], features: ['4 Chambres', '2 SDB', 'Garage'] },
-  { id: '2', title: 'Immeuble R+3', description: 'Structure béton armé 4 niveaux', longDescription: 'Immeuble professionnel R+3 avec fondations, poteaux, dalles, escaliers. Calculs structure inclus.', category: 'commercial', price: 49000, materials_count: 215, estimated_budget: 125000000, surface: 800, author: 'BTP Solutions', rating: 4.9, downloads: 156, location: 'Dakar, Sénégal', images: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800'], tags: ['Immeuble', 'Commercial'], features: ['8 Appartements', 'Parking', 'Ascenseur'] },
-  { id: '3', title: 'Rénovation Appart 80m²', description: 'Rénovation complète appartement', longDescription: 'Guide complet rénovation 80m². Démolition, électricité, plomberie, sols, peinture.', category: 'renovation', price: 15000, materials_count: 68, estimated_budget: 8500000, surface: 80, author: 'Rénov Expert', rating: 4.6, downloads: 412, location: 'Lomé, Togo', images: ['https://images.unsplash.com/photo-1556912173-46c336c7fd55?w=800'], videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', tags: ['Rénovation'], features: ['2 Chambres', 'Cuisine ouverte'] },
-  { id: '4', title: 'Maison R+1 Économique', description: 'Maison étage budget optimisé', longDescription: 'Maison R+1 120m² avec matériaux locaux. Coûts optimisés sans compromis qualité.', category: 'residential', price: 19000, materials_count: 95, estimated_budget: 28000000, surface: 120, author: 'Eco Build', rating: 4.7, downloads: 189, location: 'Cotonou, Bénin', images: ['https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800'], tags: ['Économique'], features: ['3 Chambres', 'Terrasse'] },
-  { id: '5', title: 'Local Commercial 200m²', description: 'Aménagement local commercial', longDescription: 'Aménagement professionnel 200m². Cloisons, faux plafond, éclairage LED, climatisation.', category: 'commercial', price: 35000, materials_count: 142, estimated_budget: 18000000, surface: 200, author: 'Commerce Pro', rating: 4.5, downloads: 98, location: 'Ouagadougou', images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=800'], tags: ['Commercial'], features: ['Open space', 'Bureaux'] },
-  { id: '6', title: 'Extension 40m²', description: 'Extension maison existante', longDescription: 'Extension harmonieuse 40m². Fondations, murs, toiture, raccordements.', category: 'renovation', price: 12000, materials_count: 54, estimated_budget: 6500000, surface: 40, author: 'Extension Plus', rating: 4.4, downloads: 267, location: 'Bamako, Mali', images: ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'], tags: ['Extension'], features: ['Grande pièce', 'Baie vitrée'] }
+  { id: '1', title: 'Villa 150m²', description: 'Construction complète villa moderne', longDescription: 'Template complet pour villa 150m² avec gros œuvre, second œuvre et finitions. 4 chambres, 2 salles de bain, salon-salle à manger, cuisine équipée.', category: 'residential', price: 290000, materials_count: 127, estimated_budget: 45000000, surface: 150, author: 'Architecte Pro', rating: 4.8, downloads: 234, location: 'Abidjan, Côte d\'Ivoire', images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800'], videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', tags: ['Villa', 'Résidentiel', 'Moderne'], features: ['4 Chambres', '2 SDB', 'Garage'] },
+  { id: '2', title: 'Immeuble R+3', description: 'Structure béton armé 4 niveaux', longDescription: 'Immeuble professionnel R+3 avec fondations, poteaux, dalles, escaliers. Calculs structure inclus.', category: 'commercial', price: 490000, materials_count: 215, estimated_budget: 125000000, surface: 800, author: 'BTP Solutions', rating: 4.9, downloads: 156, location: 'Dakar, Sénégal', images: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800'], tags: ['Immeuble', 'Commercial'], features: ['8 Appartements', 'Parking', 'Ascenseur'] },
+  { id: '3', title: 'Rénovation Appart 80m²', description: 'Rénovation complète appartement', longDescription: 'Guide complet rénovation 80m². Démolition, électricité, plomberie, sols, peinture.', category: 'renovation', price: 150000, materials_count: 68, estimated_budget: 8500000, surface: 80, author: 'Rénov Expert', rating: 4.6, downloads: 412, location: 'Lomé, Togo', images: ['https://images.unsplash.com/photo-1556912173-46c336c7fd55?w=800'], videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', tags: ['Rénovation'], features: ['2 Chambres', 'Cuisine ouverte'] },
+  { id: '4', title: 'Maison R+1 Économique', description: 'Maison étage budget optimisé', longDescription: 'Maison R+1 120m² avec matériaux locaux. Coûts optimisés sans compromis qualité.', category: 'residential', price: 190000, materials_count: 95, estimated_budget: 28000000, surface: 120, author: 'Eco Build', rating: 4.7, downloads: 189, location: 'Cotonou, Bénin', images: ['https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800'], tags: ['Économique'], features: ['3 Chambres', 'Terrasse'] },
+  { id: '5', title: 'Local Commercial 200m²', description: 'Aménagement local commercial', longDescription: 'Aménagement professionnel 200m². Cloisons, faux plafond, éclairage LED, climatisation.', category: 'commercial', price: 350000, materials_count: 142, estimated_budget: 18000000, surface: 200, author: 'Commerce Pro', rating: 4.5, downloads: 98, location: 'Ouagadougou', images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=800'], tags: ['Commercial'], features: ['Open space', 'Bureaux'] },
+  { id: '6', title: 'Extension 40m²', description: 'Extension maison existante', longDescription: 'Extension harmonieuse 40m². Fondations, murs, toiture, raccordements.', category: 'renovation', price: 120000, materials_count: 54, estimated_budget: 6500000, surface: 40, author: 'Extension Plus', rating: 4.4, downloads: 267, location: 'Bamako, Mali', images: ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'], tags: ['Extension'], features: ['Grande pièce', 'Baie vitrée'] }
 ];
 
 export default function TemplatesPage() {
@@ -36,7 +36,7 @@ export default function TemplatesPage() {
   const supabase = createClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['residential', 'commercial', 'renovation']);
-  const [priceRange, setPriceRange] = useState([10000, 50000]);
+  const [priceRange, setPriceRange] = useState([100000, 500000]);
   const [budgetRange, setBudgetRange] = useState([5, 150]);
   const [surfaceRange, setSurfaceRange] = useState([40, 800]);
   const [minDownloads, setMinDownloads] = useState(0);
@@ -60,7 +60,7 @@ export default function TemplatesPage() {
 
   const clearFilters = () => {
     setSelectedCategories(['residential', 'commercial', 'renovation']);
-    setPriceRange([10000, 50000]); setBudgetRange([5, 150]); setSurfaceRange([40, 800]); setMinDownloads(0); setSearchQuery('');
+    setPriceRange([100000, 500000]); setBudgetRange([5, 150]); setSurfaceRange([40, 800]); setMinDownloads(0); setSearchQuery('');
   };
 
   const handlePurchase = async () => {
@@ -117,7 +117,7 @@ export default function TemplatesPage() {
 
           <div className="border-t pt-6">
             <Label className="mb-3 block flex items-center gap-2"><DollarSign className="h-4 w-4" />Prix template</Label>
-            <Slider value={priceRange} onValueChange={setPriceRange} min={10000} max={50000} step={1000} className="mb-2" />
+            <Slider value={priceRange} onValueChange={setPriceRange} min={100000} max={500000} step={10000} className="mb-2" />
             <div className="flex justify-between text-xs text-gray-600">
               <span>{priceRange[0].toLocaleString()}</span><span>{priceRange[1].toLocaleString()} FCFA</span>
             </div>
