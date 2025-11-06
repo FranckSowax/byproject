@@ -21,23 +21,10 @@ export async function POST(request: NextRequest) {
 
     console.log('🤖 Generating recommendations for project:', projectId);
 
-    // 1. Récupérer tous les matériaux du projet avec leurs prix
+    // 1. Récupérer tous les matériaux du projet
     const { data: materials, error: materialsError } = await supabase
       .from('materials')
-      .select(`
-        id,
-        name,
-        category,
-        quantity,
-        specs,
-        prices (
-          id,
-          amount,
-          currency,
-          supplier_name,
-          country
-        )
-      `)
+      .select('id, name, category, quantity, specs')
       .eq('project_id', projectId);
 
     if (materialsError) {
@@ -56,10 +43,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`📊 Analyzing ${materials.length} materials...`);
+    // 2. Récupérer les prix pour chaque matériau
+    const materialIds = materials.map(m => m.id);
+    const { data: prices, error: pricesError } = await supabase
+      .from('prices')
+      .select('id, material_id, amount, currency, supplier_name, country')
+      .in('material_id', materialIds);
 
-    // 2. Générer les recommandations
-    const recommendations = await generateRecommendations(materials as Material[]);
+    if (pricesError) {
+      console.error('Error fetching prices:', pricesError);
+      // Continue sans les prix
+    }
+
+    // 3. Mapper les prix aux matériaux
+    const materialsWithPrices = materials.map(material => ({
+      ...material,
+      prices: prices?.filter(p => p.material_id === material.id) || []
+    }));
+
+    console.log(`📊 Analyzing ${materialsWithPrices.length} materials with ${prices?.length || 0} prices...`);
+
+    // 4. Générer les recommandations
+    const recommendations = await generateRecommendations(materialsWithPrices as Material[]);
 
     console.log(`✅ Generated ${recommendations.length} recommendations`);
     console.log('Top 3 recommendations:', recommendations.slice(0, 3).map(r => ({
