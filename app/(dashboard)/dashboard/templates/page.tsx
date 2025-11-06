@@ -164,12 +164,12 @@ export default function TemplatesPage() {
               <div className="relative h-40 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
                 <img src={t.images[0]} alt={t.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <Badge className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm text-xs px-2 py-0.5 shadow-lg border-0">
+                <Badge className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm text-xs px-2 py-0.5 shadow-lg border-0 text-gray-900">
                   {getCategoryLabel(t.category)}
                 </Badge>
                 <div className="absolute top-2 right-2 flex items-center gap-1 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full shadow-lg">
                   <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <span className="text-xs font-bold">{t.rating}</span>
+                  <span className="text-xs font-bold text-gray-900">{t.rating}</span>
                 </div>
                 <div className="absolute bottom-2 right-2 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
                   Voir détails
@@ -177,7 +177,10 @@ export default function TemplatesPage() {
               </div>
               <div className="p-3">
                 <h3 className="font-bold text-sm line-clamp-1 mb-1 text-gray-900">{t.title}</h3>
-                <p className="text-xs text-gray-600 line-clamp-2 mb-3">{t.description}</p>
+                <p className="text-xs text-gray-600 line-clamp-2 mb-2">{t.description}</p>
+                <p className="text-[10px] text-gray-500 mb-3">
+                  Budget estimé: {(t.estimated_budget/1000000).toFixed(1)}M FCFA
+                </p>
                 
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex-1 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2 text-center">
@@ -185,8 +188,8 @@ export default function TemplatesPage() {
                     <p className="text-sm font-bold text-blue-900">{t.surface}m²</p>
                   </div>
                   <div className="flex-1 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-2 text-center">
-                    <p className="text-[10px] text-purple-600 font-medium">Budget</p>
-                    <p className="text-sm font-bold text-purple-900">{(t.estimated_budget/1000000).toFixed(0)}M</p>
+                    <p className="text-[10px] text-purple-600 font-medium">Matériaux</p>
+                    <p className="text-sm font-bold text-purple-900">{t.materials_count}</p>
                   </div>
                 </div>
 
@@ -201,9 +204,9 @@ export default function TemplatesPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
+                    <p className="text-base font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                       {t.price.toLocaleString()}
                     </p>
                     <p className="text-[10px] text-gray-500">FCFA</p>
@@ -214,7 +217,7 @@ export default function TemplatesPage() {
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg h-8 px-3"
                   >
                     <Eye className="h-3 w-3 mr-1" />
-                    Voir
+                    <span className="text-white">Voir</span>
                   </Button>
                 </div>
               </div>
