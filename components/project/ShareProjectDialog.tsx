@@ -86,7 +86,7 @@ export default function ShareProjectDialog({
       // await sendInvitationEmail(email, projectName, shareLink);
 
       // Enregistrer dans l'historique
-      await supabase.from('project_history').insert({
+      await supabase.from('project_history' as any).insert({
         project_id: projectId,
         user_id: user?.id,
         user_email: user?.email || '',
@@ -120,7 +120,7 @@ export default function ShareProjectDialog({
       if (error) throw error;
 
       // Enregistrer dans l'historique
-      await supabase.from('project_history').insert({
+      await supabase.from('project_history' as any).insert({
         project_id: projectId,
         user_id: user?.id,
         user_email: user?.email || '',

@@ -49,14 +49,18 @@ export default function ProjectHistoryDialog({
     try {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from('project_history')
+        .from('project_history' as any)
         .select('*')
         .eq('project_id', projectId)
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) throw error;
-      setHistory(data || []);
+      if (error) {
+        console.log('History table not available:', error);
+        setHistory([]);
+        return;
+      }
+      setHistory((data as any) || []);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
