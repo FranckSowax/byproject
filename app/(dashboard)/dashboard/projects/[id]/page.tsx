@@ -2476,54 +2476,101 @@ export default function ProjectPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Vue Détaillée du Matériau */}
+      {/* Modal Vue Détaillée du Matériau - Design Amélioré */}
       <Dialog open={isDetailViewOpen} onOpenChange={setIsDetailViewOpen}>
-        <DialogContent className="w-[95vw] max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl md:text-2xl flex items-center gap-2">
-              📦 {detailMaterial?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Comparaison des prix et fournisseurs
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="w-[95vw] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          {/* Header avec gradient */}
+          <div className="bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] p-6 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <Package className="h-6 w-6" />
+                </div>
+                {detailMaterial?.name}
+              </DialogTitle>
+              <DialogDescription className="text-white/90 text-base mt-2">
+                Comparaison des prix et fournisseurs disponibles
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-          {isLoadingPrices ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : prices.length > 0 ? (
-            <div className="space-y-6">
-              {/* Résumé - Responsive Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-4 bg-green-50 border-green-200">
-                  <p className="text-sm text-gray-600 mb-1">Prix le plus bas</p>
-                  <p className="text-2xl md:text-3xl font-bold text-green-600">
-                    {Math.min(...prices.map(p => p.converted_amount || p.amount)).toLocaleString()} FCFA
-                  </p>
-                </Card>
-                <Card className="p-4 bg-blue-50 border-blue-200">
-                  <p className="text-sm text-gray-600 mb-1">Fournisseurs</p>
-                  <p className="text-2xl md:text-3xl font-bold text-blue-600">
-                    {new Set(prices.filter(p => p.supplier_id).map(p => p.supplier_id)).size}
-                  </p>
-                </Card>
-                <Card className="p-4 bg-purple-50 border-purple-200">
-                  <p className="text-sm text-gray-600 mb-1">Économie max</p>
-                  <p className="text-lg md:text-2xl font-bold text-purple-600">
-                    {(() => {
-                      const amounts = prices.map(p => p.converted_amount || p.amount);
-                      const savings = Math.max(...amounts) - Math.min(...amounts);
-                      const percentage = ((savings / Math.max(...amounts)) * 100).toFixed(0);
-                      return `${savings.toLocaleString()} FCFA (${percentage}%)`;
-                    })()}
-                  </p>
-                </Card>
+          {/* Content scrollable */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {isLoadingPrices ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5B5FC7]"></div>
               </div>
+            ) : prices.length > 0 ? (
+              <div className="space-y-6">
+                {/* Résumé - Cards modernes */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="relative overflow-hidden border-0 shadow-lg">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-green-600" />
+                    <div className="p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <DollarSign className="h-5 w-5 text-green-600" />
+                        </div>
+                        <p className="text-sm font-medium text-gray-600">Prix le plus bas</p>
+                      </div>
+                      <p className="text-3xl font-bold text-green-600">
+                        {Math.min(...prices.map(p => p.converted_amount || p.amount)).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">FCFA</p>
+                    </div>
+                  </Card>
+                  
+                  <Card className="relative overflow-hidden border-0 shadow-lg">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600" />
+                    <div className="p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Users className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <p className="text-sm font-medium text-gray-600">Fournisseurs</p>
+                      </div>
+                      <p className="text-3xl font-bold text-blue-600">
+                        {new Set(prices.filter(p => p.supplier_id).map(p => p.supplier_id)).size}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">disponibles</p>
+                    </div>
+                  </Card>
+                  
+                  <Card className="relative overflow-hidden border-0 shadow-lg">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 to-purple-600" />
+                    <div className="p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <TrendingUp className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <p className="text-sm font-medium text-gray-600">Économie max</p>
+                      </div>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {(() => {
+                          const amounts = prices.map(p => p.converted_amount || p.amount);
+                          const savings = Math.max(...amounts) - Math.min(...amounts);
+                          const percentage = ((savings / Math.max(...amounts)) * 100).toFixed(0);
+                          return `${percentage}%`;
+                        })()}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {(() => {
+                          const amounts = prices.map(p => p.converted_amount || p.amount);
+                          const savings = Math.max(...amounts) - Math.min(...amounts);
+                          return `${savings.toLocaleString()} FCFA`;
+                        })()}
+                      </p>
+                    </div>
+                  </Card>
+                </div>
 
               {/* Liste des prix triés */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Prix classés (du moins cher au plus cher)</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-1 flex-1 bg-gradient-to-r from-[#5B5FC7] to-transparent rounded" />
+                  <h3 className="font-bold text-lg text-gray-800">Prix classés</h3>
+                  <div className="h-1 flex-1 bg-gradient-to-l from-[#5B5FC7] to-transparent rounded" />
+                </div>
                 
                 {prices
                   .sort((a, b) => (a.converted_amount || a.amount) - (b.converted_amount || b.amount))
@@ -2534,78 +2581,120 @@ export default function ProjectPage() {
                     return (
                       <Card 
                         key={price.id} 
-                        className={`p-4 ${isLowest ? 'border-2 border-green-500 bg-green-50' : 'hover:shadow-md transition-shadow'}`}
+                        className={`relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all ${
+                          isLowest ? 'ring-2 ring-green-500' : ''
+                        }`}
                       >
-                        <div className="space-y-3">
-                          {/* Header avec badges */}
-                          <div className="flex flex-wrap items-center gap-2">
-                            {isLowest && (
-                              <Badge className="bg-green-600 text-white">
-                                🏆 Meilleur prix
+                        {/* Barre de couleur selon le rang */}
+                        <div className={`absolute top-0 left-0 w-full h-2 ${
+                          isLowest ? 'bg-gradient-to-r from-green-400 to-green-600' : 
+                          'bg-gradient-to-r from-gray-300 to-gray-400'
+                        }`} />
+                        
+                        <div className="p-5 space-y-4">
+                          {/* Header avec badges et pays */}
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {isLowest && (
+                                <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0 px-3 py-1">
+                                  <span className="text-base">🏆 Meilleur prix</span>
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="font-mono text-base px-3 py-1 border-2">
+                                #{index + 1}
                               </Badge>
-                            )}
-                            <Badge variant="outline" className="font-mono">
-                              #{index + 1}
-                            </Badge>
-                            <span className="text-lg font-semibold">
-                              {price.country === 'Cameroun' && '📍'}
-                              {price.country === 'Chine' && '🇨🇳'}
-                              {price.country === 'France' && '🇫🇷'}
-                              {price.country === 'USA' && '🇺🇸'}
-                              {' '}{price.country}
-                            </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-lg font-semibold text-gray-700">
+                              <span className="text-2xl">
+                                {price.country === 'Cameroun' && '🇨🇲'}
+                                {price.country === 'Gabon' && '🇬🇦'}
+                                {price.country === 'Chine' && '🇨🇳'}
+                                {price.country === 'France' && '🇫🇷'}
+                                {price.country === 'USA' && '🇺🇸'}
+                              </span>
+                              <span>{price.country}</span>
+                            </div>
                           </div>
 
-                          {/* Fournisseur et Contact - Responsive */}
+                          {/* Fournisseur - Card moderne */}
                           {price.supplier && (
-                            <div className="bg-white p-3 rounded-lg">
-                              <p className="font-medium text-lg mb-1">{price.supplier.name}</p>
-                              {price.supplier.contact_name && (
-                                <p className="text-sm text-gray-600 mb-2">
-                                  👤 {price.supplier.contact_name}
-                                </p>
-                              )}
-                              <div className="flex flex-wrap gap-3 text-sm text-gray-600">
-                                {price.supplier.phone && (
-                                  <span className="flex items-center gap-1">
-                                    📞 {price.supplier.phone}
-                                  </span>
-                                )}
-                                {price.supplier.whatsapp && (
-                                  <span className="flex items-center gap-1">
-                                    💬 {price.supplier.whatsapp}
-                                  </span>
-                                )}
-                                {price.supplier.wechat && (
-                                  <span className="flex items-center gap-1">
-                                    WeChat: {price.supplier.wechat}
-                                  </span>
-                                )}
-                                {price.supplier.email && (
-                                  <span className="flex items-center gap-1">
-                                    ✉️ {price.supplier.email}
-                                  </span>
-                                )}
+                            <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100">
+                              <div className="flex items-start gap-3">
+                                <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <Users className="h-6 w-6 text-blue-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-lg text-gray-800 mb-1">{price.supplier.name}</p>
+                                  {price.supplier.contact_name && (
+                                    <p className="text-sm text-gray-600 mb-3 flex items-center gap-2">
+                                      <User className="h-4 w-4" />
+                                      {price.supplier.contact_name}
+                                    </p>
+                                  )}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                    {price.supplier.phone && (
+                                      <div className="flex items-center gap-2 text-gray-700">
+                                        <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center flex-shrink-0">
+                                          📞
+                                        </div>
+                                        <span className="truncate">{price.supplier.phone}</span>
+                                      </div>
+                                    )}
+                                    {price.supplier.whatsapp && (
+                                      <div className="flex items-center gap-2 text-gray-700">
+                                        <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center flex-shrink-0">
+                                          💬
+                                        </div>
+                                        <span className="truncate">{price.supplier.whatsapp}</span>
+                                      </div>
+                                    )}
+                                    {price.supplier.wechat && (
+                                      <div className="flex items-center gap-2 text-gray-700">
+                                        <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center flex-shrink-0">
+                                          💬
+                                        </div>
+                                        <span className="truncate">WeChat: {price.supplier.wechat}</span>
+                                      </div>
+                                    )}
+                                    {price.supplier.email && (
+                                      <div className="flex items-center gap-2 text-gray-700">
+                                        <div className="w-6 h-6 bg-purple-100 rounded flex items-center justify-center flex-shrink-0">
+                                          ✉️
+                                        </div>
+                                        <span className="truncate">{price.supplier.email}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           )}
 
-                          {/* Prix - Responsive */}
-                          <div className="flex flex-col sm:flex-row sm:items-baseline gap-2">
-                            <span className="text-3xl md:text-4xl font-bold text-green-600">
-                              {price.amount.toLocaleString()} {price.currency}
-                            </span>
-                            {price.currency !== 'FCFA' && price.converted_amount && (
-                              <span className="text-lg text-gray-600">
-                                ≈ {Math.round(price.converted_amount).toLocaleString()} FCFA
-                              </span>
-                            )}
+                          {/* Prix - Grande visibilité */}
+                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-xl border-2 border-green-200">
+                            <div className="flex flex-col gap-2">
+                              <p className="text-sm font-medium text-gray-600">Prix</p>
+                              <div className="flex items-baseline gap-3 flex-wrap">
+                                <span className="text-4xl md:text-5xl font-bold text-green-600">
+                                  {price.amount.toLocaleString()}
+                                </span>
+                                <span className="text-2xl font-semibold text-green-600">
+                                  {price.currency}
+                                </span>
+                              </div>
+                              {price.currency !== 'FCFA' && price.converted_amount && (
+                                <p className="text-lg text-gray-600 font-medium">
+                                  ≈ {Math.round(price.converted_amount).toLocaleString()} FCFA
+                                </p>
+                              )}
+                            </div>
                           </div>
 
                           {/* Différence avec le meilleur prix */}
                           {!isLowest && savings > 0 && (
-                            <div className="bg-red-50 border border-red-200 p-2 rounded">
-                              <p className="text-sm font-medium text-red-600">
+                            <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 p-4 rounded-xl">
+                              <p className="text-sm font-bold text-red-600 flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5" />
                                 +{savings.toLocaleString()} FCFA par rapport au meilleur prix
                               </p>
                             </div>
