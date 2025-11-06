@@ -135,6 +135,48 @@ export function ProjectHistory({ projectId }: ProjectHistoryProps) {
       .slice(0, 2);
   };
 
+  const formatChanges = (changes: any, entityType: string) => {
+    if (!changes || Object.keys(changes).length === 0) return null;
+
+    const descriptions: string[] = [];
+
+    // Formater selon le type d'entité
+    if (entityType === 'material') {
+      if (changes.name) descriptions.push(`Nom: "${changes.name.old || 'vide'}" → "${changes.name.new}"`);
+      if (changes.description) descriptions.push(`Description: "${changes.description.old || 'vide'}" → "${changes.description.new}"`);
+      if (changes.category) descriptions.push(`Catégorie: "${changes.category.old || 'aucune'}" → "${changes.category.new}"`);
+      if (changes.quantity) descriptions.push(`Quantité: ${changes.quantity.old || 0} → ${changes.quantity.new}`);
+      if (changes.surface) descriptions.push(`Surface: ${changes.surface.old || 0} m² → ${changes.surface.new} m²`);
+      if (changes.weight) descriptions.push(`Poids: ${changes.weight.old || 0} kg → ${changes.weight.new} kg`);
+      if (changes.volume) descriptions.push(`Volume: ${changes.volume.old || 0} m³ → ${changes.volume.new} m³`);
+    } else if (entityType === 'price') {
+      if (changes.amount) descriptions.push(`Montant: ${changes.amount.old || 0} → ${changes.amount.new} FCFA`);
+      if (changes.currency) descriptions.push(`Devise: ${changes.currency.old || ''} → ${changes.currency.new}`);
+      if (changes.supplier_name) descriptions.push(`Fournisseur: "${changes.supplier_name.old || 'inconnu'}" → "${changes.supplier_name.new}"`);
+      if (changes.country) descriptions.push(`Pays: ${changes.country.old || ''} → ${changes.country.new}`);
+      if (changes.delivery_time) descriptions.push(`Délai: ${changes.delivery_time.old || 0} → ${changes.delivery_time.new} jours`);
+    } else if (entityType === 'supplier') {
+      if (changes.name) descriptions.push(`Nom: "${changes.name.old || 'vide'}" → "${changes.name.new}"`);
+      if (changes.country) descriptions.push(`Pays: ${changes.country.old || ''} → ${changes.country.new}`);
+      if (changes.contact) descriptions.push(`Contact: ${changes.contact.old || ''} → ${changes.contact.new}`);
+      if (changes.email) descriptions.push(`Email: ${changes.email.old || ''} → ${changes.email.new}`);
+    } else if (entityType === 'comment') {
+      if (changes.content) descriptions.push(`Contenu: "${changes.content.old || 'vide'}" → "${changes.content.new}"`);
+    }
+
+    // Si aucun champ connu n'est trouvé, afficher tous les changements
+    if (descriptions.length === 0) {
+      Object.keys(changes).forEach(key => {
+        const change = changes[key];
+        if (typeof change === 'object' && change.old !== undefined && change.new !== undefined) {
+          descriptions.push(`${key}: ${change.old} → ${change.new}`);
+        }
+      });
+    }
+
+    return descriptions;
+  };
+
   if (isLoading) {
     return (
       <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl">
@@ -204,18 +246,26 @@ export function ProjectHistory({ projectId }: ProjectHistoryProps) {
                   </div>
 
                   {/* Afficher les changements si disponibles */}
-                  {entry.changes && Object.keys(entry.changes).length > 0 && (
-                    <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
-                      <details className="cursor-pointer">
-                        <summary className="text-gray-600 hover:text-gray-800">
-                          Voir les détails
-                        </summary>
-                        <pre className="mt-2 text-xs overflow-x-auto">
-                          {JSON.stringify(entry.changes, null, 2)}
-                        </pre>
-                      </details>
-                    </div>
-                  )}
+                  {entry.changes && Object.keys(entry.changes).length > 0 && (() => {
+                    const changeDescriptions = formatChanges(entry.changes, entry.entity_type);
+                    if (!changeDescriptions || changeDescriptions.length === 0) return null;
+                    
+                    return (
+                      <div className="mt-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">
+                          📝 Modifications apportées :
+                        </p>
+                        <ul className="space-y-1">
+                          {changeDescriptions.map((desc, idx) => (
+                            <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
+                              <span className="text-blue-500 mt-0.5">•</span>
+                              <span>{desc}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             ))}
