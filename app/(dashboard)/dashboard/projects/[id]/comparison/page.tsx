@@ -12,7 +12,6 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { RecommendationsPanel } from '@/components/recommendations/RecommendationsPanel';
 
 interface Material {
   id: string;
@@ -726,11 +725,6 @@ export default function ComparisonPage() {
             </div>
           </div>
         </Card>
-
-        {/* Panneau de Recommandations IA */}
-        <div className="mt-8">
-          <RecommendationsPanel projectId={params.id as string} />
-        </div>
       </div>
     </div>
   );
