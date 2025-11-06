@@ -6,13 +6,14 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, History, TrendingUp, Shield } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, History, TrendingUp, Shield, Globe } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { ShareProjectDialog } from "@/components/collaboration/ShareProjectDialog";
 import { MaterialComments } from "@/components/collaboration/MaterialComments";
 import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
+import { SendToSuppliersDialog } from "@/components/project/SendToSuppliersDialog";
 import {
   Dialog,
   DialogContent,
@@ -145,6 +146,9 @@ export default function ProjectPage() {
     role: null as 'owner' | 'editor' | 'viewer' | null,
   });
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
+
+  // États pour l'envoi aux fournisseurs
+  const [isSendToSuppliersOpen, setIsSendToSuppliersOpen] = useState(false);
 
   useEffect(() => {
     loadProject();
@@ -1245,6 +1249,17 @@ export default function ProjectPage() {
               </Badge>
             )}
             
+            {permissions.canManage && materials.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setIsSendToSuppliersOpen(true)}
+                className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-blue-500 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white transition-all"
+                title="Envoyer aux fournisseurs chinois"
+              >
+                <Globe className="h-5 w-5" />
+              </Button>
+            )}
             {permissions.canManage && (
               <Button 
                 variant="outline" 
@@ -3225,6 +3240,17 @@ export default function ProjectPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Send to Suppliers Dialog */}
+      {project && (
+        <SendToSuppliersDialog
+          open={isSendToSuppliersOpen}
+          onOpenChange={setIsSendToSuppliersOpen}
+          projectId={project.id}
+          projectName={project.name}
+          materialsCount={materials.length}
+        />
+      )}
 
       </div>
     </div>
