@@ -442,6 +442,13 @@ export default function ProjectPage() {
       setImportProgress(30);
       setImportStatus('🤖 L\'IA analyse les colonnes...');
 
+      console.log('📤 Sending to AI map-columns:', {
+        headers,
+        sampleDataPreview: sampleData.substring(0, 200),
+        sampleDataLength: sampleData.length,
+        targetFields: ['name', 'category', 'quantity', 'unit', 'weight', 'volume', 'specs']
+      });
+
       const mappingResponse = await fetch('/api/ai/map-columns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -453,11 +460,16 @@ export default function ProjectPage() {
       });
 
       if (!mappingResponse.ok) {
+        const errorText = await mappingResponse.text();
+        console.error('❌ Mapping API error:', errorText);
         throw new Error('Erreur lors du mapping IA');
       }
 
-      const { mapping } = await mappingResponse.json();
-      console.log('Mapping IA:', mapping);
+      const mappingResult = await mappingResponse.json();
+      const { mapping } = mappingResult;
+      
+      console.log('📥 AI Mapping Response:', mappingResult);
+      console.log('🗺️ Mapping IA:', mapping);
 
       setImportProgress(50);
       setImportStatus('Création des matériaux...');
