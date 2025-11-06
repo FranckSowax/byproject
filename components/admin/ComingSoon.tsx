@@ -2,16 +2,18 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Construction, ArrowLeft } from 'lucide-react';
+import { Construction, ArrowLeft, LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 
 interface ComingSoonProps {
   title: string;
   description: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  iconName?: string;
 }
 
-export function ComingSoon({ title, description, icon: Icon = Construction }: ComingSoonProps) {
+export function ComingSoon({ title, description, iconName }: ComingSoonProps) {
+  // Use Construction as default icon
+  const Icon = Construction;
   return (
     <div className="space-y-6">
       <div>
