@@ -78,13 +78,23 @@ export async function POST(request: NextRequest) {
 
     // 5. Créer les matériaux détectés
     if (analysis.materials && analysis.materials.length > 0) {
-      const materialsToInsert = analysis.materials.map((material: any) => ({
-        project_id: projectId,
-        name: material.name,
-        category: material.category || null,
-        quantity: material.quantity || null,
-        specs: material.specs || null,
-      }));
+      const materialsToInsert = analysis.materials.map((material: any) => {
+        // Enrichir les specs avec l'unité si présente
+        const specs = material.specs || {};
+        if (material.unit) {
+          specs.unit = material.unit;
+        }
+        
+        return {
+          project_id: projectId,
+          name: material.name,
+          category: material.category || null,
+          quantity: material.quantity || null,
+          specs: Object.keys(specs).length > 0 ? specs : null,
+        };
+      });
+
+      console.log(`Inserting ${materialsToInsert.length} materials into database`);
 
       const { error: materialsError } = await supabase
         .from('materials')
@@ -92,7 +102,13 @@ export async function POST(request: NextRequest) {
 
       if (materialsError) {
         console.error('Materials insert error:', materialsError);
+        // Ne pas échouer complètement si l'insertion échoue
+        console.log('Continuing despite materials insert error...');
+      } else {
+        console.log(`Successfully inserted ${materialsToInsert.length} materials`);
       }
+    } else {
+      console.warn('No materials detected by AI analysis');
     }
 
     // 6. Mettre à jour le statut du projet
@@ -154,25 +170,67 @@ async function extractTextFromExcel(file: Blob): Promise<string> {
     // Convertir le Blob en ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     
-    // Lire le fichier Excel
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    // Lire le fichier Excel avec toutes les options pour capturer le maximum de données
+    const workbook = XLSX.read(arrayBuffer, { 
+      type: 'array',
+      cellDates: true,
+      cellNF: false,
+      cellText: false
+    });
     
     // Prendre la première feuille
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     
     // Convertir en CSV pour faciliter l'analyse
-    const csvText = XLSX.utils.sheet_to_csv(worksheet);
+    const csvText = XLSX.utils.sheet_to_csv(worksheet, { 
+      FS: ',',
+      RS: '\n',
+      blankrows: false // Ignorer les lignes vides
+    });
     
-    // Alternative: Convertir en JSON pour une structure plus riche
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    // Convertir aussi en JSON pour avoir la structure
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+      header: 1,
+      defval: '', // Valeur par défaut pour les cellules vides
+      blankrows: false,
+      raw: false // Convertir tout en texte
+    });
     
-    // Retourner le CSV avec quelques métadonnées
-    return `Fichier Excel - Feuille: ${firstSheetName}
-Nombre de lignes: ${jsonData.length}
+    // Obtenir les headers (première ligne)
+    const headers = jsonData[0] as any[];
+    const dataRows = jsonData.slice(1);
+    
+    // Créer une représentation enrichie
+    let enrichedText = `Fichier Excel - Feuille: ${firstSheetName}
+Nombre total de lignes: ${jsonData.length}
+Nombre de lignes de données: ${dataRows.length}
+Colonnes détectées: ${headers.length}
 
-Données:
-${csvText}`;
+=== EN-TÊTES ===
+${headers.map((h, i) => `Colonne ${i + 1}: "${h}"`).join('\n')}
+
+=== APERÇU DES DONNÉES (5 premières lignes) ===
+${dataRows.slice(0, 5).map((row: any, i: number) => {
+  return `Ligne ${i + 1}: ${headers.map((h: any, j: number) => `${h}="${row[j] || ''}"`).join(' | ')}`;
+}).join('\n')}
+
+=== DONNÉES COMPLÈTES (CSV) ===
+${csvText}
+
+=== STATISTIQUES ===
+- Lignes non vides: ${dataRows.filter((row: any) => row.some((cell: any) => cell && cell.toString().trim())).length}
+- Colonnes avec données: ${headers.filter((h: any) => h && h.toString().trim()).length}
+`;
+    
+    console.log('Excel extraction completed:', {
+      sheet: firstSheetName,
+      totalRows: jsonData.length,
+      dataRows: dataRows.length,
+      columns: headers.length
+    });
+    
+    return enrichedText;
   } catch (error) {
     console.error('Excel extraction error:', error);
     throw new Error('Erreur lors de l\'extraction du fichier Excel');
@@ -330,51 +388,82 @@ async function extractTextFromPDFWithTesseract(file: Blob, fileName: string): Pr
 // Fonction pour analyser avec GPT-4o
 async function analyzeWithGPT4(fileContent: string, fileName: string) {
   try {
-    const prompt = `Tu es un expert en analyse de fichiers de matériaux de construction. 
-Analyse ce fichier et identifie:
+    const prompt = `Tu es un expert en analyse de fichiers de matériaux de construction et d'équipements. 
 
-1. Les colonnes présentes (nom, quantité, prix, unité, catégorie, etc.)
-2. Les matériaux/équipements listés
-3. La structure des données
+**MISSION CRITIQUE**: Tu dois TOUJOURS extraire TOUS les matériaux présents dans le fichier, même si les données sont incomplètes.
+
+**RÈGLES IMPORTANTES**:
+1. Si une ligne contient un nom de matériau ET une quantité → C'EST UN MATÉRIAU VALIDE
+2. Si une ligne contient uniquement un nom → C'EST QUAND MÊME UN MATÉRIAU (quantité = null)
+3. Ne rejette JAMAIS un matériau sous prétexte qu'il manque des informations
+4. Accepte tous types de matériaux: ciment, fer, câbles, peinture, luminaires, interrupteurs, etc.
+5. Les colonnes de prix (Fournisseur A, B, C) ne sont PAS obligatoires pour détecter un matériau
+
+**TYPES DE MATÉRIAUX À DÉTECTER**:
+- Matériaux de construction (ciment, fer, sable, gravier, etc.)
+- Équipements électriques (câbles, interrupteurs, prises, LED, etc.)
+- Peinture et finitions
+- Plomberie
+- Menuiserie
+- Tous autres équipements de chantier
 
 Fichier: ${fileName}
 
 Contenu:
-${fileContent.substring(0, 4000)} // Limiter à 4000 caractères
+${fileContent.substring(0, 8000)}
 
-Réponds au format JSON strict suivant:
+**FORMAT DE RÉPONSE JSON**:
 {
   "mapping": {
     "columns": [
-      {"original": "nom de la colonne dans le fichier", "mapped": "name|quantity|price|unit|category|specs", "confidence": 0.95}
+      {"original": "nom exact de la colonne", "mapped": "name|quantity|price|unit|category|supplier", "confidence": 0.95}
     ],
     "detected_format": "csv|excel|pdf",
-    "has_headers": true|false
+    "has_headers": true|false,
+    "total_rows": nombre_de_lignes
   },
   "materials": [
     {
-      "name": "Nom du matériau",
-      "category": "Catégorie",
-      "quantity": 10,
-      "specs": {"key": "value"}
+      "name": "Nom exact du matériau (OBLIGATOIRE)",
+      "category": "Catégorie déduite (électricité, construction, peinture, etc.) ou null",
+      "quantity": nombre ou null,
+      "unit": "unité (Sac, Barre, m², Pièce, etc.) ou null",
+      "specs": {
+        "description": "description si disponible",
+        "autres_infos": "valeur"
+      }
     }
   ],
-  "suggestions": ["Suggestion 1", "Suggestion 2"]
-}`;
+  "statistics": {
+    "total_materials_found": nombre,
+    "materials_with_quantity": nombre,
+    "materials_without_quantity": nombre
+  },
+  "suggestions": ["Conseil 1", "Conseil 2"]
+}
+
+**EXEMPLE DE DÉTECTION**:
+Si tu vois:
+- "Ciment CPI 35" avec quantité 100 → Matériau valide
+- "Fer à béton Ø8" avec quantité 200 → Matériau valide  
+- "Peinture acrylique" sans quantité → TOUJOURS UN MATÉRIAU VALIDE (quantité: null)
+- "Ampoule LED E27 12W" avec quantité 100 → Matériau valide
+
+RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "Tu es un assistant expert en analyse de fichiers de matériaux de construction. Tu réponds toujours en JSON valide."
+          content: "Tu es un assistant expert en analyse de fichiers de matériaux de construction et d'équipements. Tu DOIS extraire TOUS les matériaux présents, même avec des données incomplètes. Un nom + quantité = matériau valide. Un nom seul = matériau valide aussi. Tu réponds TOUJOURS en JSON valide."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.3,
+      temperature: 0.2, // Plus bas pour plus de précision
       response_format: { type: "json_object" }
     });
 
@@ -383,7 +472,16 @@ Réponds au format JSON strict suivant:
       throw new Error('No response from OpenAI');
     }
 
-    return JSON.parse(response);
+    const parsedResponse = JSON.parse(response);
+    
+    // Log pour debug
+    console.log('GPT-4o Analysis Results:', {
+      materialsFound: parsedResponse.materials?.length || 0,
+      fileName,
+      statistics: parsedResponse.statistics
+    });
+
+    return parsedResponse;
 
   } catch (error) {
     console.error('GPT-4 analysis error:', error);
