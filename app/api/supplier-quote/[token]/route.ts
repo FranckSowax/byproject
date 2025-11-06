@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 
 // GET - Load supplier request by token
 export async function GET(
@@ -7,10 +7,10 @@ export async function GET(
   { params }: { params: { token: string } }
 ) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { token } = params;
 
-    // Get supplier request with public token
+    // Get supplier request with public token - using service role to bypass RLS
     const { data: supplierRequest, error } = await supabase
       .from('supplier_requests' as any)
       .select(`
@@ -22,7 +22,15 @@ export async function GET(
       .eq('public_token', token)
       .single();
 
-    if (error || !supplierRequest) {
+    if (error) {
+      console.error('Error fetching supplier request:', error);
+      return NextResponse.json(
+        { error: 'Request not found', details: error.message },
+        { status: 404 }
+      );
+    }
+
+    if (!supplierRequest) {
       return NextResponse.json(
         { error: 'Request not found' },
         { status: 404 }
@@ -69,7 +77,7 @@ export async function POST(
   { params }: { params: { token: string } }
 ) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { token } = params;
     const body = await request.json();
     const { supplierInfo, materials, currency, notes, status } = body;
