@@ -158,37 +158,66 @@ export default function TemplatesPage() {
           <p className="text-gray-600">Projets pré-configurés par la communauté</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredTemplates.map((t) => (
-            <Card key={t.id} className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => { setSelectedTemplate(t); setCurrentImageIndex(0); }}>
-              <div className="relative h-48 bg-gray-200">
-                <img src={t.images[0]} alt={t.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                <Badge className="absolute top-3 left-3 bg-white/90">{getCategoryLabel(t.category)}</Badge>
-                <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/90 px-2 py-1 rounded-full">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" /><span className="text-xs font-semibold">{t.rating}</span>
+            <Card key={t.id} className="overflow-hidden hover:shadow-2xl transition-all duration-300 cursor-pointer group border-0 bg-white" onClick={() => { setSelectedTemplate(t); setCurrentImageIndex(0); }}>
+              <div className="relative h-40 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                <img src={t.images[0]} alt={t.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Badge className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm text-xs px-2 py-0.5 shadow-lg border-0">
+                  {getCategoryLabel(t.category)}
+                </Badge>
+                <div className="absolute top-2 right-2 flex items-center gap-1 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full shadow-lg">
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  <span className="text-xs font-bold">{t.rating}</span>
+                </div>
+                <div className="absolute bottom-2 right-2 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                  Voir détails
                 </div>
               </div>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg line-clamp-1">{t.title}</CardTitle>
-                <CardDescription className="line-clamp-2 text-sm">{t.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="pb-3">
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  <div className="text-center p-2 bg-gray-50 rounded"><p className="text-xs text-gray-600">Surface</p><p className="font-bold text-sm">{t.surface}m²</p></div>
-                  <div className="text-center p-2 bg-gray-50 rounded"><p className="text-xs text-gray-600">Matériaux</p><p className="font-bold text-sm">{t.materials_count}</p></div>
-                  <div className="text-center p-2 bg-gray-50 rounded"><p className="text-xs text-gray-600">Budget</p><p className="font-bold text-sm">{(t.estimated_budget/1000000).toFixed(0)}M</p></div>
+              <div className="p-3">
+                <h3 className="font-bold text-sm line-clamp-1 mb-1 text-gray-900">{t.title}</h3>
+                <p className="text-xs text-gray-600 line-clamp-2 mb-3">{t.description}</p>
+                
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex-1 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2 text-center">
+                    <p className="text-[10px] text-blue-600 font-medium">Surface</p>
+                    <p className="text-sm font-bold text-blue-900">{t.surface}m²</p>
+                  </div>
+                  <div className="flex-1 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-2 text-center">
+                    <p className="text-[10px] text-purple-600 font-medium">Budget</p>
+                    <p className="text-sm font-bold text-purple-900">{(t.estimated_budget/1000000).toFixed(0)}M</p>
+                  </div>
                 </div>
-                <div className="flex justify-between text-xs text-gray-600">
-                  <div className="flex items-center gap-1"><MapPin className="h-3 w-3" />{t.location.split(',')[0]}</div>
-                  <div className="flex items-center gap-1"><Download className="h-3 w-3" />{t.downloads}</div>
+
+                <div className="flex items-center justify-between text-[10px] text-gray-500 mb-3 pb-3 border-b">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>{t.location.split(',')[0]}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Download className="h-3 w-3" />
+                    <span>{t.downloads}</span>
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter className="bg-gray-50 flex justify-between pt-4">
-                <div><p className="text-xl font-bold text-blue-600">{t.price.toLocaleString()}</p><p className="text-xs text-gray-600">FCFA</p></div>
-                <Button size="sm" onClick={(e) => { e.stopPropagation(); setSelectedTemplate(t); }} className="bg-blue-600 hover:bg-blue-700">
-                  <Eye className="h-4 w-4 mr-1" />Voir
-                </Button>
-              </CardFooter>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      {t.price.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-gray-500">FCFA</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={(e) => { e.stopPropagation(); setSelectedTemplate(t); }} 
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg h-8 px-3"
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    Voir
+                  </Button>
+                </div>
+              </div>
             </Card>
           ))}
         </div>
