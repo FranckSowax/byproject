@@ -56,7 +56,7 @@ export default function ProjectHistoryDialog({
         .limit(100);
 
       if (error) {
-        console.log('History table not available:', error);
+        console.error('Error loading history:', error);
         setHistory([]);
         return;
       }
