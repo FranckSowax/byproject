@@ -140,41 +140,80 @@ export function ProjectHistory({ projectId }: ProjectHistoryProps) {
 
     const descriptions: string[] = [];
 
+    // Helper pour vérifier si un changement est valide
+    const isValidChange = (change: any) => {
+      return change && typeof change === 'object' && change !== null && ('old' in change || 'new' in change);
+    };
+
     // Formater selon le type d'entité
     if (entityType === 'material') {
-      if (changes.name) descriptions.push(`Nom: "${changes.name.old || 'vide'}" → "${changes.name.new}"`);
-      if (changes.description) descriptions.push(`Description: "${changes.description.old || 'vide'}" → "${changes.description.new}"`);
-      if (changes.category) descriptions.push(`Catégorie: "${changes.category.old || 'aucune'}" → "${changes.category.new}"`);
-      if (changes.quantity) descriptions.push(`Quantité: ${changes.quantity.old || 0} → ${changes.quantity.new}`);
-      if (changes.surface) descriptions.push(`Surface: ${changes.surface.old || 0} m² → ${changes.surface.new} m²`);
-      if (changes.weight) descriptions.push(`Poids: ${changes.weight.old || 0} kg → ${changes.weight.new} kg`);
-      if (changes.volume) descriptions.push(`Volume: ${changes.volume.old || 0} m³ → ${changes.volume.new} m³`);
+      if (changes.name && isValidChange(changes.name)) {
+        descriptions.push(`Nom: "${changes.name.old || 'vide'}" → "${changes.name.new || 'vide'}"`);
+      }
+      if (changes.description && isValidChange(changes.description)) {
+        descriptions.push(`Description: "${changes.description.old || 'vide'}" → "${changes.description.new || 'vide'}"`);
+      }
+      if (changes.category && isValidChange(changes.category)) {
+        descriptions.push(`Catégorie: "${changes.category.old || 'aucune'}" → "${changes.category.new || 'aucune'}"`);
+      }
+      if (changes.quantity && isValidChange(changes.quantity)) {
+        descriptions.push(`Quantité: ${changes.quantity.old || 0} → ${changes.quantity.new || 0}`);
+      }
+      if (changes.surface && isValidChange(changes.surface)) {
+        descriptions.push(`Surface: ${changes.surface.old || 0} m² → ${changes.surface.new || 0} m²`);
+      }
+      if (changes.weight && isValidChange(changes.weight)) {
+        descriptions.push(`Poids: ${changes.weight.old || 0} kg → ${changes.weight.new || 0} kg`);
+      }
+      if (changes.volume && isValidChange(changes.volume)) {
+        descriptions.push(`Volume: ${changes.volume.old || 0} m³ → ${changes.volume.new || 0} m³`);
+      }
     } else if (entityType === 'price') {
-      if (changes.amount) descriptions.push(`Montant: ${changes.amount.old || 0} → ${changes.amount.new} FCFA`);
-      if (changes.currency) descriptions.push(`Devise: ${changes.currency.old || ''} → ${changes.currency.new}`);
-      if (changes.supplier_name) descriptions.push(`Fournisseur: "${changes.supplier_name.old || 'inconnu'}" → "${changes.supplier_name.new}"`);
-      if (changes.country) descriptions.push(`Pays: ${changes.country.old || ''} → ${changes.country.new}`);
-      if (changes.delivery_time) descriptions.push(`Délai: ${changes.delivery_time.old || 0} → ${changes.delivery_time.new} jours`);
+      if (changes.amount && isValidChange(changes.amount)) {
+        descriptions.push(`Montant: ${changes.amount.old || 0} → ${changes.amount.new || 0} FCFA`);
+      }
+      if (changes.currency && isValidChange(changes.currency)) {
+        descriptions.push(`Devise: ${changes.currency.old || ''} → ${changes.currency.new || ''}`);
+      }
+      if (changes.supplier_name && isValidChange(changes.supplier_name)) {
+        descriptions.push(`Fournisseur: "${changes.supplier_name.old || 'inconnu'}" → "${changes.supplier_name.new || 'inconnu'}"`);
+      }
+      if (changes.country && isValidChange(changes.country)) {
+        descriptions.push(`Pays: ${changes.country.old || ''} → ${changes.country.new || ''}`);
+      }
+      if (changes.delivery_time && isValidChange(changes.delivery_time)) {
+        descriptions.push(`Délai: ${changes.delivery_time.old || 0} → ${changes.delivery_time.new || 0} jours`);
+      }
     } else if (entityType === 'supplier') {
-      if (changes.name) descriptions.push(`Nom: "${changes.name.old || 'vide'}" → "${changes.name.new}"`);
-      if (changes.country) descriptions.push(`Pays: ${changes.country.old || ''} → ${changes.country.new}`);
-      if (changes.contact) descriptions.push(`Contact: ${changes.contact.old || ''} → ${changes.contact.new}`);
-      if (changes.email) descriptions.push(`Email: ${changes.email.old || ''} → ${changes.email.new}`);
+      if (changes.name && isValidChange(changes.name)) {
+        descriptions.push(`Nom: "${changes.name.old || 'vide'}" → "${changes.name.new || 'vide'}"`);
+      }
+      if (changes.country && isValidChange(changes.country)) {
+        descriptions.push(`Pays: ${changes.country.old || ''} → ${changes.country.new || ''}`);
+      }
+      if (changes.contact && isValidChange(changes.contact)) {
+        descriptions.push(`Contact: ${changes.contact.old || ''} → ${changes.contact.new || ''}`);
+      }
+      if (changes.email && isValidChange(changes.email)) {
+        descriptions.push(`Email: ${changes.email.old || ''} → ${changes.email.new || ''}`);
+      }
     } else if (entityType === 'comment') {
-      if (changes.content) descriptions.push(`Contenu: "${changes.content.old || 'vide'}" → "${changes.content.new}"`);
+      if (changes.content && isValidChange(changes.content)) {
+        descriptions.push(`Contenu: "${changes.content.old || 'vide'}" → "${changes.content.new || 'vide'}"`);
+      }
     }
 
     // Si aucun champ connu n'est trouvé, afficher tous les changements
     if (descriptions.length === 0) {
       Object.keys(changes).forEach(key => {
         const change = changes[key];
-        if (typeof change === 'object' && change.old !== undefined && change.new !== undefined) {
-          descriptions.push(`${key}: ${change.old} → ${change.new}`);
+        if (isValidChange(change)) {
+          descriptions.push(`${key}: ${change.old || ''} → ${change.new || ''}`);
         }
       });
     }
 
-    return descriptions;
+    return descriptions.length > 0 ? descriptions : null;
   };
 
   if (isLoading) {
