@@ -14,18 +14,7 @@ export async function GET() {
 
     const { data: requests, error } = await supabase
       .from('supplier_requests')
-      .select(`
-        *,
-        projects:project_id (
-          id,
-          name
-        ),
-        users:user_id (
-          id,
-          email,
-          full_name
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -36,7 +25,32 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({ data: requests });
+    // Enrichir avec les données des projets et utilisateurs
+    const enrichedRequests = await Promise.all(
+      (requests || []).map(async (request) => {
+        // Récupérer le projet
+        const { data: project } = await supabase
+          .from('projects' as any)
+          .select('id, name')
+          .eq('id', request.project_id)
+          .single();
+
+        // Récupérer l'utilisateur depuis auth.users
+        const { data: user } = await supabase.auth.admin.getUserById(request.user_id);
+
+        return {
+          ...request,
+          projects: project,
+          users: user?.user ? {
+            id: user.user.id,
+            email: user.user.email,
+            full_name: user.user.user_metadata?.full_name || user.user.email,
+          } : null,
+        };
+      })
+    );
+
+    return NextResponse.json({ data: enrichedRequests });
   } catch (error: any) {
     console.error('Error in supplier-requests API:', error);
     return NextResponse.json(
