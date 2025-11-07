@@ -24,6 +24,9 @@ interface Material {
   unitPrice?: number;
   totalPrice?: number;
   notes?: string;
+  description?: string;
+  images?: string[];
+  supplierComments?: string;
 }
 
 interface SupplierRequest {
@@ -67,6 +70,10 @@ const translations = {
     notFound: 'Demande introuvable',
     currency: 'Devise',
     optional: 'optionnel',
+    description: 'Description',
+    images: 'Images',
+    addImage: 'Ajouter une image',
+    supplierComments: 'Commentaires fournisseur',
   },
   en: {
     title: 'Quotation Request',
@@ -96,6 +103,10 @@ const translations = {
     notFound: 'Request not found',
     currency: 'Currency',
     optional: 'optional',
+    description: 'Description',
+    images: 'Images',
+    addImage: 'Add image',
+    supplierComments: 'Supplier comments',
   },
   zh: {
     title: '报价请求',
@@ -125,6 +136,10 @@ const translations = {
     notFound: '未找到请求',
     currency: '货币',
     optional: '可选',
+    description: '描述',
+    images: '图片',
+    addImage: '添加图片',
+    supplierComments: '供应商备注',
   },
 };
 

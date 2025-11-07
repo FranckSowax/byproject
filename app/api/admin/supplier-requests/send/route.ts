@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Récupérer les matériaux du projet
     const { data: materials, error: materialsError } = await supabase
-      .from('materials')
+      .from('materials' as any)
       .select('*')
       .eq('project_id', supplierRequest.project_id);
 
@@ -44,21 +44,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Traduire les matériaux (appel API de traduction)
-    const translateResponse = await fetch(
+    // Traduire les matériaux en anglais
+    const translateResponseEn = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/translate`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ materials }),
+        body: JSON.stringify({ materials, targetLanguage: 'en' }),
       }
     );
 
-    if (!translateResponse.ok) {
-      throw new Error('Translation failed');
+    if (!translateResponseEn.ok) {
+      throw new Error('English translation failed');
     }
 
-    const { materialsEn, materialsZh } = await translateResponse.json();
+    const { translations: materialsEn } = await translateResponseEn.json();
+
+    // Traduire les matériaux en chinois
+    const translateResponseZh = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/translate`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ materials, targetLanguage: 'zh' }),
+      }
+    );
+
+    if (!translateResponseZh.ok) {
+      throw new Error('Chinese translation failed');
+    }
+
+    const { translations: materialsZh } = await translateResponseZh.json();
 
     // Générer un token public
     const publicToken = nanoid(32);
