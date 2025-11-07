@@ -168,7 +168,7 @@ export default function SupplierQuotePage() {
 
   useEffect(() => {
     loadRequest();
-  }, [token]);
+  }, [token, language]);
 
   const loadRequest = async () => {
     try {

@@ -62,7 +62,7 @@ export async function GET(
     let materialsEn = supplierRequest.materials_translated_en;
     let materialsZh = supplierRequest.materials_translated_zh;
 
-    if (!materialsEn || materialsEn.length === 0) {
+    if (!materialsEn || (Array.isArray(materialsEn) && materialsEn.length === 0)) {
       // Translate to English on-demand
       try {
         const translateResponse = await fetch(
@@ -92,7 +92,7 @@ export async function GET(
       }
     }
 
-    if (!materialsZh || materialsZh.length === 0) {
+    if (!materialsZh || (Array.isArray(materialsZh) && materialsZh.length === 0)) {
       // Translate to Chinese on-demand
       try {
         const translateResponse = await fetch(
