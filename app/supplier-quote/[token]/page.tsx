@@ -424,20 +424,36 @@ export default function SupplierQuotePage() {
   };
 
   const handleMarkUnavailable = async (material: Material) => {
-    if (!currentSupplierId) {
-      toast.error(language === 'fr' ? 'Veuillez d\'abord ajouter un prix' : language === 'en' ? 'Please add a price first' : '请先添加价格');
-      return;
-    }
-
     try {
       const newUnavailableStatus = !material.unavailable;
+      
+      // If no supplier ID yet, create supplier first
+      let supplierId = currentSupplierId;
+      if (!supplierId) {
+        // Create a minimal supplier record
+        const { data: supplier, error: supplierError } = await supabase
+          .from('suppliers')
+          .upsert({
+            name: 'Supplier', // Placeholder, will be updated when they add a price
+            email: '',
+            country: 'China',
+          })
+          .select()
+          .single();
+
+        if (supplierError) throw supplierError;
+        
+        supplierId = supplier.id;
+        setCurrentSupplierId(supplierId);
+        localStorage.setItem(`supplier_id_${token}`, supplierId);
+      }
       
       // @ts-ignore - Table not in generated types yet
       const { error } = await supabase
         .from('supplier_material_availability')
         .upsert({
           material_id: material.id,
-          supplier_id: currentSupplierId,
+          supplier_id: supplierId,
           is_available: !newUnavailableStatus,
         });
 
