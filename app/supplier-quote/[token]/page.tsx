@@ -226,6 +226,11 @@ export default function SupplierQuotePage() {
             console.warn('Error loading availability:', availError);
           }
 
+          // Debug log
+          if (availability) {
+            console.log(`Material ${material.name}: is_available=${availability.is_available}, unavailable=${availability.is_available === false}`);
+          }
+
           return {
             ...material,
             prices: prices?.map((p: any) => ({
@@ -236,7 +241,7 @@ export default function SupplierQuotePage() {
               supplier_name: p.suppliers?.name || '',
               variations: p.variations || [],
             })) || [],
-            unavailable: availability ? !availability.is_available : false,
+            unavailable: availability ? availability.is_available === false : false,
           };
         })
       );
@@ -463,8 +468,9 @@ export default function SupplierQuotePage() {
         ? (language === 'fr' ? 'Matériau marqué comme non disponible' : language === 'en' ? 'Material marked as unavailable' : '材料标记为不可用')
         : (language === 'fr' ? 'Matériau marqué comme disponible' : language === 'en' ? 'Material marked as available' : '材料标记为可用');
       
+      console.log(`Marked ${material.name} as ${newUnavailableStatus ? 'unavailable' : 'available'}, reloading...`);
       toast.success(message);
-      loadRequest(); // Reload to update
+      await loadRequest(); // Reload to update
     } catch (error) {
       console.error('Error marking material unavailable:', error);
       toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
