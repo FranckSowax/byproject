@@ -3055,7 +3055,7 @@ export default function ProjectPage() {
 
                           {/* Actions - Responsive */}
                           {/* Hide edit buttons for Twinsk admin prices */}
-                          {price.supplier_name !== 'Twinsk Company Ltd' && (
+                          {price.supplier?.name !== 'Twinsk Company Ltd' && (
                             <div className="flex gap-2 flex-col sm:flex-row">
                               <Button
                                 variant="outline"

@@ -220,7 +220,17 @@ export default function AdminQuotationsPage() {
         }
       }
 
-      // 3. Insert prices with margin into prices table for each material
+      // 3. Get exchange rate for CNY to FCFA conversion
+      const { data: exchangeRate } = await supabase
+        .from('exchange_rates')
+        .select('rate')
+        .eq('from_currency', 'CNY')
+        .eq('to_currency', 'FCFA')
+        .single();
+
+      const cnyToFcfaRate = exchangeRate?.rate || 95; // Default rate if not found
+
+      // 4. Insert prices with margin into prices table for each material
       const pricesWithMargin = selectedQuote.quoted_materials
         .filter(m => m.prices && m.prices.length > 0)
         .flatMap(material => {
@@ -236,6 +246,15 @@ export default function AdminQuotationsPage() {
             const materialMargin = getMarginForMaterial(material.id);
             const finalAmount = calculatePriceWithMargin(price.amount, materialMargin);
             
+            // Calculate FCFA conversion
+            let convertedAmount = finalAmount;
+            if (price.currency === 'CNY') {
+              convertedAmount = finalAmount * cnyToFcfaRate;
+            } else if (price.currency !== 'FCFA') {
+              // For other currencies, use same rate or fetch specific rate
+              convertedAmount = finalAmount * cnyToFcfaRate;
+            }
+            
             // Prepare variations with margin
             const variationsWithMargin = price.variations?.map(v => ({
               ...v,
@@ -249,6 +268,7 @@ export default function AdminQuotationsPage() {
               country: selectedQuote.supplier_country,
               amount: finalAmount,
               currency: price.currency,
+              converted_amount: convertedAmount,
               notes: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${materialMargin}%\nPrix original: ${price.amount} ${price.currency}`,
               notes_fr: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${materialMargin}%\nPrix original: ${price.amount} ${price.currency}`,
               variations: variationsWithMargin,
