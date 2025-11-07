@@ -2993,18 +2993,29 @@ export default function ProjectPage() {
                           <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-xl border-2 border-green-200">
                             <div className="flex flex-col gap-2">
                               <p className="text-sm font-medium text-gray-600">Prix</p>
-                              <div className="flex items-baseline gap-3 flex-wrap">
-                                <span className="text-4xl md:text-5xl font-bold text-green-600">
-                                  {price.amount.toLocaleString()}
-                                </span>
-                                <span className="text-2xl font-semibold text-green-600">
-                                  {price.currency}
-                                </span>
-                              </div>
-                              {price.currency !== 'FCFA' && price.converted_amount && (
-                                <p className="text-lg text-gray-600 font-medium">
-                                  ≈ {Math.round(price.converted_amount).toLocaleString()} FCFA
-                                </p>
+                              {price.currency !== 'FCFA' && price.converted_amount ? (
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-baseline gap-3 flex-wrap">
+                                    <span className="text-4xl md:text-5xl font-bold text-green-600">
+                                      {Math.round(price.converted_amount).toLocaleString()}
+                                    </span>
+                                    <span className="text-2xl font-semibold text-green-600">
+                                      FCFA
+                                    </span>
+                                  </div>
+                                  <p className="text-base text-gray-500">
+                                    {price.amount.toLocaleString()} {price.currency}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="flex items-baseline gap-3 flex-wrap">
+                                  <span className="text-4xl md:text-5xl font-bold text-green-600">
+                                    {price.amount.toLocaleString()}
+                                  </span>
+                                  <span className="text-2xl font-semibold text-green-600">
+                                    {price.currency}
+                                  </span>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -3015,16 +3026,6 @@ export default function ProjectPage() {
                               <p className="text-sm font-bold text-red-600 flex items-center gap-2">
                                 <TrendingUp className="h-5 w-5" />
                                 +{savings.toLocaleString()} FCFA par rapport au meilleur prix
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Notes */}
-                          {price.notes && (
-                            <div className="bg-gray-50 p-3 rounded">
-                              <p className="text-sm font-medium mb-1">📝 Notes:</p>
-                              <p className="text-sm text-gray-700 whitespace-pre-line">
-                                {price.notes}
                               </p>
                             </div>
                           )}
