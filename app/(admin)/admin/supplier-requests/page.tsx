@@ -29,10 +29,8 @@ import {
   Calendar,
   ExternalLink
 } from 'lucide-react';
-import { createServiceClient } from '@/lib/supabase/service';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { nanoid } from 'nanoid';
 
 interface SupplierRequest {
   id: string;
@@ -101,22 +99,17 @@ export default function AdminSupplierRequestsPage() {
 
   const loadRequests = async () => {
     try {
-      const supabase = createServiceClient();
+      const response = await fetch('/api/admin/supplier-requests');
       
-      const { data, error } = await supabase
-        .from('supplier_requests' as any)
-        .select(`
-          *,
-          projects:project_id (name),
-          users:user_id (email, full_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to fetch requests');
+      }
       
+      const { data } = await response.json();
       setRequests(data || []);
     } catch (error) {
       console.error('Error loading requests:', error);
+      toast.error('Erreur lors du chargement des demandes');
     } finally {
       setLoading(false);
     }
@@ -124,58 +117,19 @@ export default function AdminSupplierRequestsPage() {
 
   const handleSendToSuppliers = async (requestId: string) => {
     try {
-      const supabase = createServiceClient();
-      
-      // Récupérer la demande avec les matériaux du projet
-      const { data: request, error: requestError } = await supabase
-        .from('supplier_requests' as any)
-        .select('*, projects:project_id(id, name)')
-        .eq('id', requestId)
-        .single();
-
-      if (requestError) throw requestError;
-
-      // Récupérer les matériaux du projet
-      const { data: materials, error: materialsError } = await supabase
-        .from('materials')
-        .select('*')
-        .eq('project_id', request.project_id);
-
-      if (materialsError) throw materialsError;
-
-      // Traduire les matériaux (appel API de traduction)
-      const translateResponse = await fetch('/api/translate', {
-        method: 'PUT',
+      const response = await fetch('/api/admin/supplier-requests/send', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ materials }),
+        body: JSON.stringify({ requestId }),
       });
 
-      if (!translateResponse.ok) throw new Error('Translation failed');
-      
-      const { materialsEn, materialsZh } = await translateResponse.json();
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to send to suppliers');
+      }
 
-      // Générer un token public
-      const publicToken = nanoid(32);
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30); // 30 jours
-
-      // Mettre à jour la demande
-      const { error: updateError } = await supabase
-        .from('supplier_requests' as any)
-        .update({
-          status: 'sent',
-          public_token: publicToken,
-          expires_at: expiresAt.toISOString(),
-          materials_data: materials,
-          materials_translated_en: materialsEn,
-          materials_translated_zh: materialsZh,
-          total_materials: materials.length,
-        })
-        .eq('id', requestId);
-
-      if (updateError) throw updateError;
-
-      toast.success('Demande envoyée aux fournisseurs !');
+      const { message } = await response.json();
+      toast.success(message || 'Demande envoyée aux fournisseurs !');
       loadRequests(); // Recharger la liste
     } catch (error: any) {
       console.error('Error sending to suppliers:', error);
