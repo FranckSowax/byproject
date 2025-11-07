@@ -3,6 +3,13 @@ import { createServiceClient } from '@/lib/supabase/service';
 
 export async function GET() {
   try {
+    // Log environment variables (without exposing values)
+    console.log('Environment check:', {
+      hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20) + '...',
+    });
+
     const supabase = createServiceClient();
 
     const { data: requests, error } = await supabase
