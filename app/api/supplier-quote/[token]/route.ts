@@ -5,11 +5,11 @@ import { createServiceClient } from '@/lib/supabase/service';
 // GET - Load supplier request by token
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const supabase = createServiceClient();
-    const { token } = params;
+    const { token } = await params;
 
     // Get supplier request with public token - using service role to bypass RLS
     const { data: supplierRequest, error } = await supabase
@@ -143,11 +143,11 @@ export async function GET(
 // POST - Save or submit quote
 export async function POST(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const supabase = createServiceClient();
-    const { token } = params;
+    const { token } = await params;
     const body = await request.json();
     const { supplierInfo, materials, currency, notes, status } = body;
 
