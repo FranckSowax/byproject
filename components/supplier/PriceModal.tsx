@@ -238,18 +238,10 @@ export function PriceModal({
         variations: existingPrice.variations || [],
       }));
     } else if (isOpen && !existingPrice) {
-      // Reset form for new price
-      setFormData({
-        country: 'China',
-        supplierType: 'new',
-        supplierName: '',
-        contactName: '',
-        phone: '',
-        whatsapp: '',
-        email: '',
-        wechat: '',
+      // Only reset price-specific fields, keep supplier info
+      setFormData(prev => ({
+        ...prev,
         amount: '',
-        currency: 'CNY',
         notes: '',
         variations: [],
         shippingLength: '',
@@ -258,7 +250,7 @@ export function PriceModal({
         shippingWeight: '',
         unitsPerPackage: '1',
         productImages: [],
-      });
+      }));
     }
   }, [isOpen, existingPrice]);
 
@@ -271,19 +263,10 @@ export function PriceModal({
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
-      onClose();
-      // Reset form
-      setFormData({
-        country: 'China',
-        supplierType: 'new',
-        supplierName: '',
-        contactName: '',
-        phone: '',
-        whatsapp: '',
-        email: '',
-        wechat: '',
+      // Only reset price-specific fields, keep supplier info for next price
+      setFormData(prev => ({
+        ...prev,
         amount: '',
-        currency: 'CNY',
         notes: '',
         variations: [],
         shippingLength: '',
@@ -292,7 +275,8 @@ export function PriceModal({
         shippingWeight: '',
         unitsPerPackage: '1',
         productImages: [],
-      });
+      }));
+      onClose();
     } catch (error) {
       console.error('Error submitting price:', error);
     } finally {
