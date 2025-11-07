@@ -584,7 +584,8 @@ export default function AdminQuotationsPage() {
                             </div>
                           ))}
                         </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 </CardContent>
               </Card>
