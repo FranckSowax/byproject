@@ -58,6 +58,13 @@ interface PriceModalProps {
   materialName: string;
   onSubmit: (data: PriceFormData) => Promise<void>;
   language: 'fr' | 'en' | 'zh';
+  supplierInfo?: {
+    companyName: string;
+    contactName: string;
+    email: string;
+    phone: string;
+    country: string;
+  };
   existingPrice?: {
     amount: number;
     currency: string;
@@ -201,18 +208,19 @@ export function PriceModal({
   materialName,
   onSubmit,
   language,
+  supplierInfo,
   existingPrice,
 }: PriceModalProps) {
   const t = translations[language];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<PriceFormData>({
-    country: 'China',
-    supplierType: 'new',
-    supplierName: '',
-    contactName: '',
-    phone: '',
+    country: supplierInfo?.country || 'China',
+    supplierType: supplierInfo?.companyName ? 'existing' : 'new',
+    supplierName: supplierInfo?.companyName || '',
+    contactName: supplierInfo?.contactName || '',
+    phone: supplierInfo?.phone || '',
     whatsapp: '',
-    email: '',
+    email: supplierInfo?.email || '',
     wechat: '',
     amount: '',
     currency: 'CNY',

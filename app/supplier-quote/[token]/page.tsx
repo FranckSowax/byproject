@@ -156,11 +156,22 @@ export default function SupplierQuotePage() {
 
   const t = translations[language];
 
-  // Load supplier ID from localStorage on mount
+  // Load supplier ID and info from localStorage on mount
   useEffect(() => {
     const storedSupplierId = localStorage.getItem(`supplier_id_${token}`);
     if (storedSupplierId) {
       setCurrentSupplierId(storedSupplierId);
+    }
+    
+    // Load supplier info from localStorage
+    const storedSupplierInfo = localStorage.getItem(`supplier_info_${token}`);
+    if (storedSupplierInfo) {
+      try {
+        const parsedInfo = JSON.parse(storedSupplierInfo);
+        setSupplierInfo(parsedInfo);
+      } catch (error) {
+        console.error('Error parsing stored supplier info:', error);
+      }
     }
   }, [token]);
 
@@ -371,6 +382,17 @@ export default function SupplierQuotePage() {
       // Store current supplier ID for filtering prices
       setCurrentSupplierId(supplier.id);
       localStorage.setItem(`supplier_id_${token}`, supplier.id);
+      
+      // Store supplier info for auto-fill on next visit
+      const supplierInfoToSave = {
+        companyName: priceData.supplierName,
+        contactName: priceData.contactName,
+        email: priceData.email,
+        phone: priceData.phone,
+        country: priceData.country,
+      };
+      localStorage.setItem(`supplier_info_${token}`, JSON.stringify(supplierInfoToSave));
+      setSupplierInfo(supplierInfoToSave);
 
       // Create main price with French translation
       const { error: priceError } = await supabase
@@ -790,6 +812,7 @@ export default function SupplierQuotePage() {
         materialName={selectedMaterial?.name || ''}
         onSubmit={handleSubmitPrice}
         language={language}
+        supplierInfo={supplierInfo}
         existingPrice={selectedMaterial?.prices && selectedMaterial.prices.length > 0 ? {
           amount: selectedMaterial.prices[0].amount,
           currency: selectedMaterial.prices[0].currency,
