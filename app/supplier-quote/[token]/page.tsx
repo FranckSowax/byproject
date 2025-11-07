@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Globe, Save, Send, CheckCircle, AlertCircle, Building2, Package, DollarSign } from 'lucide-react';
+import { Globe, Save, Send, CheckCircle, AlertCircle, Building2, Package, DollarSign, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Language = 'fr' | 'en' | 'zh';
@@ -492,21 +492,80 @@ export default function SupplierQuotePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {materials.map((material, index) => (
-                <div key={material.id} className="border rounded-lg p-4 bg-gray-50">
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                    <div className="md:col-span-2">
+                <div key={material.id} className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
+                  {/* Material Header with Image */}
+                  <div className="flex items-start gap-4 mb-4">
+                    {/* Image Preview */}
+                    {material.images && material.images.length > 0 ? (
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 border-blue-200 shadow-sm">
+                        <img 
+                          src={material.images[0]} 
+                          alt={material.name}
+                          className="w-full h-full object-cover"
+                        />
+                        {material.images.length > 1 && (
+                          <div className="absolute bottom-0 right-0 bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-tl font-medium">
+                            +{material.images.length - 1}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <ImageIcon className="h-10 w-10 text-blue-400" />
+                      </div>
+                    )}
+                    
+                    {/* Material Info */}
+                    <div className="flex-1 min-w-0">
                       <Label className="text-xs text-gray-600">{t.material}</Label>
-                      <p className="font-semibold text-sm mt-1">
+                      <p className="font-bold text-lg mt-1 text-gray-900">
                         {language === 'zh' || language === 'en' ? material.translatedName : material.name}
                       </p>
                       {material.category && (
-                        <Badge variant="secondary" className="mt-1 text-xs">
+                        <Badge variant="secondary" className="mt-2 text-xs">
                           {material.category}
                         </Badge>
                       )}
+                      {material.description && (
+                        <p className="text-sm text-gray-600 mt-2 italic">
+                          {material.description}
+                        </p>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Image Gallery (if multiple images) */}
+                  {material.images && material.images.length > 1 && (
+                    <div className="mb-4 pb-4 border-b">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ImageIcon className="h-4 w-4 text-blue-600" />
+                        <Label className="text-xs font-semibold text-gray-700">
+                          {t.images} ({material.images.length})
+                        </Label>
+                      </div>
+                      <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                        {material.images.map((imageUrl, imgIndex) => (
+                          <div 
+                            key={imgIndex}
+                            className="relative aspect-square rounded-md overflow-hidden border border-gray-200 hover:border-blue-400 transition-all cursor-pointer group"
+                            onClick={() => window.open(imageUrl, '_blank')}
+                          >
+                            <img 
+                              src={imageUrl} 
+                              alt={`${material.name} - ${imgIndex + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pricing Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <Label className="text-xs text-gray-600">{t.quantity}</Label>
                       <p className="font-semibold mt-1">{material.quantity}</p>
