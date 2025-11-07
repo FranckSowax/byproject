@@ -400,13 +400,16 @@ export default function SupplierQuotePage() {
         prevMaterials.map(m => 
           m.id === selectedMaterial?.id 
             ? { 
-                ...m, 
+                ...m,
+                // Keep existing unavailable status
+                unavailable: m.unavailable,
+                // Update price (replace existing)
                 prices: [{
                   id: Date.now(), // Temporary ID
                   amount: parseFloat(priceData.amount),
                   currency: priceData.currency,
                   country: priceData.country,
-                  supplier_name: priceData.supplierName,
+                  supplier_name: priceData.supplierName || supplier?.name || '',
                   variations: variationsFr,
                 }]
               }

@@ -227,7 +227,8 @@ export function PriceModal({
   });
 
   const handleSubmit = async () => {
-    if (!formData.supplierName || !formData.contactName || !formData.amount) {
+    // Only require amount - supplier info already exists
+    if (!formData.amount) {
       return;
     }
 
@@ -319,8 +320,8 @@ export function PriceModal({
             </RadioGroup>
           </div>
 
-          {/* Supplier Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Supplier Info - Hidden, already created */}
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="supplierName">{t.supplierName} {t.required}</Label>
               <Input
@@ -339,10 +340,10 @@ export function PriceModal({
                 className="mt-1"
               />
             </div>
-          </div>
+          </div> */}
 
-          {/* Contact Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Contact Info - Hidden */}
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="phone">{t.phone}</Label>
               <Input
@@ -361,9 +362,9 @@ export function PriceModal({
                 className="mt-1"
               />
             </div>
-          </div>
+          </div> */}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="email">{t.email}</Label>
               <Input
@@ -383,7 +384,7 @@ export function PriceModal({
                 className="mt-1"
               />
             </div>
-          </div>
+          </div> */}
 
           {/* Price */}
           <div className="grid grid-cols-2 gap-4">
@@ -631,7 +632,7 @@ export function PriceModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || !formData.supplierName || !formData.contactName || !formData.amount}
+            disabled={isSubmitting || !formData.amount}
           >
             {isSubmitting ? '...' : t.add}
           </Button>
