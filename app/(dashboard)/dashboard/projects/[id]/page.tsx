@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ShareProjectDialog } from "@/components/collaboration/ShareProjectDialog";
 import { MaterialComments } from "@/components/collaboration/MaterialComments";
 import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
+import { ImageUpload } from "@/components/project/ImageUpload";
 import {
   Dialog,
   DialogContent,
@@ -71,6 +72,7 @@ export default function ProjectPage() {
     weight: null,
     volume: null,
     specs: {},
+    images: [],
   });
   
   // États pour la gestion des prix
@@ -623,6 +625,7 @@ export default function ProjectPage() {
           weight: newMaterial.weight,
           volume: newMaterial.volume,
           specs: newMaterial.specs || {},
+          images: newMaterial.images || [],
         });
 
       if (error) throw error;
@@ -638,6 +641,7 @@ export default function ProjectPage() {
         weight: null,
         volume: null,
         specs: {},
+        images: [],
       });
       loadMaterials(); // Recharger la liste
     } catch (error) {
@@ -1928,6 +1932,18 @@ export default function ProjectPage() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Images Upload */}
+          <div className="space-y-2">
+            <Label>Images</Label>
+            <ImageUpload
+              images={newMaterial.images || []}
+              onImagesChange={(images) => setNewMaterial({ ...newMaterial, images })}
+              maxImages={5}
+              bucket="project-materials"
+              path={params.id}
+            />
           </div>
 
           <DialogFooter>
