@@ -188,7 +188,39 @@ export default function AdminQuotationsPage() {
         projectMaterials?.map(m => [m.name.toLowerCase().trim(), m.id]) || []
       );
 
-      // 2. Insert prices with margin into prices table for each material
+      // 2. Find or create admin supplier "Twinsk Company Ltd"
+      const adminSupplierName = 'Twinsk Company Ltd';
+      let supplierId: string | null = null;
+      
+      // Try to find existing Twinsk supplier
+      const { data: existingSupplier } = await supabase
+        .from('suppliers')
+        .select('id')
+        .ilike('name', adminSupplierName)
+        .single();
+
+      if (existingSupplier) {
+        supplierId = existingSupplier.id;
+      } else {
+        // Create Twinsk admin supplier
+        const { data: newSupplier, error: supplierError } = await supabase
+          .from('suppliers')
+          .insert({
+            name: adminSupplierName,
+            email: 'admin@twinsk.com',
+            country: 'China',
+          })
+          .select('id')
+          .single();
+
+        if (supplierError) {
+          console.error('Error creating Twinsk supplier:', supplierError);
+        } else {
+          supplierId = newSupplier.id;
+        }
+      }
+
+      // 3. Insert prices with margin into prices table for each material
       const pricesWithMargin = selectedQuote.quoted_materials
         .filter(m => m.prices && m.prices.length > 0)
         .flatMap(material => {
@@ -213,7 +245,7 @@ export default function AdminQuotationsPage() {
 
             return {
               material_id: projectMaterialId, // Use the project material ID
-              supplier_id: null,
+              supplier_id: supplierId, // Twinsk Company Ltd
               country: selectedQuote.supplier_country,
               amount: finalAmount,
               currency: price.currency,

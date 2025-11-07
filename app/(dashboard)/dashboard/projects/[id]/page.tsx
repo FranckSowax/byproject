@@ -3054,29 +3054,32 @@ export default function ProjectPage() {
                           )}
 
                           {/* Actions - Responsive */}
-                          <div className="flex flex-wrap gap-2 pt-2 border-t">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setIsDetailViewOpen(false);
-                                handleEditPrice(price);
-                              }}
-                              className="flex-1 sm:flex-none"
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Éditer
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeletePrice(price.id)}
-                              className="flex-1 sm:flex-none text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Supprimer
-                            </Button>
-                          </div>
+                          {/* Hide edit buttons for Twinsk admin prices */}
+                          {price.supplier_name !== 'Twinsk Company Ltd' && (
+                            <div className="flex gap-2 flex-col sm:flex-row">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setIsDetailViewOpen(false);
+                                  handleEditPrice(price);
+                                }}
+                                className="flex-1 sm:flex-none"
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Éditer
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeletePrice(price.id)}
+                                className="flex-1 sm:flex-none text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Supprimer
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </Card>
                     );
