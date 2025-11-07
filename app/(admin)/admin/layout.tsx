@@ -27,7 +27,8 @@ import {
   Calendar,
   Download,
   Upload,
-  Activity
+  Activity,
+  FileCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -130,6 +131,13 @@ const adminNavigation = [
     title: 'Fournisseurs',
     items: [
       {
+        name: 'Quotations',
+        href: '/admin/quotations',
+        icon: FileCheck,
+        badge: null,
+        description: 'Cotations reçues'
+      },
+      {
         name: 'Cotations Chinoises',
         href: '/admin/supplier-requests',
         icon: Globe,
@@ -214,7 +222,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-6">
+        <nav className="flex-1 overflow-y-auto p-4 space-y-6 max-h-[calc(100vh-140px)]">
           {adminNavigation.map((section) => (
             <div key={section.title}>
               {!collapsed && (

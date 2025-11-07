@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,8 @@ import {
   DollarSign,
   Package,
   Send,
-  Eye
+  Eye,
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -81,6 +83,7 @@ interface SupplierQuote {
 }
 
 export default function AdminQuotationsPage() {
+  const router = useRouter();
   const [quotes, setQuotes] = useState<SupplierQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<SupplierQuote | null>(null);
@@ -137,7 +140,44 @@ export default function AdminQuotationsPage() {
     try {
       setIsSending(true);
 
-      // Update quote with margin and sent status
+      // 1. Insert prices with margin into prices table for each material
+      const pricesWithMargin = selectedQuote.quoted_materials
+        .filter(m => m.prices && m.prices.length > 0)
+        .flatMap(material => 
+          material.prices!.map(price => {
+            const finalAmount = calculatePriceWithMargin(price.amount, margin);
+            
+            // Prepare variations with margin
+            const variationsWithMargin = price.variations?.map(v => ({
+              ...v,
+              amount: calculatePriceWithMargin(parseFloat(v.amount), margin).toString(),
+              originalAmount: v.amount, // Keep original for reference
+            })) || [];
+
+            return {
+              material_id: material.id,
+              supplier_id: null, // Will be created if needed
+              country: selectedQuote.supplier_country,
+              amount: finalAmount,
+              currency: price.currency,
+              notes: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${margin}%\nPrix original: ${price.amount} ${price.currency}`,
+              notes_fr: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${margin}%\nPrix original: ${price.amount} ${price.currency}`,
+              variations: variationsWithMargin,
+            };
+          })
+        );
+
+      // Insert all prices
+      if (pricesWithMargin.length > 0) {
+        const { error: pricesError } = await supabase
+          .from('prices')
+          .insert(pricesWithMargin);
+
+        if (pricesError) throw pricesError;
+      }
+
+      // 2. Update quote with margin and sent status
+      // @ts-ignore
       const { error } = await supabase
         .from('supplier_quotes')
         .update({
@@ -149,7 +189,7 @@ export default function AdminQuotationsPage() {
 
       if (error) throw error;
 
-      toast.success('Cotation envoyée au client avec succès');
+      toast.success(`Cotation envoyée au client avec ${pricesWithMargin.length} prix ajoutés`);
       setIsViewModalOpen(false);
       loadQuotes();
     } catch (error) {
