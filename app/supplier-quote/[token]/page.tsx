@@ -50,6 +50,7 @@ interface Material {
   images: string[];
   supplierImages?: string[];
   prices?: Price[];
+  unavailable?: boolean;
 }
 
 interface SupplierRequest {
@@ -183,7 +184,7 @@ export default function SupplierQuotePage() {
         ? data.request.materials_translated_en
         : data.request.materials_data;
 
-      // Load prices for each material (only for current supplier)
+      // Load prices and availability for each material (only for current supplier)
       const materialsWithPrices = await Promise.all(
         (materialsData || []).map(async (material: Material) => {
           // Only load prices if we have a current supplier ID
@@ -191,9 +192,11 @@ export default function SupplierQuotePage() {
             return {
               ...material,
               prices: [],
+              unavailable: false,
             };
           }
 
+          // Load prices
           const { data: prices } = await supabase
             .from('prices')
             .select(`
@@ -209,6 +212,15 @@ export default function SupplierQuotePage() {
             .eq('material_id', material.id)
             .eq('supplier_id', currentSupplierId); // Filter by current supplier
 
+          // Load availability status
+          // @ts-ignore - Table not in generated types yet
+          const { data: availability } = await supabase
+            .from('supplier_material_availability')
+            .select('is_available')
+            .eq('material_id', material.id)
+            .eq('supplier_id', currentSupplierId)
+            .single();
+
           return {
             ...material,
             prices: prices?.map((p: any) => ({
@@ -219,6 +231,7 @@ export default function SupplierQuotePage() {
               supplier_name: p.suppliers?.name || '',
               variations: p.variations || [],
             })) || [],
+            unavailable: availability ? !availability.is_available : false,
           };
         })
       );
@@ -401,6 +414,38 @@ export default function SupplierQuotePage() {
       loadRequest(); // Reload to update
     } catch (error) {
       console.error('Error updating material:', error);
+      toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
+    }
+  };
+
+  const handleMarkUnavailable = async (material: Material) => {
+    if (!currentSupplierId) {
+      toast.error(language === 'fr' ? 'Veuillez d\'abord ajouter un prix' : language === 'en' ? 'Please add a price first' : '请先添加价格');
+      return;
+    }
+
+    try {
+      const newUnavailableStatus = !material.unavailable;
+      
+      // @ts-ignore - Table not in generated types yet
+      const { error } = await supabase
+        .from('supplier_material_availability')
+        .upsert({
+          material_id: material.id,
+          supplier_id: currentSupplierId,
+          is_available: !newUnavailableStatus,
+        });
+
+      if (error) throw error;
+
+      const message = newUnavailableStatus
+        ? (language === 'fr' ? 'Matériau marqué comme non disponible' : language === 'en' ? 'Material marked as unavailable' : '材料标记为不可用')
+        : (language === 'fr' ? 'Matériau marqué comme disponible' : language === 'en' ? 'Material marked as available' : '材料标记为可用');
+      
+      toast.success(message);
+      loadRequest(); // Reload to update
+    } catch (error) {
+      console.error('Error marking material unavailable:', error);
       toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
     }
   };
@@ -612,6 +657,7 @@ export default function SupplierQuotePage() {
                   onOpenDescription={() => handleOpenDescription(material)}
                   onOpenPrice={() => handleOpenPrice(material)}
                   onOpenEdit={() => handleOpenEdit(material)}
+                  onMarkUnavailable={() => handleMarkUnavailable(material)}
                 />
               ))}
             </div>

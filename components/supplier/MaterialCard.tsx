@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler, ChevronDown, ChevronUp, XCircle } from 'lucide-react';
 
 interface PriceVariation {
   id: string;
@@ -36,6 +36,7 @@ interface Material {
   images: string[];
   supplierImages?: string[];
   prices?: Price[];
+  unavailable?: boolean;
 }
 
 interface MaterialCardProps {
@@ -44,6 +45,7 @@ interface MaterialCardProps {
   onOpenDescription: () => void;
   onOpenPrice: () => void;
   onOpenEdit: () => void;
+  onMarkUnavailable?: () => void;
 }
 
 export function MaterialCard({
@@ -52,6 +54,7 @@ export function MaterialCard({
   onOpenDescription,
   onOpenPrice,
   onOpenEdit,
+  onMarkUnavailable,
 }: MaterialCardProps) {
   const [showAllPrices, setShowAllPrices] = useState(false);
   
@@ -62,10 +65,13 @@ export function MaterialCard({
   const hasPrice = material.prices && material.prices.length > 0;
   const mainPrice = hasPrice ? material.prices![0] : null;
   const hasVariations = mainPrice && mainPrice.variations && mainPrice.variations.length > 0;
+  const isUnavailable = material.unavailable;
 
   return (
     <div className={`group border-2 rounded-xl p-4 transition-all duration-200 ${
-      hasPrice 
+      isUnavailable
+        ? 'border-gray-300 bg-gray-100 opacity-60'
+        : hasPrice 
         ? 'border-green-300 bg-green-50/30 hover:border-green-400 hover:shadow-lg' 
         : 'border-gray-200 bg-white hover:border-[#5B5FC7] hover:shadow-lg'
     }`}>
@@ -124,12 +130,11 @@ export function MaterialCard({
           </div>
         </div>
 
-        {/* Middle: Prices */}
-        {hasPrice && mainPrice && (
+        {/* Middle: Prices or Unavailable */}
+        {!isUnavailable && hasPrice && mainPrice && (
           <div className="flex flex-col gap-1 px-4">
             {/* Main Price */}
             <div className="flex items-center gap-2 text-green-600 font-semibold">
-              <DollarSign className="h-4 w-4" />
               <span className="text-lg">
                 {mainPrice.amount} {mainPrice.currency}
               </span>
@@ -151,7 +156,7 @@ export function MaterialCard({
 
             {/* Variations (dropdown) */}
             {showAllPrices && hasVariations && (
-              <div className="flex flex-col gap-1 pl-6 mt-1">
+              <div className="flex flex-col gap-1 pl-2 mt-1">
                 {mainPrice.variations.map((variation) => {
                   const displayLabel = language === 'fr' && variation.labelFr
                     ? variation.labelFr
@@ -160,7 +165,6 @@ export function MaterialCard({
                   return (
                     <div key={variation.id} className="flex flex-col gap-0.5 text-green-500 text-sm">
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-3 w-3" />
                         <span className="font-medium">
                           {variation.amount} {mainPrice.currency}
                         </span>
@@ -175,6 +179,15 @@ export function MaterialCard({
                 })}
               </div>
             )}
+          </div>
+        )}
+        
+        {isUnavailable && (
+          <div className="flex items-center gap-2 px-4 text-gray-500 italic">
+            <XCircle className="h-5 w-5" />
+            <span className="text-sm">
+              {language === 'fr' ? 'Non disponible' : language === 'en' ? 'Unavailable' : '不可用'}
+            </span>
           </div>
         )}
 
@@ -212,6 +225,23 @@ export function MaterialCard({
           >
             <Edit className="h-4 w-4" />
           </Button>
+
+          {/* Unavailable Icon */}
+          {onMarkUnavailable && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-9 w-9 rounded-lg transition-colors ${
+                isUnavailable
+                  ? 'bg-gray-200 text-gray-600'
+                  : 'hover:bg-red-50 hover:text-red-600'
+              }`}
+              onClick={onMarkUnavailable}
+              title={language === 'fr' ? 'Ne peut pas fournir' : language === 'en' ? 'Cannot supply' : '无法供应'}
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
