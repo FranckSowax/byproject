@@ -395,8 +395,24 @@ export default function SupplierQuotePage() {
 
       toast.success(language === 'fr' ? 'Prix ajouté' : language === 'en' ? 'Price added' : '价格已添加');
       
-      // Reload materials to show the new price
-      loadRequest();
+      // Update local state immediately without reload
+      setMaterials(prevMaterials => 
+        prevMaterials.map(m => 
+          m.id === selectedMaterial?.id 
+            ? { 
+                ...m, 
+                prices: [{
+                  id: Date.now(), // Temporary ID
+                  amount: parseFloat(priceData.amount),
+                  currency: priceData.currency,
+                  country: priceData.country,
+                  supplier_name: priceData.supplierName,
+                  variations: variationsFr,
+                }]
+              }
+            : m
+        )
+      );
     } catch (error) {
       console.error('Error submitting price:', error);
       toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
@@ -468,9 +484,18 @@ export default function SupplierQuotePage() {
         ? (language === 'fr' ? 'Matériau marqué comme non disponible' : language === 'en' ? 'Material marked as unavailable' : '材料标记为不可用')
         : (language === 'fr' ? 'Matériau marqué comme disponible' : language === 'en' ? 'Material marked as available' : '材料标记为可用');
       
-      console.log(`Marked ${material.name} as ${newUnavailableStatus ? 'unavailable' : 'available'}, reloading...`);
+      console.log(`Marked ${material.name} as ${newUnavailableStatus ? 'unavailable' : 'available'}`);
+      
+      // Update local state immediately without reload
+      setMaterials(prevMaterials => 
+        prevMaterials.map(m => 
+          m.id === material.id 
+            ? { ...m, unavailable: newUnavailableStatus }
+            : m
+        )
+      );
+      
       toast.success(message);
-      await loadRequest(); // Reload to update
     } catch (error) {
       console.error('Error marking material unavailable:', error);
       toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
@@ -717,6 +742,13 @@ export default function SupplierQuotePage() {
         materialName={selectedMaterial?.name || ''}
         onSubmit={handleSubmitPrice}
         language={language}
+        existingPrice={selectedMaterial?.prices && selectedMaterial.prices.length > 0 ? {
+          amount: selectedMaterial.prices[0].amount,
+          currency: selectedMaterial.prices[0].currency,
+          country: selectedMaterial.prices[0].country,
+          notes: '',
+          variations: selectedMaterial.prices[0].variations,
+        } : undefined}
       />
 
       <EditMaterialModal
