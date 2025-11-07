@@ -384,9 +384,11 @@ export default function SupplierQuotePage() {
 
       if (supplierError) throw supplierError;
 
-      // Store current supplier ID for filtering prices
-      setCurrentSupplierId(supplier.id);
-      localStorage.setItem(`supplier_id_${token}`, supplier.id);
+      // Store current supplier ID for filtering prices (only if it's new)
+      if (!currentSupplierId) {
+        setCurrentSupplierId(supplier.id);
+        localStorage.setItem(`supplier_id_${token}`, supplier.id);
+      }
       
       // Store supplier info for auto-fill on next visit
       const supplierInfoToSave = {
