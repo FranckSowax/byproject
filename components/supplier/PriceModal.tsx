@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -206,7 +206,7 @@ export function PriceModal({
   const t = translations[language];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<PriceFormData>({
-    country: existingPrice?.country || 'China',
+    country: 'China',
     supplierType: 'new',
     supplierName: '',
     contactName: '',
@@ -214,10 +214,10 @@ export function PriceModal({
     whatsapp: '',
     email: '',
     wechat: '',
-    amount: existingPrice?.amount?.toString() || '',
-    currency: existingPrice?.currency || 'CNY',
-    notes: existingPrice?.notes || '',
-    variations: existingPrice?.variations || [],
+    amount: '',
+    currency: 'CNY',
+    notes: '',
+    variations: [],
     shippingLength: '',
     shippingWidth: '',
     shippingHeight: '',
@@ -225,6 +225,42 @@ export function PriceModal({
     unitsPerPackage: '1',
     productImages: [],
   });
+
+  // Update form when modal opens with existing price
+  useEffect(() => {
+    if (isOpen && existingPrice) {
+      setFormData(prev => ({
+        ...prev,
+        country: existingPrice.country || 'China',
+        amount: existingPrice.amount?.toString() || '',
+        currency: existingPrice.currency || 'CNY',
+        notes: existingPrice.notes || '',
+        variations: existingPrice.variations || [],
+      }));
+    } else if (isOpen && !existingPrice) {
+      // Reset form for new price
+      setFormData({
+        country: 'China',
+        supplierType: 'new',
+        supplierName: '',
+        contactName: '',
+        phone: '',
+        whatsapp: '',
+        email: '',
+        wechat: '',
+        amount: '',
+        currency: 'CNY',
+        notes: '',
+        variations: [],
+        shippingLength: '',
+        shippingWidth: '',
+        shippingHeight: '',
+        shippingWeight: '',
+        unitsPerPackage: '1',
+        productImages: [],
+      });
+    }
+  }, [isOpen, existingPrice]);
 
   const handleSubmit = async () => {
     // Only require amount - supplier info already exists
