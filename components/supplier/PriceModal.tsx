@@ -62,7 +62,8 @@ interface PriceModalProps {
     companyName: string;
     contactName: string;
     email: string;
-    phone: string;
+    whatsapp: string;
+    wechat: string;
     country: string;
   };
   existingPrice?: {
@@ -218,10 +219,10 @@ export function PriceModal({
     supplierType: supplierInfo?.companyName ? 'existing' : 'new',
     supplierName: supplierInfo?.companyName || '',
     contactName: supplierInfo?.contactName || '',
-    phone: supplierInfo?.phone || '',
-    whatsapp: '',
+    phone: '',
+    whatsapp: supplierInfo?.whatsapp || '',
     email: supplierInfo?.email || '',
-    wechat: '',
+    wechat: supplierInfo?.wechat || '',
     amount: '',
     currency: 'CNY',
     notes: '',

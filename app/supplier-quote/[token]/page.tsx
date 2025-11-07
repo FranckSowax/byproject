@@ -68,7 +68,8 @@ interface SupplierInfo {
   companyName: string;
   contactName: string;
   email: string;
-  phone: string;
+  whatsapp: string;
+  wechat: string;
   country: string;
 }
 
@@ -84,7 +85,8 @@ const translations = {
     companyName: 'Nom de l\'entreprise',
     contactName: 'Nom du contact',
     email: 'Email',
-    phone: 'Téléphone',
+    whatsapp: 'WhatsApp',
+    wechat: 'WeChat',
     country: 'Pays',
     submit: 'Soumettre la Cotation',
     submitted: 'Cotation Soumise',
@@ -102,7 +104,8 @@ const translations = {
     companyName: 'Company name',
     contactName: 'Contact name',
     email: 'Email',
-    phone: 'Phone',
+    whatsapp: 'WhatsApp',
+    wechat: 'WeChat',
     country: 'Country',
     submit: 'Submit Quotation',
     submitted: 'Quotation Submitted',
@@ -118,9 +121,10 @@ const translations = {
     materials: '材料清单',
     supplierInfo: '供应商信息',
     companyName: '公司名称',
-    contactName: '联系人姓名',
+    contactName: '联系人',
     email: '电子邮件',
-    phone: '电话',
+    whatsapp: 'WhatsApp',
+    wechat: '微信',
     country: '国家',
     submit: '提交报价',
     submitted: '报价已提交',
@@ -142,7 +146,8 @@ export default function SupplierQuotePage() {
     companyName: '',
     contactName: '',
     email: '',
-    phone: '',
+    whatsapp: '',
+    wechat: '',
     country: 'China',
   });
   const [submitted, setSubmitted] = useState(false);
@@ -388,7 +393,8 @@ export default function SupplierQuotePage() {
         companyName: priceData.supplierName,
         contactName: priceData.contactName,
         email: priceData.email,
-        phone: priceData.phone,
+        whatsapp: priceData.whatsapp,
+        wechat: priceData.wechat,
         country: priceData.country,
       };
       localStorage.setItem(`supplier_info_${token}`, JSON.stringify(supplierInfoToSave));
@@ -746,12 +752,23 @@ export default function SupplierQuotePage() {
                 />
               </div>
               <div>
-                <Label htmlFor="phone">{t.phone}</Label>
+                <Label htmlFor="whatsapp">{t.whatsapp}</Label>
                 <Input
-                  id="phone"
-                  value={supplierInfo.phone}
-                  onChange={(e) => setSupplierInfo({ ...supplierInfo, phone: e.target.value })}
+                  id="whatsapp"
+                  value={supplierInfo.whatsapp}
+                  onChange={(e) => setSupplierInfo({ ...supplierInfo, whatsapp: e.target.value })}
                   className="mt-1"
+                  placeholder="+86 138 xxxx xxxx"
+                />
+              </div>
+              <div>
+                <Label htmlFor="wechat">{t.wechat}</Label>
+                <Input
+                  id="wechat"
+                  value={supplierInfo.wechat}
+                  onChange={(e) => setSupplierInfo({ ...supplierInfo, wechat: e.target.value })}
+                  className="mt-1"
+                  placeholder="WeChat ID"
                 />
               </div>
             </div>
