@@ -5,12 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler, ChevronDown, ChevronUp } from 'lucide-react';
 
+interface PriceVariation {
+  id: string;
+  label: string;
+  labelFr?: string;
+  amount: string;
+  notes: string;
+  notesFr?: string;
+}
+
 interface Price {
   id: number;
   amount: number;
   currency: string;
   supplier_name: string;
   country: string;
+  variations: PriceVariation[];
 }
 
 interface Material {
@@ -51,7 +61,7 @@ export function MaterialCard({
 
   const hasPrice = material.prices && material.prices.length > 0;
   const mainPrice = hasPrice ? material.prices![0] : null;
-  const hasMultiplePrices = material.prices && material.prices.length > 1;
+  const hasVariations = mainPrice && mainPrice.variations && mainPrice.variations.length > 0;
 
   return (
     <div className={`group border-2 rounded-xl p-4 transition-all duration-200 ${
@@ -123,7 +133,7 @@ export function MaterialCard({
               <span className="text-lg">
                 {mainPrice.amount} {mainPrice.currency}
               </span>
-              {hasMultiplePrices && (
+              {hasVariations && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -139,17 +149,30 @@ export function MaterialCard({
               )}
             </div>
 
-            {/* Other Prices (dropdown) */}
-            {showAllPrices && hasMultiplePrices && (
+            {/* Variations (dropdown) */}
+            {showAllPrices && hasVariations && (
               <div className="flex flex-col gap-1 pl-6 mt-1">
-                {material.prices!.slice(1).map((price) => (
-                  <div key={price.id} className="flex items-center gap-2 text-green-500 text-sm">
-                    <DollarSign className="h-3 w-3" />
-                    <span>
-                      {price.amount} {price.currency}
-                    </span>
-                  </div>
-                ))}
+                {mainPrice.variations.map((variation) => {
+                  const displayLabel = language === 'fr' && variation.labelFr
+                    ? variation.labelFr
+                    : variation.label;
+                  
+                  return (
+                    <div key={variation.id} className="flex flex-col gap-0.5 text-green-500 text-sm">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-3 w-3" />
+                        <span className="font-medium">
+                          {variation.amount} {mainPrice.currency}
+                        </span>
+                        {displayLabel && (
+                          <span className="text-xs text-gray-600">
+                            ({displayLabel})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

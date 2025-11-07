@@ -18,12 +18,22 @@ import { createClient } from '@/lib/supabase/client';
 
 type Language = 'fr' | 'en' | 'zh';
 
+interface PriceVariation {
+  id: string;
+  label: string;
+  labelFr?: string;
+  amount: string;
+  notes: string;
+  notesFr?: string;
+}
+
 interface Price {
   id: number;
   amount: number;
   currency: string;
   supplier_name: string;
   country: string;
+  variations: PriceVariation[];
 }
 
 interface Material {
@@ -135,6 +145,7 @@ export default function SupplierQuotePage() {
     country: 'China',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [currentSupplierId, setCurrentSupplierId] = useState<string | null>(null);
 
   // Modal states
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
@@ -144,9 +155,17 @@ export default function SupplierQuotePage() {
 
   const t = translations[language];
 
+  // Load supplier ID from localStorage on mount
+  useEffect(() => {
+    const storedSupplierId = localStorage.getItem(`supplier_id_${token}`);
+    if (storedSupplierId) {
+      setCurrentSupplierId(storedSupplierId);
+    }
+  }, [token]);
+
   useEffect(() => {
     loadRequest();
-  }, [token, language]);
+  }, [token, language, currentSupplierId]);
 
   const loadRequest = async () => {
     try {
@@ -164,9 +183,17 @@ export default function SupplierQuotePage() {
         ? data.request.materials_translated_en
         : data.request.materials_data;
 
-      // Load prices for each material
+      // Load prices for each material (only for current supplier)
       const materialsWithPrices = await Promise.all(
         (materialsData || []).map(async (material: Material) => {
+          // Only load prices if we have a current supplier ID
+          if (!currentSupplierId) {
+            return {
+              ...material,
+              prices: [],
+            };
+          }
+
           const { data: prices } = await supabase
             .from('prices')
             .select(`
@@ -174,11 +201,13 @@ export default function SupplierQuotePage() {
               amount,
               currency,
               country,
+              variations,
               suppliers (
                 name
               )
             `)
-            .eq('material_id', material.id);
+            .eq('material_id', material.id)
+            .eq('supplier_id', currentSupplierId); // Filter by current supplier
 
           return {
             ...material,
@@ -188,11 +217,11 @@ export default function SupplierQuotePage() {
               currency: p.currency,
               country: p.country,
               supplier_name: p.suppliers?.name || '',
+              variations: p.variations || [],
             })) || [],
           };
         })
       );
-
       setMaterials(materialsWithPrices);
     } catch (error) {
       console.error('Error loading request:', error);
@@ -316,6 +345,10 @@ export default function SupplierQuotePage() {
 
       if (supplierError) throw supplierError;
 
+      // Store current supplier ID for filtering prices
+      setCurrentSupplierId(supplier.id);
+      localStorage.setItem(`supplier_id_${token}`, supplier.id);
+
       // Create main price with French translation
       const { error: priceError } = await supabase
         .from('prices')
@@ -338,7 +371,9 @@ export default function SupplierQuotePage() {
       }
 
       toast.success(language === 'fr' ? 'Prix ajouté' : language === 'en' ? 'Price added' : '价格已添加');
-      loadRequest(); // Reload to update
+      
+      // Reload materials to show the new price
+      loadRequest();
     } catch (error) {
       console.error('Error submitting price:', error);
       toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
