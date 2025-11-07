@@ -214,12 +214,17 @@ export default function SupplierQuotePage() {
 
           // Load availability status
           // @ts-ignore - Table not in generated types yet
-          const { data: availability } = await supabase
+          const { data: availability, error: availError } = await supabase
             .from('supplier_material_availability')
             .select('is_available')
             .eq('material_id', material.id)
             .eq('supplier_id', currentSupplierId)
-            .single();
+            .maybeSingle();
+
+          // Ignore 406 errors - table might not be accessible yet
+          if (availError && availError.code !== 'PGRST116') {
+            console.warn('Error loading availability:', availError);
+          }
 
           return {
             ...material,
