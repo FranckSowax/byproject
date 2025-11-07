@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, History, TrendingUp, Shield } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, UserCircle, History, TrendingUp, Shield } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -2946,7 +2946,7 @@ export default function ProjectPage() {
                                   <p className="font-bold text-lg text-gray-800 mb-1">{price.supplier.name}</p>
                                   {price.supplier.contact_name && (
                                     <p className="text-sm text-gray-600 mb-3 flex items-center gap-2">
-                                      <User className="h-4 w-4" />
+                                      <UserCircle className="h-4 w-4" />
                                       {price.supplier.contact_name}
                                     </p>
                                   )}

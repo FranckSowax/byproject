@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Shield, Calendar } from "lucide-react";
+import { UserCircle, Mail, Shield, Calendar } from "lucide-react";
 
 interface MockUser {
   id: string;
@@ -43,7 +43,7 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                <User className="h-5 w-5 text-blue-600" />
+                <UserCircle className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Nom complet</p>
