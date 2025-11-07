@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
     // Keep ignoreBuildErrors for now until all types are fixed
     ignoreBuildErrors: true,
   },
+  async redirects() {
+    return [
+      {
+        source: '/admin/supplier-request',
+        destination: '/admin/supplier-requests',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
