@@ -84,6 +84,8 @@ interface SupplierQuote {
 
 export default function AdminQuotationsPage() {
   const router = useRouter();
+  const supabase = createClient();
+  
   const [quotes, setQuotes] = useState<SupplierQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<SupplierQuote | null>(null);
@@ -92,8 +94,6 @@ export default function AdminQuotationsPage() {
   const [individualMargins, setIndividualMargins] = useState<{ [materialId: string]: number }>({});
   const [useIndividualMargins, setUseIndividualMargins] = useState(false);
   const [isSending, setIsSending] = useState(false);
-
-  const supabase = createClient();
 
   useEffect(() => {
     loadQuotes();
