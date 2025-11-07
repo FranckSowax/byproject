@@ -395,27 +395,43 @@ export default function SupplierQuotePage() {
 
       toast.success(language === 'fr' ? 'Prix ajouté' : language === 'en' ? 'Price added' : '价格已添加');
       
-      // Update local state immediately without reload
-      setMaterials(prevMaterials => 
-        prevMaterials.map(m => 
-          m.id === selectedMaterial?.id 
-            ? { 
-                ...m,
-                // Keep existing unavailable status
-                unavailable: m.unavailable,
-                // Update price (replace existing)
-                prices: [{
-                  id: Date.now(), // Temporary ID
-                  amount: parseFloat(priceData.amount),
-                  currency: priceData.currency,
-                  country: priceData.country,
-                  supplier_name: priceData.supplierName || supplier?.name || '',
-                  variations: variationsFr,
-                }]
-              }
-            : m
-        )
-      );
+      // Reload prices for this material to get the latest from database
+      if (selectedMaterial?.id) {
+        const { data: updatedPrices } = await supabase
+          .from('prices')
+          .select(`
+            id,
+            amount,
+            currency,
+            country,
+            variations,
+            suppliers (
+              name
+            )
+          `)
+          .eq('material_id', selectedMaterial.id)
+          .eq('supplier_id', supplier.id);
+        
+        // Update local state with all prices from database
+        setMaterials(prevMaterials => 
+          prevMaterials.map(m => 
+            m.id === selectedMaterial.id 
+              ? { 
+                  ...m,
+                  unavailable: m.unavailable,
+                  prices: updatedPrices?.map((p: any) => ({
+                    id: p.id,
+                    amount: p.amount,
+                    currency: p.currency,
+                    country: p.country,
+                    supplier_name: p.suppliers?.name || '',
+                    variations: p.variations || [],
+                  })) || []
+                }
+              : m
+          )
+        );
+      }
     } catch (error) {
       console.error('Error submitting price:', error);
       toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
@@ -440,7 +456,24 @@ export default function SupplierQuotePage() {
       if (error) throw error;
 
       toast.success(language === 'fr' ? 'Matériau mis à jour' : language === 'en' ? 'Material updated' : '材料已更新');
-      loadRequest(); // Reload to update
+      
+      // Update local state without reload
+      setMaterials(prevMaterials => 
+        prevMaterials.map(m => 
+          m.id === selectedMaterial?.id 
+            ? { 
+                ...m,
+                name: data.name || m.name,
+                description: data.description !== undefined ? data.description : m.description,
+                category: data.category !== undefined ? data.category : m.category,
+                quantity: data.quantity !== undefined ? data.quantity : m.quantity,
+                surface: data.surface !== undefined ? data.surface : m.surface,
+                weight: data.weight !== undefined ? data.weight : m.weight,
+                volume: data.volume !== undefined ? data.volume : m.volume,
+              }
+            : m
+        )
+      );
     } catch (error) {
       console.error('Error updating material:', error);
       toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
