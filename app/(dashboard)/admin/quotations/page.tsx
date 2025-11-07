@@ -89,6 +89,8 @@ export default function AdminQuotationsPage() {
   const [selectedQuote, setSelectedQuote] = useState<SupplierQuote | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [margin, setMargin] = useState<number>(0);
+  const [individualMargins, setIndividualMargins] = useState<{ [materialId: string]: number }>({});
+  const [useIndividualMargins, setUseIndividualMargins] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   const supabase = createClient();
@@ -127,7 +129,30 @@ export default function AdminQuotationsPage() {
   const handleViewQuote = (quote: SupplierQuote) => {
     setSelectedQuote(quote);
     setMargin(quote.admin_margin || 0);
+    
+    // Initialize individual margins with global margin for all materials
+    const initialMargins: { [key: string]: number } = {};
+    quote.quoted_materials
+      .filter(m => m.prices && m.prices.length > 0)
+      .forEach(material => {
+        initialMargins[material.id] = quote.admin_margin || 0;
+      });
+    setIndividualMargins(initialMargins);
+    setUseIndividualMargins(false);
+    
     setIsViewModalOpen(true);
+  };
+
+  const getMarginForMaterial = (materialId: string): number => {
+    return useIndividualMargins ? (individualMargins[materialId] || 0) : margin;
+  };
+
+  const handleApplyGlobalMargin = () => {
+    const newMargins: { [key: string]: number } = {};
+    Object.keys(individualMargins).forEach(materialId => {
+      newMargins[materialId] = margin;
+    });
+    setIndividualMargins(newMargins);
   };
 
   const calculatePriceWithMargin = (price: number, marginPercent: number): number => {
@@ -145,12 +170,13 @@ export default function AdminQuotationsPage() {
         .filter(m => m.prices && m.prices.length > 0)
         .flatMap(material => 
           material.prices!.map(price => {
-            const finalAmount = calculatePriceWithMargin(price.amount, margin);
+            const materialMargin = getMarginForMaterial(material.id);
+            const finalAmount = calculatePriceWithMargin(price.amount, materialMargin);
             
             // Prepare variations with margin
             const variationsWithMargin = price.variations?.map(v => ({
               ...v,
-              amount: calculatePriceWithMargin(parseFloat(v.amount), margin).toString(),
+              amount: calculatePriceWithMargin(parseFloat(v.amount), materialMargin).toString(),
               originalAmount: v.amount, // Keep original for reference
             })) || [];
 
@@ -160,8 +186,8 @@ export default function AdminQuotationsPage() {
               country: selectedQuote.supplier_country,
               amount: finalAmount,
               currency: price.currency,
-              notes: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${margin}%\nPrix original: ${price.amount} ${price.currency}`,
-              notes_fr: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${margin}%\nPrix original: ${price.amount} ${price.currency}`,
+              notes: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${materialMargin}%\nPrix original: ${price.amount} ${price.currency}`,
+              notes_fr: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${materialMargin}%\nPrix original: ${price.amount} ${price.currency}`,
               variations: variationsWithMargin,
             };
           })
@@ -396,31 +422,74 @@ export default function AdminQuotationsPage() {
                     Marge Administrative
                   </CardTitle>
                   <CardDescription>
-                    Cette marge sera appliquée à tous les prix de cette cotation
+                    {useIndividualMargins 
+                      ? "Ajustez la marge pour chaque matériau individuellement"
+                      : "Cette marge sera appliquée à tous les prix de cette cotation"}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <Label htmlFor="margin">Pourcentage de marge (%)</Label>
-                      <Input
-                        id="margin"
-                        type="number"
-                        step="0.1"
-                        value={margin}
-                        onChange={(e) => setMargin(parseFloat(e.target.value) || 0)}
-                        className="mt-1"
-                        placeholder="Ex: 15"
+                <CardContent className="space-y-4">
+                  {/* Toggle Mode */}
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="individualMargins"
+                        checked={useIndividualMargins}
+                        onChange={(e) => setUseIndividualMargins(e.target.checked)}
+                        className="w-4 h-4"
                       />
-                    </div>
-                    <div className="text-sm text-gray-600 pt-6">
-                      {margin > 0 && (
-                        <span className="text-blue-600 font-medium">
-                          +{margin}% sera ajouté à tous les prix
-                        </span>
-                      )}
+                      <Label htmlFor="individualMargins" className="cursor-pointer font-medium">
+                        Marges individuelles par matériau
+                      </Label>
                     </div>
                   </div>
+
+                  {/* Global Margin */}
+                  {!useIndividualMargins && (
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <Label htmlFor="margin">Pourcentage de marge globale (%)</Label>
+                        <Input
+                          id="margin"
+                          type="number"
+                          step="0.1"
+                          value={margin}
+                          onChange={(e) => setMargin(parseFloat(e.target.value) || 0)}
+                          className="mt-1"
+                          placeholder="Ex: 15"
+                        />
+                      </div>
+                      <div className="text-sm text-gray-600 pt-6">
+                        {margin > 0 && (
+                          <span className="text-blue-600 font-medium">
+                            +{margin}% sur tous les prix
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Apply Global to All */}
+                  {useIndividualMargins && (
+                    <div className="flex items-center gap-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="flex-1">
+                        <Label htmlFor="globalMargin">Appliquer une marge à tous (%)</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input
+                            id="globalMargin"
+                            type="number"
+                            step="0.1"
+                            value={margin}
+                            onChange={(e) => setMargin(parseFloat(e.target.value) || 0)}
+                            placeholder="Ex: 15"
+                          />
+                          <Button onClick={handleApplyGlobalMargin} variant="outline">
+                            Appliquer
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -433,18 +502,40 @@ export default function AdminQuotationsPage() {
                   <div className="space-y-4">
                     {selectedQuote.quoted_materials
                       .filter(m => m.prices && m.prices.length > 0)
-                      .map((material) => (
+                      .map((material) => {
+                        const materialMargin = getMarginForMaterial(material.id);
+                        return (
                         <div key={material.id} className="border rounded-lg p-4">
                           <div className="flex items-start justify-between mb-3">
-                            <div>
+                            <div className="flex-1">
                               <h4 className="font-semibold text-lg">{material.name}</h4>
                               {material.category && (
                                 <p className="text-sm text-gray-600">{material.category}</p>
                               )}
                             </div>
-                            {material.quantity && (
-                              <Badge variant="outline">Qté: {material.quantity}</Badge>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {material.quantity && (
+                                <Badge variant="outline">Qté: {material.quantity}</Badge>
+                              )}
+                              {/* Individual Margin Input */}
+                              {useIndividualMargins && (
+                                <div className="flex items-center gap-2 ml-4">
+                                  <Label className="text-xs text-gray-600 whitespace-nowrap">Marge:</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={individualMargins[material.id] || 0}
+                                    onChange={(e) => setIndividualMargins({
+                                      ...individualMargins,
+                                      [material.id]: parseFloat(e.target.value) || 0
+                                    })}
+                                    className="w-20 h-8 text-sm"
+                                    placeholder="%"
+                                  />
+                                  <span className="text-xs text-gray-600">%</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {material.prices && material.prices.map((price, idx) => (
@@ -457,15 +548,15 @@ export default function AdminQuotationsPage() {
                                   </p>
                                 </div>
                                 <div>
-                                  <Label className="text-xs text-gray-600">Marge ({margin}%)</Label>
+                                  <Label className="text-xs text-gray-600">Marge ({materialMargin}%)</Label>
                                   <p className="text-lg font-semibold text-blue-600">
-                                    +{(price.amount * margin / 100).toFixed(2)} {price.currency}
+                                    +{(price.amount * materialMargin / 100).toFixed(2)} {price.currency}
                                   </p>
                                 </div>
                                 <div>
                                   <Label className="text-xs text-gray-600">Prix Client</Label>
                                   <p className="text-lg font-semibold text-green-600">
-                                    {calculatePriceWithMargin(price.amount, margin).toFixed(2)} {price.currency}
+                                    {calculatePriceWithMargin(price.amount, materialMargin).toFixed(2)} {price.currency}
                                   </p>
                                 </div>
                               </div>
@@ -481,10 +572,10 @@ export default function AdminQuotationsPage() {
                                         <span className="ml-2 font-medium">{variation.amount} {price.currency}</span>
                                       </div>
                                       <div className="text-blue-600">
-                                        +{(parseFloat(variation.amount) * margin / 100).toFixed(2)} {price.currency}
+                                        +{(parseFloat(variation.amount) * materialMargin / 100).toFixed(2)} {price.currency}
                                       </div>
                                       <div className="text-green-600 font-medium">
-                                        {calculatePriceWithMargin(parseFloat(variation.amount), margin).toFixed(2)} {price.currency}
+                                        {calculatePriceWithMargin(parseFloat(variation.amount), materialMargin).toFixed(2)} {price.currency}
                                       </div>
                                     </div>
                                   ))}
