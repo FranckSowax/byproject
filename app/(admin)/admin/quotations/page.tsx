@@ -76,7 +76,9 @@ interface SupplierQuote {
   supplier_requests?: {
     id: string;
     request_number: string;
+    project_id: string;
     projects?: {
+      id: string;
       name: string;
     };
   };
@@ -102,6 +104,7 @@ export default function AdminQuotationsPage() {
   const loadQuotes = async () => {
     try {
       setLoading(true);
+      // @ts-ignore
       const { data, error } = await supabase
         .from('supplier_quotes')
         .select(`
@@ -109,7 +112,9 @@ export default function AdminQuotationsPage() {
           supplier_requests (
             id,
             request_number,
+            project_id,
             projects (
+              id,
               name
             )
           )
@@ -160,16 +165,42 @@ export default function AdminQuotationsPage() {
   };
 
   const handleSendToClient = async () => {
-    if (!selectedQuote) return;
+    if (!selectedQuote || !selectedQuote.supplier_requests?.project_id) {
+      toast.error('Projet non trouvé');
+      return;
+    }
 
     try {
       setIsSending(true);
 
-      // 1. Insert prices with margin into prices table for each material
+      const projectId = selectedQuote.supplier_requests.project_id;
+
+      // 1. Get all materials from the project
+      const { data: projectMaterials, error: materialsError } = await supabase
+        .from('materials')
+        .select('id, name')
+        .eq('project_id', projectId);
+
+      if (materialsError) throw materialsError;
+
+      // Create a map of material names to IDs
+      const materialNameToId = new Map(
+        projectMaterials?.map(m => [m.name.toLowerCase().trim(), m.id]) || []
+      );
+
+      // 2. Insert prices with margin into prices table for each material
       const pricesWithMargin = selectedQuote.quoted_materials
         .filter(m => m.prices && m.prices.length > 0)
-        .flatMap(material => 
-          material.prices!.map(price => {
+        .flatMap(material => {
+          // Find the corresponding project material by name
+          const projectMaterialId = materialNameToId.get(material.name.toLowerCase().trim());
+          
+          if (!projectMaterialId) {
+            console.warn(`Material "${material.name}" not found in project`);
+            return [];
+          }
+
+          return material.prices!.map(price => {
             const materialMargin = getMarginForMaterial(material.id);
             const finalAmount = calculatePriceWithMargin(price.amount, materialMargin);
             
@@ -181,8 +212,8 @@ export default function AdminQuotationsPage() {
             })) || [];
 
             return {
-              material_id: material.id,
-              supplier_id: null, // Will be created if needed
+              material_id: projectMaterialId, // Use the project material ID
+              supplier_id: null,
               country: selectedQuote.supplier_country,
               amount: finalAmount,
               currency: price.currency,
@@ -190,8 +221,8 @@ export default function AdminQuotationsPage() {
               notes_fr: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${materialMargin}%\nPrix original: ${price.amount} ${price.currency}`,
               variations: variationsWithMargin,
             };
-          })
-        );
+          });
+        });
 
       // Insert all prices
       if (pricesWithMargin.length > 0) {
