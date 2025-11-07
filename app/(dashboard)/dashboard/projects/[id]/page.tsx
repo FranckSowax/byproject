@@ -1466,9 +1466,32 @@ export default function ProjectPage() {
                         className="cursor-pointer"
                         onClick={() => handleOpenDetailView(material)}
                       >
-                        <h4 className="font-bold text-base text-[#2D3748] group-hover:text-[#5B5FC7] transition-colors leading-tight">
-                          {material.name}
-                        </h4>
+                        <div className="flex items-start gap-3">
+                          {/* Image preview or icon */}
+                          {material.images && material.images.length > 0 ? (
+                            <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border-2 border-[#5B5FC7]/20">
+                              <img 
+                                src={material.images[0]} 
+                                alt={material.name}
+                                className="w-full h-full object-cover"
+                              />
+                              {material.images.length > 1 && (
+                                <div className="absolute bottom-0 right-0 bg-[#5B5FC7] text-white text-[10px] px-1 rounded-tl">
+                                  +{material.images.length - 1}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#5B5FC7]/10 to-[#FF9B7B]/10 flex items-center justify-center flex-shrink-0">
+                              <ImageIcon className="h-6 w-6 text-[#5B5FC7]/40" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-base text-[#2D3748] group-hover:text-[#5B5FC7] transition-colors leading-tight">
+                              {material.name}
+                            </h4>
+                          </div>
+                        </div>
                         {material.description && (
                           <p className="text-xs text-gray-500 italic mt-1.5 leading-relaxed">
                             {material.description}
@@ -1556,14 +1579,35 @@ export default function ProjectPage() {
 
                     {/* Contenu - Desktop */}
                     <div className="hidden md:flex items-start justify-between gap-4 p-4">
-                      <div className="flex-1 min-w-0">
-                        <h4 
-                          className="font-bold text-lg text-[#4A5568] group-hover:text-[#5B5FC7] cursor-pointer transition-colors truncate"
-                          onClick={() => handleOpenDetailView(material)}
-                          title="Voir les prix et fournisseurs"
-                        >
-                          {material.name}
-                        </h4>
+                      <div className="flex items-start gap-4 flex-1 min-w-0">
+                        {/* Image preview or icon */}
+                        {material.images && material.images.length > 0 ? (
+                          <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 border-[#5B5FC7]/20 shadow-sm">
+                            <img 
+                              src={material.images[0]} 
+                              alt={material.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {material.images.length > 1 && (
+                              <div className="absolute bottom-0 right-0 bg-[#5B5FC7] text-white text-xs px-1.5 py-0.5 rounded-tl font-medium">
+                                +{material.images.length - 1}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-[#5B5FC7]/10 to-[#FF9B7B]/10 flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <ImageIcon className="h-8 w-8 text-[#5B5FC7]/40" />
+                          </div>
+                        )}
+                        
+                        <div className="flex-1 min-w-0">
+                          <h4 
+                            className="font-bold text-lg text-[#4A5568] group-hover:text-[#5B5FC7] cursor-pointer transition-colors truncate"
+                            onClick={() => handleOpenDetailView(material)}
+                            title="Voir les prix et fournisseurs"
+                          >
+                            {material.name}
+                          </h4>
                         {material.description && (
                           <p className="text-sm text-gray-600 italic mt-1 line-clamp-2">
                             {material.description}
@@ -1605,6 +1649,7 @@ export default function ProjectPage() {
                               {Object.keys(material.specs).length} spec{Object.keys(material.specs).length > 1 ? 's' : ''}
                             </div>
                           )}
+                        </div>
                         </div>
                       </div>
                       <div className="flex gap-1.5">
@@ -2720,6 +2765,39 @@ export default function ProjectPage() {
               </DialogDescription>
             </DialogHeader>
           </div>
+
+          {/* Image Gallery */}
+          {detailMaterial?.images && detailMaterial.images.length > 0 && (
+            <div className="px-6 pt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <ImageIcon className="h-5 w-5 text-[#5B5FC7]" />
+                <h3 className="font-semibold text-gray-700">Images du matériau</h3>
+                <Badge variant="secondary" className="ml-auto">
+                  {detailMaterial.images.length} {detailMaterial.images.length > 1 ? 'images' : 'image'}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {detailMaterial.images.map((imageUrl, index) => (
+                  <div 
+                    key={index} 
+                    className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-[#5B5FC7] transition-all cursor-pointer group shadow-sm hover:shadow-md"
+                    onClick={() => window.open(imageUrl, '_blank')}
+                  >
+                    <img 
+                      src={imageUrl} 
+                      alt={`${detailMaterial.name} - Image ${index + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-2">
+                        <ImageIcon className="h-5 w-5 text-[#5B5FC7]" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Content scrollable */}
           <div className="flex-1 overflow-y-auto p-6">
