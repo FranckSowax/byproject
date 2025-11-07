@@ -713,14 +713,24 @@ export default function SupplierQuotePage() {
           </div>
         </div>
 
-        {/* Supplier Info */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              {t.supplierInfo}
-            </CardTitle>
-          </CardHeader>
+        {/* PARTIE 1: Informations Fournisseur */}
+        <div className="mb-8">
+          <div className="mb-4 px-1">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">
+              {language === 'fr' ? '📋 PARTIE 1 : Vos Informations' : language === 'en' ? '📋 PART 1: Your Information' : '📋 第一部分：您的信息'}
+            </h2>
+            <p className="text-sm text-gray-600">
+              {language === 'fr' ? 'Remplissez vos coordonnées une seule fois. Elles seront sauvegardées automatiquement.' : language === 'en' ? 'Fill in your contact details once. They will be saved automatically.' : '填写一次您的联系方式。它们将自动保存。'}
+            </p>
+          </div>
+          
+          <Card className="border-2 border-blue-200 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-blue-600" />
+                <span className="text-blue-900">{t.supplierInfo}</span>
+              </CardTitle>
+            </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -774,9 +784,20 @@ export default function SupplierQuotePage() {
             </div>
           </CardContent>
         </Card>
+        </div>
 
-        {/* Materials List */}
-        <Card className="mb-6">
+        {/* PARTIE 2: Liste des Matériaux */}
+        <div className="mb-8">
+          <div className="mb-4 px-1">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">
+              {language === 'fr' ? '📦 PARTIE 2 : Cotation des Matériaux' : language === 'en' ? '📦 PART 2: Materials Quotation' : '📦 第二部分：材料报价'}
+            </h2>
+            <p className="text-sm text-gray-600">
+              {language === 'fr' ? 'Ajoutez vos prix pour chaque matériau. Vos données sont sauvegardées automatiquement à chaque ajout.' : language === 'en' ? 'Add your prices for each material. Your data is saved automatically with each addition.' : '为每种材料添加价格。每次添加时数据会自动保存。'}
+            </p>
+          </div>
+          
+          <Card className="border-2 border-green-200 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
@@ -802,9 +823,10 @@ export default function SupplierQuotePage() {
             </div>
           </CardContent>
         </Card>
+        </div>
 
         {/* Submit Button */}
-        <div className="flex justify-end">
+        <div className="flex justify-end mt-6">
           <Button
             onClick={handleSubmitQuotation}
             size="lg"
