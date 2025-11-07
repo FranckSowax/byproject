@@ -99,12 +99,6 @@ export function MaterialCard({
                   {material.surface} m²
                 </Badge>
               )}
-              {material.prices && material.prices.length > 0 && (
-                <Badge variant="outline" className="text-[10px] px-2 py-0 bg-green-50 text-green-700 border-green-200">
-                  <DollarSign className="h-3 w-3 mr-1" />
-                  {material.prices.length} {language === 'fr' ? 'prix' : language === 'en' ? 'price(s)' : '价格'}
-                </Badge>
-              )}
             </div>
           </div>
         </div>
