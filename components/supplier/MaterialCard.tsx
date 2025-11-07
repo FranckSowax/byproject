@@ -48,7 +48,7 @@ export function MaterialCard({
 
   return (
     <div className="group border-2 border-gray-200 rounded-xl p-4 bg-white hover:border-[#5B5FC7] hover:shadow-lg transition-all duration-200">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         {/* Left: Image + Info */}
         <div className="flex items-start gap-4 flex-1 min-w-0">
           {/* Image */}
@@ -102,6 +102,20 @@ export function MaterialCard({
             </div>
           </div>
         </div>
+
+        {/* Middle: Prices */}
+        {material.prices && material.prices.length > 0 && (
+          <div className="flex flex-col gap-1 px-4">
+            {material.prices.map((price) => (
+              <div key={price.id} className="flex items-center gap-2 text-green-600 font-semibold">
+                <DollarSign className="h-4 w-4" />
+                <span className="text-lg">
+                  {price.amount} {price.currency}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Right: Action Icons */}
         <div className="flex items-center gap-1 flex-shrink-0">
