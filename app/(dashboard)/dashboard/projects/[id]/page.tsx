@@ -378,6 +378,7 @@ export default function ProjectPage() {
           weight: editingMaterial.weight,
           volume: editingMaterial.volume,
           specs: editingMaterial.specs,
+          images: editingMaterial.images || [],
         })
         .eq('id', editingMaterial.id);
 
@@ -1865,6 +1866,18 @@ export default function ProjectPage() {
                     placeholder="0"
                   />
                 </div>
+              </div>
+
+              {/* Images Upload */}
+              <div className="space-y-2">
+                <Label>Images</Label>
+                <ImageUpload
+                  images={editingMaterial.images || []}
+                  onImagesChange={(images) => setEditingMaterial({ ...editingMaterial, images })}
+                  maxImages={5}
+                  bucket="project-materials"
+                  path={params.id}
+                />
               </div>
 
             </div>
