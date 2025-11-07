@@ -172,6 +172,7 @@ export default function SupplierQuotePage() {
 
   const loadRequest = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`/api/supplier-quote/${token}`);
       if (!response.ok) throw new Error('Request not found');
       
