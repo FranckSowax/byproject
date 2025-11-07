@@ -164,12 +164,20 @@ export default function DashboardPage() {
               Gérez vos projets de comparaison de matériaux de construction
             </p>
           </div>
-          <Link href="/dashboard/projects/new">
-            <Button className="gap-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 transition-all hover:scale-105">
-              <Plus className="h-5 w-5 text-white" />
-              <span className="text-white font-semibold">Nouveau Projet</span>
-            </Button>
-          </Link>
+          <div className="flex gap-3">
+            <Link href="/dashboard/supplier-requests">
+              <Button variant="outline" className="gap-2 border-2 border-[#5B5FC7] text-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white rounded-xl px-6 py-6 transition-all">
+                <Globe className="h-5 w-5" />
+                <span className="font-semibold">Demandes Fournisseurs</span>
+              </Button>
+            </Link>
+            <Link href="/dashboard/projects/new">
+              <Button className="gap-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 transition-all hover:scale-105">
+                <Plus className="h-5 w-5 text-white" />
+                <span className="text-white font-semibold">Nouveau Projet</span>
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {projects.length === 0 ? (
