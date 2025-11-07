@@ -13,12 +13,7 @@ export async function GET(
     // Get supplier request with public token - using service role to bypass RLS
     const { data: supplierRequest, error } = await supabase
       .from('supplier_requests' as any)
-      .select(`
-        *,
-        projects:project_id (
-          name
-        )
-      `)
+      .select('*')
       .eq('public_token', token)
       .single();
 
@@ -36,6 +31,13 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // Get project name separately
+    const { data: project } = await supabase
+      .from('projects' as any)
+      .select('name')
+      .eq('id', supplierRequest.project_id)
+      .single();
 
     // Check if expired
     if (supplierRequest.expires_at && new Date(supplierRequest.expires_at) < new Date()) {
@@ -58,7 +60,7 @@ export async function GET(
     return NextResponse.json({
       request: {
         ...supplierRequest,
-        project_name: (supplierRequest.projects as any)?.name || 'Construction Project',
+        project_name: project?.name || 'Construction Project',
       },
       existingQuote,
     });
