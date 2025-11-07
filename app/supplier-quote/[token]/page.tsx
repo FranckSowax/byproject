@@ -512,7 +512,19 @@ export default function SupplierQuotePage() {
     }
 
     try {
+      // Filter materials: only those with prices OR marked as unavailable
+      const quotedMaterials = materials.filter(m => 
+        (m.prices && m.prices.length > 0) || m.unavailable
+      );
+
+      // Check if there are any materials to quote
+      if (quotedMaterials.length === 0) {
+        toast.error(language === 'fr' ? 'Veuillez ajouter au moins un prix ou marquer des matériaux comme indisponibles' : language === 'en' ? 'Please add at least one price or mark materials as unavailable' : '请至少添加一个价格或标记材料为不可用');
+        return;
+      }
+
       // Create supplier quote
+      // @ts-ignore - Table not in generated types yet
       const { error } = await supabase
         .from('supplier_quotes')
         .insert({
@@ -521,7 +533,7 @@ export default function SupplierQuotePage() {
           supplier_email: supplierInfo.email,
           supplier_company: supplierInfo.companyName,
           supplier_country: supplierInfo.country,
-          quoted_materials: materials,
+          quoted_materials: quotedMaterials,
           status: 'submitted',
           submitted_at: new Date().toISOString(),
         });
