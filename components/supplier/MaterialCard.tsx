@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler } from 'lucide-react';
+import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Price {
   id: number;
@@ -42,12 +43,22 @@ export function MaterialCard({
   onOpenPrice,
   onOpenEdit,
 }: MaterialCardProps) {
+  const [showAllPrices, setShowAllPrices] = useState(false);
+  
   const displayName = language === 'zh' || language === 'en'
     ? material.translatedName || material.name
     : material.name;
 
+  const hasPrice = material.prices && material.prices.length > 0;
+  const mainPrice = hasPrice ? material.prices![0] : null;
+  const hasMultiplePrices = material.prices && material.prices.length > 1;
+
   return (
-    <div className="group border-2 border-gray-200 rounded-xl p-4 bg-white hover:border-[#5B5FC7] hover:shadow-lg transition-all duration-200">
+    <div className={`group border-2 rounded-xl p-4 transition-all duration-200 ${
+      hasPrice 
+        ? 'border-green-300 bg-green-50/30 hover:border-green-400 hover:shadow-lg' 
+        : 'border-gray-200 bg-white hover:border-[#5B5FC7] hover:shadow-lg'
+    }`}>
       <div className="flex items-center justify-between gap-4">
         {/* Left: Image + Info */}
         <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -104,16 +115,43 @@ export function MaterialCard({
         </div>
 
         {/* Middle: Prices */}
-        {material.prices && material.prices.length > 0 && (
+        {hasPrice && mainPrice && (
           <div className="flex flex-col gap-1 px-4">
-            {material.prices.map((price) => (
-              <div key={price.id} className="flex items-center gap-2 text-green-600 font-semibold">
-                <DollarSign className="h-4 w-4" />
-                <span className="text-lg">
-                  {price.amount} {price.currency}
-                </span>
+            {/* Main Price */}
+            <div className="flex items-center gap-2 text-green-600 font-semibold">
+              <DollarSign className="h-4 w-4" />
+              <span className="text-lg">
+                {mainPrice.amount} {mainPrice.currency}
+              </span>
+              {hasMultiplePrices && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => setShowAllPrices(!showAllPrices)}
+                >
+                  {showAllPrices ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+            </div>
+
+            {/* Other Prices (dropdown) */}
+            {showAllPrices && hasMultiplePrices && (
+              <div className="flex flex-col gap-1 pl-6 mt-1">
+                {material.prices!.slice(1).map((price) => (
+                  <div key={price.id} className="flex items-center gap-2 text-green-500 text-sm">
+                    <DollarSign className="h-3 w-3" />
+                    <span>
+                      {price.amount} {price.currency}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 

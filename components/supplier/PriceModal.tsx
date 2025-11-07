@@ -494,6 +494,114 @@ export function PriceModal({
             </div>
           </div>
 
+          {/* Price Variations */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <Label className="text-base font-semibold">{t.variations}</Label>
+                <p className="text-xs text-gray-500 mt-1">{t.variationsInfo}</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newVariation: PriceVariation = {
+                    id: Date.now().toString(),
+                    label: '',
+                    amount: '',
+                    notes: '',
+                  };
+                  setFormData({ ...formData, variations: [...formData.variations, newVariation] });
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                {t.addVariation}
+              </Button>
+            </div>
+
+            {formData.variations.length > 0 && (
+              <div className="space-y-3 mt-4">
+                {formData.variations.map((variation, index) => (
+                  <div key={variation.id} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-700">
+                        {language === 'fr' ? 'Variation' : language === 'en' ? 'Variation' : '变化'} {index + 1}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            variations: formData.variations.filter((_, i) => i !== index),
+                          });
+                        }}
+                      >
+                        <X className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor={`var-label-${index}`} className="text-xs">
+                          {t.variationLabel}
+                        </Label>
+                        <Input
+                          id={`var-label-${index}`}
+                          value={variation.label}
+                          onChange={(e) => {
+                            const newVariations = [...formData.variations];
+                            newVariations[index].label = e.target.value;
+                            setFormData({ ...formData, variations: newVariations });
+                          }}
+                          placeholder={t.variationLabelPlaceholder}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`var-amount-${index}`} className="text-xs">
+                          {t.variationAmount}
+                        </Label>
+                        <Input
+                          id={`var-amount-${index}`}
+                          type="number"
+                          step="0.01"
+                          value={variation.amount}
+                          onChange={(e) => {
+                            const newVariations = [...formData.variations];
+                            newVariations[index].amount = e.target.value;
+                            setFormData({ ...formData, variations: newVariations });
+                          }}
+                          placeholder="0.00"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <Label htmlFor={`var-notes-${index}`} className="text-xs">
+                        {t.variationNotes}
+                      </Label>
+                      <Input
+                        id={`var-notes-${index}`}
+                        value={variation.notes}
+                        onChange={(e) => {
+                          const newVariations = [...formData.variations];
+                          newVariations[index].notes = e.target.value;
+                          setFormData({ ...formData, variations: newVariations });
+                        }}
+                        placeholder={t.notesPlaceholder}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Product Images */}
           <div className="border-t pt-4">
             <Label className="text-base font-semibold mb-3 block">{t.productPhotos}</Label>
