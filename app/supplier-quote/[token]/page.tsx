@@ -219,6 +219,86 @@ export default function SupplierQuotePage() {
 
   const handleSubmitPrice = async (priceData: any) => {
     try {
+      // Translate notes to French if needed
+      let notesFr = priceData.notes;
+      if (language !== 'fr' && priceData.notes) {
+        try {
+          const translateResponse = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: priceData.notes,
+              sourceLanguage: language,
+              targetLanguage: 'fr',
+              context: 'Price notes and conditions',
+            }),
+          });
+          if (translateResponse.ok) {
+            const translateData = await translateResponse.json();
+            notesFr = translateData.translatedText;
+          }
+        } catch (err) {
+          console.warn('Translation failed, using original notes:', err);
+        }
+      }
+
+      // Translate variation labels to French if needed
+      let variationsFr = priceData.variations || [];
+      if (language !== 'fr' && priceData.variations && priceData.variations.length > 0) {
+        variationsFr = await Promise.all(
+          priceData.variations.map(async (variation: any) => {
+            let labelFr = variation.label;
+            let notesFrVar = variation.notes;
+            
+            if (variation.label) {
+              try {
+                const response = await fetch('/api/translate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    text: variation.label,
+                    sourceLanguage: language,
+                    targetLanguage: 'fr',
+                  }),
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  labelFr = data.translatedText;
+                }
+              } catch (err) {
+                console.warn('Label translation failed:', err);
+              }
+            }
+
+            if (variation.notes) {
+              try {
+                const response = await fetch('/api/translate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    text: variation.notes,
+                    sourceLanguage: language,
+                    targetLanguage: 'fr',
+                  }),
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  notesFrVar = data.translatedText;
+                }
+              } catch (err) {
+                console.warn('Variation notes translation failed:', err);
+              }
+            }
+
+            return {
+              ...variation,
+              labelFr,
+              notesFr: notesFrVar,
+            };
+          })
+        );
+      }
+
       // Create or get supplier
       const { data: supplier, error: supplierError } = await supabase
         .from('suppliers')
@@ -236,7 +316,7 @@ export default function SupplierQuotePage() {
 
       if (supplierError) throw supplierError;
 
-      // Create price
+      // Create main price with French translation
       const { error: priceError } = await supabase
         .from('prices')
         .insert({
@@ -246,6 +326,8 @@ export default function SupplierQuotePage() {
           amount: parseFloat(priceData.amount),
           currency: priceData.currency,
           notes: priceData.notes,
+          notes_fr: notesFr,
+          variations: variationsFr,
         });
 
       if (priceError) throw priceError;

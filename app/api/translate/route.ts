@@ -4,13 +4,14 @@ const DEEPSEEK_API_KEY = 'sk-5d0d9534cc734cccb8117b270e28cae7';
 
 interface TranslationRequest {
   text: string;
-  targetLanguage: 'en' | 'zh';
+  targetLanguage: 'en' | 'zh' | 'fr';
+  sourceLanguage?: 'fr' | 'en' | 'zh';
   context?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { text, targetLanguage, context }: TranslationRequest = await request.json();
+    const { text, targetLanguage, sourceLanguage, context }: TranslationRequest = await request.json();
 
     if (!text || !targetLanguage) {
       return NextResponse.json(
@@ -19,9 +20,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const systemPrompt = targetLanguage === 'zh'
-      ? `You are a professional translator specializing in construction and building materials. Translate the following text from French to Simplified Chinese. Maintain technical accuracy and use appropriate construction terminology. ${context ? `Context: ${context}` : ''}`
-      : `You are a professional translator specializing in construction and building materials. Translate the following text from French to English. Maintain technical accuracy and use appropriate construction terminology. ${context ? `Context: ${context}` : ''}`;
+    // Determine source and target languages
+    const source = sourceLanguage || 'fr';
+    const languageMap: Record<string, string> = {
+      fr: 'French',
+      en: 'English',
+      zh: 'Simplified Chinese',
+    };
+
+    const systemPrompt = `You are a professional translator specializing in construction and building materials. Translate the following text from ${languageMap[source]} to ${languageMap[targetLanguage]}. Maintain technical accuracy and use appropriate construction terminology. ${context ? `Context: ${context}` : ''}`;
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
