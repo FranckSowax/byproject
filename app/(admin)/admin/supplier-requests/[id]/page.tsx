@@ -25,7 +25,7 @@ import {
   TrendingUp,
   Package,
   Calendar,
-  User,
+  Users,
   Building2,
   ExternalLink,
 } from 'lucide-react';
@@ -211,7 +211,7 @@ export default function EditSupplierRequestPage() {
             <div>
               <Label className="text-sm text-gray-600">Utilisateur</Label>
               <div className="flex items-center gap-2 mt-1">
-                <User className="h-4 w-4 text-gray-500" />
+                <Users className="h-4 w-4 text-gray-500" />
                 <p className="font-semibold">{request.users?.email || 'N/A'}</p>
               </div>
             </div>
