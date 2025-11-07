@@ -18,11 +18,20 @@ import { createClient } from '@/lib/supabase/client';
 
 type Language = 'fr' | 'en' | 'zh';
 
+interface Price {
+  id: number;
+  amount: number;
+  currency: string;
+  supplier_name: string;
+  country: string;
+}
+
 interface Material {
   id: string;
   name: string;
   translatedName?: string;
   description: string | null;
+  translatedDescription?: string;
   category: string | null;
   quantity: number | null;
   surface: number | null;
@@ -30,6 +39,7 @@ interface Material {
   volume: number | null;
   images: string[];
   supplierImages?: string[];
+  prices?: Price[];
 }
 
 interface SupplierRequest {
@@ -154,7 +164,36 @@ export default function SupplierQuotePage() {
         ? data.request.materials_translated_en
         : data.request.materials_data;
 
-      setMaterials(materialsData || []);
+      // Load prices for each material
+      const materialsWithPrices = await Promise.all(
+        (materialsData || []).map(async (material: Material) => {
+          const { data: prices } = await supabase
+            .from('prices')
+            .select(`
+              id,
+              amount,
+              currency,
+              country,
+              suppliers (
+                name
+              )
+            `)
+            .eq('material_id', material.id);
+
+          return {
+            ...material,
+            prices: prices?.map((p: any) => ({
+              id: p.id,
+              amount: p.amount,
+              currency: p.currency,
+              country: p.country,
+              supplier_name: p.suppliers?.name || '',
+            })) || [],
+          };
+        })
+      );
+
+      setMaterials(materialsWithPrices);
     } catch (error) {
       console.error('Error loading request:', error);
       toast.error(t.notFound);

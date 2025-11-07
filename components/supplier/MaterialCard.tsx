@@ -4,6 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler } from 'lucide-react';
 
+interface Price {
+  id: number;
+  amount: number;
+  currency: string;
+  supplier_name: string;
+  country: string;
+}
+
 interface Material {
   id: string;
   name: string;
@@ -16,6 +24,7 @@ interface Material {
   volume: number | null;
   images: string[];
   supplierImages?: string[];
+  prices?: Price[];
 }
 
 interface MaterialCardProps {
@@ -88,6 +97,12 @@ export function MaterialCard({
                 <Badge variant="outline" className="text-[10px] px-2 py-0 bg-blue-50 text-blue-700 border-blue-200">
                   <Ruler className="h-3 w-3 mr-1" />
                   {material.surface} m²
+                </Badge>
+              )}
+              {material.prices && material.prices.length > 0 && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0 bg-green-50 text-green-700 border-green-200">
+                  <DollarSign className="h-3 w-3 mr-1" />
+                  {material.prices.length} {language === 'fr' ? 'prix' : language === 'en' ? 'price(s)' : '价格'}
                 </Badge>
               )}
             </div>

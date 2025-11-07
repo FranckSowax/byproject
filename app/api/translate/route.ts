@@ -86,11 +86,11 @@ export async function PUT(request: NextRequest) {
 
     const translations = await Promise.all(
       materials.map(async (material) => {
-        const textToTranslate = `Material: ${material.name}\nCategory: ${material.category || ''}\nUnit: ${material.unit || ''}`;
+        const textToTranslate = `Material: ${material.name}\nDescription: ${material.description || ''}\nCategory: ${material.category || ''}`;
         
         const systemPrompt = targetLanguage === 'zh'
-          ? 'You are a professional translator specializing in construction materials. Translate the following material information from French to Simplified Chinese. Keep technical terms accurate.'
-          : 'You are a professional translator specializing in construction materials. Translate the following material information from French to English. Keep technical terms accurate.';
+          ? 'You are a professional translator specializing in construction materials. Translate the following material information from French to Simplified Chinese. Keep technical terms accurate. Return ONLY the translated text in the same format (Material: ..., Description: ..., Category: ...).'
+          : 'You are a professional translator specializing in construction materials. Translate the following material information from French to English. Keep technical terms accurate. Return ONLY the translated text in the same format (Material: ..., Description: ..., Category: ...).';
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
@@ -105,7 +105,7 @@ export async function PUT(request: NextRequest) {
               { role: 'user', content: textToTranslate },
             ],
             temperature: 0.3,
-            max_tokens: 500,
+            max_tokens: 1000,
           }),
         });
 
@@ -113,21 +113,25 @@ export async function PUT(request: NextRequest) {
           return {
             ...material,
             translatedName: material.name,
+            translatedDescription: material.description,
             translationError: true,
           };
         }
 
         const data = await response.json();
-        const translated = data.choices[0]?.message?.content || material.name;
+        const translated = data.choices[0]?.message?.content || '';
         
         // Parse the translated response
         const lines = translated.split('\n');
-        const translatedName = lines[0]?.replace(/^Material:\s*/i, '').trim() || material.name;
+        const translatedName = lines.find(l => l.match(/^Material:/i))?.replace(/^Material:\s*/i, '').trim() || material.name;
+        const translatedDescription = lines.find(l => l.match(/^Description:/i))?.replace(/^Description:\s*/i, '').trim() || material.description;
 
         return {
           ...material,
           translatedName,
+          translatedDescription,
           originalName: material.name,
+          originalDescription: material.description,
         };
       })
     );

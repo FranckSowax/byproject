@@ -15,6 +15,7 @@ interface Material {
   name: string;
   translatedName?: string;
   description: string | null;
+  translatedDescription?: string;
   category: string | null;
   quantity: number | null;
   surface: number | null;
@@ -81,6 +82,9 @@ export function DescriptionModal({
   const displayName = language === 'zh' || language === 'en' 
     ? material.translatedName || material.name 
     : material.name;
+  const displayDescription = language === 'zh' || language === 'en'
+    ? material.translatedDescription || material.description
+    : material.description;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -103,9 +107,9 @@ export function DescriptionModal({
               <Package className="h-4 w-4" />
               {t.description}
             </h3>
-            {material.description ? (
+            {displayDescription ? (
               <p className="text-gray-600 text-sm leading-relaxed bg-gray-50 p-4 rounded-lg">
-                {material.description}
+                {displayDescription}
               </p>
             ) : (
               <p className="text-gray-400 text-sm italic">{t.noDescription}</p>
