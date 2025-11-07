@@ -27,7 +27,8 @@ import {
   Package,
   TrendingUp,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Edit
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -380,6 +381,11 @@ export default function AdminSupplierRequestsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            <Link href={`/admin/supplier-requests/${request.id}`}>
+                              <Button variant="ghost" size="sm" title="Éditer">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </Link>
                             {request.status === 'pending_admin' && (
                               <Button 
                                 variant="default" 
@@ -397,7 +403,7 @@ export default function AdminSupplierRequestsPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" title="Voir le lien public">
                                   <ExternalLink className="h-4 w-4" />
                                 </Button>
                               </a>
