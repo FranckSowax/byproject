@@ -45,6 +45,7 @@ interface Material {
   weight: number | null;
   volume: number | null;
   specs: any;
+  images?: string[];
 }
 
 export default function ProjectPage() {
@@ -1773,9 +1774,9 @@ export default function ProjectPage() {
       
       {/* Modal d'édition */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] border-0 bg-white/95 backdrop-blur-sm shadow-2xl">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] border-0 bg-white/95 backdrop-blur-sm shadow-2xl overflow-hidden flex flex-col">
           <div className="h-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] absolute top-0 left-0 right-0 rounded-t-lg" />
-          <DialogHeader className="pt-4">
+          <DialogHeader className="pt-4 flex-shrink-0">
             <DialogTitle className="flex items-center gap-2 text-2xl">
               <div className="w-10 h-10 bg-gradient-to-br from-[#5B5FC7]/10 to-[#7B7FE8]/10 rounded-xl flex items-center justify-center">
                 <Edit className="h-5 w-5 text-[#5B5FC7]" />
@@ -1788,7 +1789,7 @@ export default function ProjectPage() {
           </DialogHeader>
           
           {editingMaterial && (
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-6">
               <div className="grid gap-2">
                 <Label htmlFor="name">Nom *</Label>
                 <Input
@@ -1883,7 +1884,7 @@ export default function ProjectPage() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
             <Button
               variant="outline"
               onClick={() => {
