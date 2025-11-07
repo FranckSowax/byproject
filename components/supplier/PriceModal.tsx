@@ -21,8 +21,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Truck } from 'lucide-react';
+import { Truck, Plus, X } from 'lucide-react';
 import { SupplierImageUpload } from './SupplierImageUpload';
+
+interface PriceVariation {
+  id: string;
+  label: string; // Ex: "Petite taille", "Grande taille", "Standard"
+  amount: string;
+  notes: string;
+}
 
 interface PriceFormData {
   country: string;
@@ -36,6 +43,7 @@ interface PriceFormData {
   amount: string;
   currency: string;
   notes: string;
+  variations: PriceVariation[];
   shippingLength: string;
   shippingWidth: string;
   shippingHeight: string;
@@ -79,6 +87,14 @@ const translations = {
     weight: 'Poids unitaire (kg)',
     unitsPerPackage: 'Unités par colis',
     productPhotos: 'Photos du Produit',
+    variations: 'Variations de Prix',
+    variationsInfo: 'Ajoutez différents prix pour différentes tailles/quantités',
+    addVariation: 'Ajouter une variation',
+    variationLabel: 'Label',
+    variationLabelPlaceholder: 'Ex: Petite taille, Grande taille...',
+    variationAmount: 'Prix',
+    variationNotes: 'Notes',
+    removeVariation: 'Supprimer',
     cancel: 'Annuler',
     add: 'Ajouter',
     required: '*',
@@ -109,6 +125,14 @@ const translations = {
     weight: 'Unit weight (kg)',
     unitsPerPackage: 'Units per package',
     productPhotos: 'Product Photos',
+    variations: 'Price Variations',
+    variationsInfo: 'Add different prices for different sizes/quantities',
+    addVariation: 'Add variation',
+    variationLabel: 'Label',
+    variationLabelPlaceholder: 'Ex: Small size, Large size...',
+    variationAmount: 'Price',
+    variationNotes: 'Notes',
+    removeVariation: 'Remove',
     cancel: 'Cancel',
     add: 'Add',
     required: '*',
@@ -139,6 +163,14 @@ const translations = {
     weight: '单位重量（公斤）',
     unitsPerPackage: '每包装单位数',
     productPhotos: '产品照片',
+    variations: '价格变化',
+    variationsInfo: '为不同尺寸/数量添加不同价格',
+    addVariation: '添加变化',
+    variationLabel: '标签',
+    variationLabelPlaceholder: '例如：小尺寸、大尺寸...',
+    variationAmount: '价格',
+    variationNotes: '备注',
+    removeVariation: '删除',
     cancel: '取消',
     add: '添加',
     required: '*',
@@ -177,6 +209,7 @@ export function PriceModal({
     amount: '',
     currency: 'CNY',
     notes: '',
+    variations: [],
     shippingLength: '',
     shippingWidth: '',
     shippingHeight: '',
@@ -207,6 +240,7 @@ export function PriceModal({
         amount: '',
         currency: 'CNY',
         notes: '',
+        variations: [],
         shippingLength: '',
         shippingWidth: '',
         shippingHeight: '',
