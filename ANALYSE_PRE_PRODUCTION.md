@@ -88,10 +88,10 @@ L'application **By Project** dispose d'une base solide avec les fonctionnalités
 - ⏳ **Export Excel** (bouton présent, à implémenter)
 
 ### Recherche & Filtres
-- ⚠️ **Recherche globale**
-- ⚠️ **Filtres avancés**
-- ⚠️ **Tri personnalisable**
-- ⚠️ **Sauvegarde des filtres**
+- 📋 **Recherche globale** (plan complet documenté)
+- 📋 **Filtres avancés** (composants spécifiés)
+- 📋 **Tri personnalisable** (SortableTable documenté)
+- 📋 **Sauvegarde des filtres** (table + hook documentés)
 
 ### Export/Import
 - ⚠️ **Export Excel**
