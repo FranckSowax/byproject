@@ -107,7 +107,10 @@ export default function ComparisonPage() {
 
   const getBestPrice = (materialId: string, country?: string) => {
     const prices = pricesByMaterial[materialId] || [];
-    const filtered = country ? prices.filter(p => p.supplier?.country === country) : prices;
+    // Filtrer par pays en vérifiant à la fois price.country et supplier.country
+    const filtered = country 
+      ? prices.filter(p => p.country === country || p.supplier?.country === country) 
+      : prices;
     if (filtered.length === 0) return null;
     return filtered.reduce((min, p) => 
       (p.converted_amount || p.amount) < (min.converted_amount || min.amount) ? p : min
@@ -119,7 +122,11 @@ export default function ComparisonPage() {
       const bestPrice = getBestPrice(material.id, country);
       if (!bestPrice) return total;
       const quantity = material.quantity || 1;
-      return total + (bestPrice.converted_amount || bestPrice.amount) * quantity;
+      // Utiliser converted_amount en priorité, sinon amount
+      const price = bestPrice.converted_amount && bestPrice.converted_amount > 0 
+        ? bestPrice.converted_amount 
+        : bestPrice.amount;
+      return total + price * quantity;
     }, 0);
   };
 
@@ -172,8 +179,11 @@ export default function ComparisonPage() {
   const calculateLocalTotal = () => {
     return materials.reduce((total, material) => {
       const prices = pricesByMaterial[material.id] || [];
-      // Filtrer uniquement les prix des pays locaux
-      const localPrices = prices.filter(p => localCountries.includes(p.supplier?.country || ''));
+      // Filtrer uniquement les prix des pays locaux (vérifier price.country et supplier.country)
+      const localPrices = prices.filter(p => 
+        localCountries.includes(p.country || '') || 
+        localCountries.includes(p.supplier?.country || '')
+      );
       if (localPrices.length === 0) return total;
       
       // Trouver le meilleur prix local
@@ -182,7 +192,11 @@ export default function ComparisonPage() {
       );
       
       const quantity = material.quantity || 1;
-      return total + (bestLocalPrice.converted_amount || bestLocalPrice.amount) * quantity;
+      // Utiliser converted_amount en priorité
+      const price = bestLocalPrice.converted_amount && bestLocalPrice.converted_amount > 0
+        ? bestLocalPrice.converted_amount
+        : bestLocalPrice.amount;
+      return total + price * quantity;
     }, 0);
   };
   
