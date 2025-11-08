@@ -34,9 +34,12 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
-  Calendar
+  Calendar,
+  User,
+  Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Principales paires de devises pour l'application
 const MAIN_CURRENCY_PAIRS = [
@@ -71,6 +74,7 @@ export default function ExchangeRatesPage() {
   
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const [editingRate, setEditingRate] = useState<EditingRate | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newRate, setNewRate] = useState({
@@ -81,7 +85,13 @@ export default function ExchangeRatesPage() {
 
   useEffect(() => {
     loadRates();
+    loadCurrentUser();
   }, []);
+
+  const loadCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUser(user);
+  };
 
   const loadRates = async () => {
     try {
@@ -297,7 +307,27 @@ export default function ExchangeRatesPage() {
             Gérez les taux de conversion utilisés dans toute l'application
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          {/* User Info */}
+          {currentUser && (
+            <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-indigo-600" />
+                <div className="text-sm">
+                  <p className="font-medium text-gray-900">
+                    {currentUser.user_metadata?.full_name || currentUser.email}
+                  </p>
+                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <Shield className="h-3 w-3 text-indigo-600" />
+                    <span className="font-medium text-indigo-600">
+                      {currentUser.user_metadata?.role || 'user'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <Button
             variant="outline"
             onClick={loadRates}
