@@ -53,10 +53,10 @@ L'application **By Project** dispose d'une base solide avec les fonctionnalités
 - ⏳ **Uptime monitoring** (UptimeRobot à configurer)
 
 ### 3. Backup & Recovery
-- ❌ **Backup automatique quotidien**
-- ❌ **Plan de disaster recovery**
-- ❌ **Politique de rétention des données**
-- ❌ **Tests de restauration**
+- ✅ **Backup automatique quotidien** (GitHub Actions configuré)
+- ✅ **Plan de disaster recovery** (DISASTER_RECOVERY_PLAN.md)
+- ✅ **Politique de rétention des données** (DATA_RETENTION_POLICY.md)
+- ⏳ **Tests de restauration** (à planifier mensuellement)
 
 ### 4. Performance
 - ❌ **Cache pour les taux de change**
