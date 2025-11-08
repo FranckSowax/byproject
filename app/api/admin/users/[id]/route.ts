@@ -66,40 +66,34 @@ export async function PATCH(
       }
     );
 
-    // Update user role in metadata
-    if (body.role) {
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(
-        params.id,
-        {
-          user_metadata: { role: body.role }
-        }
-      );
-
-      if (error) throw error;
+    // Get current user to preserve existing metadata
+    const { data: { user: currentUser } } = await supabaseAdmin.auth.admin.getUserById(params.id);
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Toggle user active status (ban/unban)
+    const currentMetadata = currentUser.user_metadata || {};
+
+    // Build updated metadata
+    const updatedMetadata = { ...currentMetadata };
+
+    if (body.role !== undefined) {
+      updatedMetadata.role = body.role;
+    }
+
     if (body.is_active !== undefined) {
-      if (body.is_active) {
-        // Unban user
-        const { error } = await supabaseAdmin.auth.admin.updateUserById(
-          params.id,
-          {
-            ban_duration: 'none'
-          }
-        );
-        if (error) throw error;
-      } else {
-        // Ban user indefinitely
-        const { error } = await supabaseAdmin.auth.admin.updateUserById(
-          params.id,
-          {
-            ban_duration: '876000h' // 100 years
-          }
-        );
-        if (error) throw error;
-      }
+      updatedMetadata.is_active = body.is_active;
     }
+
+    // Update user with merged metadata
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+      params.id,
+      {
+        user_metadata: updatedMetadata
+      }
+    );
+
+    if (error) throw error;
 
     return NextResponse.json({ success: true });
   } catch (error) {

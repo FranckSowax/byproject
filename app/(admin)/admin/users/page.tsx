@@ -131,7 +131,7 @@ export default function AdminUsersPage() {
             created_at: user.created_at,
             last_sign_in_at: user.last_sign_in_at,
             email_confirmed_at: user.email_confirmed_at,
-            is_active: !user.banned_until,
+            is_active: user.user_metadata?.is_active !== false, // Default to true if not set
             projects_count: projects?.length || 0,
             raw_user_meta_data: user.user_metadata,
           };
