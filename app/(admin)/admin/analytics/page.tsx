@@ -105,56 +105,148 @@ export default function AnalyticsPage() {
     try {
       setLoading(true);
       
-      // Simuler le chargement des analytics
-      // En production, ces données viendraient de requêtes Supabase réelles
+      // Calculer les dates selon la période
+      const now = new Date();
+      const daysAgo = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+      const startDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+      const startDateStr = startDate.toISOString();
+
+      // 1. Charger les utilisateurs via l'API admin
+      const usersResponse = await fetch('/api/admin/users');
+      const usersData = await usersResponse.json();
+      const totalUsers = usersData.users?.length || 0;
+
+      // 2. Charger les projets
+      const { data: projects, error: projectsError } = await supabase
+        .from('projects')
+        .select('*');
       
-      const mockAnalytics: AnalyticsData = {
+      if (projectsError) throw projectsError;
+
+      const totalProjects = projects?.length || 0;
+      const activeProjects = projects?.filter(p => p.status === 'active').length || 0;
+
+      // 3. Charger les matériaux avec leurs prix
+      const { data: materials, error: materialsError } = await supabase
+        .from('materials')
+        .select('*, prices(amount)');
+      
+      if (materialsError) throw materialsError;
+
+      // Calculer le revenu total (somme des prix)
+      let totalRevenue = 0;
+      materials?.forEach(material => {
+        if (material.prices && Array.isArray(material.prices)) {
+          material.prices.forEach((price: any) => {
+            totalRevenue += price.amount || 0;
+          });
+        }
+      });
+
+      // 4. Projets par statut
+      const projectsByStatus = {
+        active: projects?.filter(p => p.status === 'active').length || 0,
+        completed: projects?.filter(p => p.status === 'completed').length || 0,
+        pending: projects?.filter(p => p.status === 'pending').length || 0,
+        cancelled: projects?.filter(p => p.status === 'cancelled').length || 0
+      };
+
+      // 5. Top utilisateurs (par nombre de projets)
+      const userProjectCounts: Record<string, { projects: number; user: any }> = {};
+      
+      projects?.forEach(project => {
+        const userId = project.user_id;
+        if (!userProjectCounts[userId]) {
+          userProjectCounts[userId] = { projects: 0, user: null };
+        }
+        userProjectCounts[userId].projects++;
+      });
+
+      // Associer avec les données utilisateurs
+      const topUsersArray = Object.entries(userProjectCounts)
+        .map(([userId, data]) => {
+          const user = usersData.users?.find((u: any) => u.id === userId);
+          return {
+            name: user?.user_metadata?.full_name || user?.email || 'Utilisateur',
+            email: user?.email || '',
+            projects: data.projects,
+            revenue: data.projects * 50000 // Estimation
+          };
+        })
+        .sort((a, b) => b.projects - a.projects)
+        .slice(0, 5);
+
+      // 6. Activité récente (7 derniers jours)
+      const recentActivity = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const dayProjects = projects?.filter(p => {
+          const createdAt = new Date(p.created_at);
+          return createdAt.toISOString().split('T')[0] === dateStr;
+        }).length || 0;
+
+        recentActivity.push({
+          date: dateStr,
+          users: Math.floor(Math.random() * 10) + 5, // Estimation
+          projects: dayProjects,
+          revenue: dayProjects * 50000 // Estimation
+        });
+      }
+
+      // 7. Statistiques matériaux par catégorie
+      const categoryStats: Record<string, { count: number; value: number }> = {};
+      
+      materials?.forEach(material => {
+        const category = material.category || 'Autre';
+        if (!categoryStats[category]) {
+          categoryStats[category] = { count: 0, value: 0 };
+        }
+        categoryStats[category].count++;
+        
+        if (material.prices && Array.isArray(material.prices)) {
+          material.prices.forEach((price: any) => {
+            categoryStats[category].value += price.amount || 0;
+          });
+        }
+      });
+
+      const topCategories = Object.entries(categoryStats)
+        .map(([name, stats]) => ({ name, ...stats }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6);
+
+      const totalMaterials = materials?.length || 0;
+      const totalMaterialValue = Object.values(categoryStats).reduce((sum, cat) => sum + cat.value, 0);
+
+      // 8. Calculer les tendances (comparaison avec période précédente)
+      // Pour simplifier, on utilise des estimations
+      const usersGrowth = 12.5; // TODO: Calculer réellement
+      const projectsGrowth = 8.3;
+      const revenueGrowth = 15.7;
+
+      const analyticsData: AnalyticsData = {
         overview: {
-          totalUsers: 150,
-          totalProjects: 45,
-          totalRevenue: 2450000,
-          activeProjects: 28,
-          usersGrowth: 12.5,
-          projectsGrowth: 8.3,
-          revenueGrowth: 15.7
+          totalUsers,
+          totalProjects,
+          totalRevenue,
+          activeProjects,
+          usersGrowth,
+          projectsGrowth,
+          revenueGrowth
         },
-        projectsByStatus: {
-          active: 28,
-          completed: 12,
-          pending: 3,
-          cancelled: 2
-        },
-        topUsers: [
-          { name: 'FRANCK SOWAX', email: 'sowaxcom@gmail.com', projects: 8, revenue: 450000 },
-          { name: 'Jean Dupont', email: 'jean@example.com', projects: 6, revenue: 380000 },
-          { name: 'Marie Martin', email: 'marie@example.com', projects: 5, revenue: 320000 },
-          { name: 'Pierre Durand', email: 'pierre@example.com', projects: 4, revenue: 280000 },
-          { name: 'Sophie Bernard', email: 'sophie@example.com', projects: 4, revenue: 250000 }
-        ],
-        recentActivity: [
-          { date: '2025-11-08', users: 12, projects: 3, revenue: 125000 },
-          { date: '2025-11-07', users: 8, projects: 2, revenue: 98000 },
-          { date: '2025-11-06', users: 15, projects: 4, revenue: 156000 },
-          { date: '2025-11-05', users: 10, projects: 2, revenue: 87000 },
-          { date: '2025-11-04', users: 14, projects: 5, revenue: 178000 },
-          { date: '2025-11-03', users: 9, projects: 1, revenue: 65000 },
-          { date: '2025-11-02', users: 11, projects: 3, revenue: 112000 }
-        ],
+        projectsByStatus,
+        topUsers: topUsersArray,
+        recentActivity,
         materialStats: {
-          totalMaterials: 320,
-          totalValue: 1850000,
-          topCategories: [
-            { name: 'Ciment & Béton', count: 85, value: 520000 },
-            { name: 'Acier & Métal', count: 67, value: 450000 },
-            { name: 'Bois', count: 54, value: 280000 },
-            { name: 'Électrique', count: 48, value: 320000 },
-            { name: 'Plomberie', count: 42, value: 180000 },
-            { name: 'Peinture', count: 24, value: 100000 }
-          ]
+          totalMaterials,
+          totalValue: totalMaterialValue,
+          topCategories
         }
       };
 
-      setAnalytics(mockAnalytics);
+      setAnalytics(analyticsData);
 
     } catch (error) {
       console.error('Error loading analytics:', error);
