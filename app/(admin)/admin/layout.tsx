@@ -27,7 +27,6 @@ import {
   Calendar,
   Download,
   Upload,
-  Activity,
   FileCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -55,13 +54,6 @@ const adminNavigation = [
         icon: BarChart3,
         badge: null,
         description: 'Statistiques et graphiques'
-      },
-      {
-        name: 'Activité',
-        href: '/admin/activity',
-        icon: Activity,
-        badge: 'Live',
-        description: 'Activité en temps réel'
       },
     ]
   },
