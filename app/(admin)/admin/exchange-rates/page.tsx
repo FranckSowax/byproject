@@ -112,19 +112,29 @@ export default function ExchangeRatesPage() {
         return;
       }
 
-      const { error } = await supabase
+      console.log('Updating rate:', { id, oldRate: rates.find(r => r.id === id)?.rate, newRate: rateNumber });
+
+      const { data, error } = await supabase
         .from('exchange_rates')
         .update({ 
           rate: rateNumber,
           updated_at: new Date().toISOString()
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
 
-      toast.success('Taux mis à jour avec succès');
+      console.log('Update result:', data);
+
+      toast.success(`Taux mis à jour: ${rateNumber}`);
       setEditingRate(null);
-      loadRates();
+      
+      // Force reload to get fresh data
+      await loadRates();
     } catch (error) {
       console.error('Error updating rate:', error);
       toast.error('Erreur lors de la mise à jour');
