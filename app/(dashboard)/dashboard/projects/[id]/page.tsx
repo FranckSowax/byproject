@@ -6,10 +6,11 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, UserCircle, History, TrendingUp, Shield } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, UserCircle, History, TrendingUp, Shield, Send } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { createQuotationRequest } from "@/lib/quotation";
 import { ShareProjectDialog } from "@/components/collaboration/ShareProjectDialog";
 import { MaterialComments } from "@/components/collaboration/MaterialComments";
 import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
@@ -131,6 +132,9 @@ export default function ProjectPage() {
   const [showComments, setShowComments] = useState(false);
   const [commentsMaterialId, setCommentsMaterialId] = useState<string | null>(null);
   const [commentsMaterialName, setCommentsMaterialName] = useState<string>('');
+  
+  // État pour la demande de cotation
+  const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
 
   // États pour l'édition du projet
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
@@ -999,6 +1003,64 @@ export default function ProjectPage() {
     }
   };
 
+  // Fonction pour créer une demande de cotation
+  const handleCreateQuotation = async () => {
+    if (!project) return;
+
+    // Vérifier qu'il y a des matériaux
+    if (materials.length === 0) {
+      toast.error("Aucun matériau dans ce projet", {
+        description: "Ajoutez des matériaux avant de demander une cotation"
+      });
+      return;
+    }
+
+    setIsCreatingQuotation(true);
+    
+    try {
+      toast.info("Préparation de la demande...", {
+        description: "Récupération des matériaux et commentaires"
+      });
+
+      const result = await createQuotationRequest({
+        projectId: project.id,
+        country: 'China',
+        numSuppliers: 3,
+        shippingType: 'sea',
+        notes: ''
+      });
+
+      if (result.success) {
+        toast.success("Demande de cotation créée !", {
+          description: `${materials.length} matériaux avec commentaires traduits`,
+          duration: 5000
+        });
+
+        // Copier le lien dans le presse-papier
+        if (result.supplierLink) {
+          navigator.clipboard.writeText(result.supplierLink);
+          toast.success("Lien copié dans le presse-papier !", {
+            description: "Partagez-le avec vos fournisseurs"
+          });
+        }
+
+        // Rediriger vers la page des demandes
+        setTimeout(() => {
+          router.push('/dashboard/supplier-requests');
+        }, 2000);
+      } else {
+        throw new Error(result.error || "Erreur inconnue");
+      }
+    } catch (error: any) {
+      console.error("Error creating quotation:", error);
+      toast.error("Erreur lors de la création", {
+        description: error.message || "Veuillez réessayer"
+      });
+    } finally {
+      setIsCreatingQuotation(false);
+    }
+  };
+
   // Fonctions de gestion des photos
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1249,6 +1311,27 @@ export default function ProjectPage() {
                 {permissions.role === 'owner' ? '👑 Propriétaire' :
                  permissions.role === 'editor' ? '✏️ Éditeur' : '👁️ Lecteur'}
               </Badge>
+            )}
+            
+            {/* Bouton Demander une cotation */}
+            {permissions.canManage && materials.length > 0 && (
+              <Button 
+                onClick={handleCreateQuotation}
+                disabled={isCreatingQuotation}
+                className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all rounded-xl"
+              >
+                {isCreatingQuotation ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Création...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Demander une cotation
+                  </>
+                )}
+              </Button>
             )}
             
             {permissions.canManage && (
