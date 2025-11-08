@@ -639,9 +639,30 @@ export default function ComparisonPage() {
                                   </Badge>
                                 </div>
                                 <span className="text-2xl">
-                                  {price.country === 'Cameroun' && '📍'}
+                                  {price.country === 'Cameroun' && '🇨🇲'}
+                                  {price.country === 'Gabon' && '🇬🇦'}
+                                  {price.country === 'Congo' && '🇨🇬'}
+                                  {price.country === 'RDC' && '🇨🇩'}
+                                  {price.country === 'Côte d\'Ivoire' && '🇨🇮'}
+                                  {price.country === 'Sénégal' && '🇸🇳'}
+                                  {price.country === 'Bénin' && '🇧🇯'}
+                                  {price.country === 'Togo' && '🇹🇬'}
                                   {price.country === 'Chine' && '🇨🇳'}
+                                  {price.country === 'China' && '🇨🇳'}
+                                  {price.country === 'Dubai' && '🇦🇪'}
+                                  {price.country === 'Turquie' && '🇹🇷'}
                                   {price.country === 'France' && '🇫🇷'}
+                                  {price.country === 'Allemagne' && '🇩🇪'}
+                                  {price.country === 'Italie' && '🇮🇹'}
+                                  {price.country === 'Espagne' && '🇪🇸'}
+                                  {price.country === 'Vietnam' && '🇻🇳'}
+                                  {price.country === 'Thaïlande' && '🇹🇭'}
+                                  {price.country === 'Inde' && '🇮🇳'}
+                                  {price.country === 'Bangladesh' && '🇧🇩'}
+                                  {price.country === 'Pakistan' && '🇵🇰'}
+                                  {price.country === 'Indonésie' && '🇮🇩'}
+                                  {price.country === 'Malaisie' && '🇲🇾'}
+                                  {!['Cameroun', 'Gabon', 'Congo', 'RDC', 'Côte d\'Ivoire', 'Sénégal', 'Bénin', 'Togo', 'Chine', 'China', 'Dubai', 'Turquie', 'France', 'Allemagne', 'Italie', 'Espagne', 'Vietnam', 'Thaïlande', 'Inde', 'Bangladesh', 'Pakistan', 'Indonésie', 'Malaisie'].includes(price.country) && '🌍'}
                                 </span>
                               </div>
 
