@@ -46,11 +46,11 @@ L'application **By Project** dispose d'une base solide avec les fonctionnalités
 - ❌ **Audit de sécurité**
 
 ### 2. Monitoring & Logs
-- ❌ **Système de logs centralisé**
-- ❌ **Tracking des erreurs** (Sentry, Bugsnag)
-- ❌ **Métriques de performance**
-- ❌ **Alertes en cas de problème**
-- ❌ **Uptime monitoring**
+- ✅ **Système de logs centralisé** (Supabase + service logger)
+- ✅ **Tracking des erreurs** (Sentry configuré)
+- ✅ **Métriques de performance** (table performance_metrics)
+- ✅ **Alertes en cas de problème** (système automatique)
+- ⏳ **Uptime monitoring** (UptimeRobot à configurer)
 
 ### 3. Backup & Recovery
 - ❌ **Backup automatique quotidien**
