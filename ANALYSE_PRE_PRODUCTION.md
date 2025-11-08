@@ -59,11 +59,11 @@ L'application **By Project** dispose d'une base solide avec les fonctionnalités
 - ⏳ **Tests de restauration** (à planifier mensuellement)
 
 ### 4. Performance
-- ❌ **Cache pour les taux de change**
-- ❌ **Pagination sur les listes longues**
-- ❌ **Optimisation des images**
-- ❌ **Lazy loading des composants**
-- ❌ **Index manquants sur certaines colonnes**
+- ✅ **Cache pour les taux de change** (TTL 1h, multi-niveaux)
+- ✅ **Pagination sur les listes longues** (composant réutilisable)
+- ⏳ **Optimisation des images** (Next.js Image à implémenter)
+- ⏳ **Lazy loading des composants** (React.lazy à implémenter)
+- ✅ **Index manquants sur certaines colonnes** (47 index ajoutés)
 
 ### 5. Gestion Utilisateur
 - ❌ **Vérification d'email**
