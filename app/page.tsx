@@ -71,19 +71,19 @@ export default function Home() {
           <div className="relative mx-auto max-w-4xl space-y-10">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#F5F6FF] to-[#FFF5F2] border border-[#E0E4FF]">
               <Sparkles className="h-4 w-4 text-[#5B5FC7]" />
-              <span className="text-sm font-medium text-[#4A5568]">Assistant de mission pour acheteurs en Chine</span>
+              <span className="text-sm font-medium text-[#4A5568]">Plateforme de comparaison et sourcing international</span>
             </div>
             
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight px-4">
-              <span className="text-[#2D3748]">Gérez vos missions </span>
+              <span className="text-[#2D3748]">Comparez et sourcez </span>
               <span className="bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] bg-clip-text text-transparent">
-                d'achat en Chine
+                vos matériaux
               </span>
             </h1>
             
             <p className="text-lg sm:text-xl md:text-2xl text-[#718096] max-w-3xl mx-auto leading-relaxed px-4">
-              L'outil indispensable pour préparer, suivre et optimiser vos visites fournisseurs en Chine. 
-              Collectez les prix sur place, comparez en temps réel, et prenez les bonnes décisions.
+              Gérez vos projets, importez vos matériaux avec l'IA, comparez les prix locaux vs internationaux, 
+              et sourcez auprès de fournisseurs chinois qualifiés. Tout en un.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 px-4">
@@ -133,9 +133,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#5B5FC7] to-[#7B7FE8] mb-6 shadow-lg">
                     <Zap className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Préparation Mission</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Import Intelligent IA</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Importez votre liste de matériaux avant le départ. L'IA organise vos données pour optimiser vos visites fournisseurs.
+                    Importez vos matériaux via Excel, CSV ou PDF. L'IA extrait et organise automatiquement toutes les données.
                   </p>
                 </div>
               </div>
@@ -146,9 +146,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9B7B] to-[#FFB599] mb-6 shadow-lg">
                     <Globe className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Saisie Sur Place</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Gestion des Prix</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Collectez les prix directement chez les fournisseurs. Enregistrez coordonnées, photos et notes de visite en temps réel.
+                    Ajoutez les prix de multiples fournisseurs avec photos, coordonnées et notes. Conversion automatique des devises.
                   </p>
                 </div>
               </div>
@@ -159,9 +159,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#6B8AFF] to-[#9B7BFF] mb-6 shadow-lg">
                     <BarChart3 className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Comparaison Instantanée</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Comparaison Local vs Chine</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Entre deux rendez-vous, comparez les offres des fournisseurs. Négociez en connaissance de cause avec les données en main.
+                    Comparez automatiquement les meilleurs prix locaux africains vs chinois. Calcul des économies avec transport maritime.
                   </p>
                 </div>
               </div>
@@ -172,9 +172,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#48BB78] to-[#7BFFA8] mb-6 shadow-lg">
                     <FileText className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Rapport de Mission</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Sourcing Chinois</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    De retour au bureau, générez un rapport complet avec prix, fournisseurs et photos. Présentez vos résultats à votre équipe.
+                    Demandez une cotation : nous contactons minimum 3 fournisseurs chinois et ajoutons leurs prix à votre projet.
                   </p>
                 </div>
               </div>
@@ -203,7 +203,7 @@ export default function Home() {
                   </h2>
                   
                   <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto leading-relaxed px-4">
-                    Rejoignez les acheteurs professionnels qui optimisent leurs visites fournisseurs avec CompaChantier.
+                    Rejoignez les professionnels qui optimisent leurs achats de matériaux avec By Project.
                   </p>
                   
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4 px-4">
