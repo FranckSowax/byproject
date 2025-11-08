@@ -81,10 +81,11 @@ L'application **By Project** dispose d'une base solide avec les fonctionnalités
 - ⚠️ **Notifications par email**
 
 ### Analytics
-- ⚠️ **Dashboard analytics admin**
-- ⚠️ **Statistiques d'utilisation**
-- ⚠️ **Rapports d'activité**
-- ⚠️ **Métriques business**
+- ✅ **Dashboard analytics admin** (page /admin/analytics complète)
+- ✅ **Statistiques d'utilisation** (KPIs, tendances, croissance)
+- ✅ **Rapports d'activité** (7 derniers jours, top users)
+- ✅ **Métriques business** (revenu, projets, matériaux)
+- ⏳ **Export Excel** (bouton présent, à implémenter)
 
 ### Recherche & Filtres
 - ⚠️ **Recherche globale**
