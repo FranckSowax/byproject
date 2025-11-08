@@ -83,9 +83,24 @@ export default function AdminProjectsPage() {
 
       if (projectsError) throw projectsError;
 
-      // Enrich with materials count
+      // Enrich with user info and materials count
       const projectsWithMeta = await Promise.all(
         (projectsData || []).map(async (project: any) => {
+          // Get user info from API route
+          let userName = 'Utilisateur';
+          let userEmail = '';
+          
+          try {
+            const userResponse = await fetch(`/api/admin/users/${project.user_id}`);
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              userName = userData.full_name;
+              userEmail = userData.email;
+            }
+          } catch (error) {
+            console.warn('Could not fetch user info:', error);
+          }
+
           // Get materials count
           const { data: materialsData } = await supabase
             .from('materials')
@@ -94,8 +109,8 @@ export default function AdminProjectsPage() {
 
           return {
             ...project,
-            user_name: project.user_id.substring(0, 8) + '...',
-            user_email: project.user_id,
+            user_name: userName,
+            user_email: userEmail,
             materials_count: materialsData?.length || 0,
           };
         })
