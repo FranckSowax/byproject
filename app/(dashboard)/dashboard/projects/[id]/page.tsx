@@ -132,10 +132,9 @@ export default function ProjectPage() {
   const [showComments, setShowComments] = useState(false);
   const [commentsMaterialId, setCommentsMaterialId] = useState<string | null>(null);
   const [commentsMaterialName, setCommentsMaterialName] = useState<string>('');
-  
+
   // État pour la demande de cotation
   const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
-  const [quotationRequest, setQuotationRequest] = useState<any>(null);
 
   // États pour l'édition du projet
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
@@ -159,7 +158,6 @@ export default function ProjectPage() {
     loadMaterials();
     loadAllPrices();
     checkPermissions();
-    loadQuotationRequest();
   }, [params.id]);
 
   // Vérifier les permissions de l'utilisateur
@@ -1005,28 +1003,6 @@ export default function ProjectPage() {
     }
   };
 
-  // Fonction pour charger la demande de cotation du projet
-  const loadQuotationRequest = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('supplier_requests' as any)
-        .select('*')
-        .eq('project_id', params.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error loading quotation request:', error);
-        return;
-      }
-
-      setQuotationRequest(data);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
   // Fonction pour créer une demande de cotation
   const handleCreateQuotation = async () => {
     if (!project) return;
@@ -1056,11 +1032,8 @@ export default function ProjectPage() {
 
       if (result.success) {
         toast.success("Demande de cotation envoyée !", {
-          description: "Votre demande est en attente de traitement par l'admin"
+          description: "Vous recevrez une notification quand elle sera traitée"
         });
-
-        // Recharger la demande de cotation pour afficher la notification
-        await loadQuotationRequest();
       } else {
         throw new Error(result.error || "Erreur inconnue");
       }
@@ -1391,68 +1364,6 @@ export default function ProjectPage() {
             )}
           </div>
         </div>
-
-      {/* Notification Demande de Cotation */}
-      {quotationRequest && (
-        <Card className={`border-l-4 ${
-          quotationRequest.status === 'pending_admin' ? 'border-l-yellow-500 bg-yellow-50/50' :
-          quotationRequest.status === 'in_progress' ? 'border-l-blue-500 bg-blue-50/50' :
-          quotationRequest.status === 'sent' ? 'border-l-purple-500 bg-purple-50/50' :
-          quotationRequest.status === 'completed' ? 'border-l-green-500 bg-green-50/50' :
-          'border-l-gray-500 bg-gray-50/50'
-        } shadow-lg rounded-2xl`}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  quotationRequest.status === 'pending_admin' ? 'bg-yellow-100' :
-                  quotationRequest.status === 'in_progress' ? 'bg-blue-100' :
-                  quotationRequest.status === 'sent' ? 'bg-purple-100' :
-                  quotationRequest.status === 'completed' ? 'bg-green-100' :
-                  'bg-gray-100'
-                }`}>
-                  {quotationRequest.status === 'pending_admin' && <Clock className="h-6 w-6 text-yellow-600" />}
-                  {quotationRequest.status === 'in_progress' && <Package className="h-6 w-6 text-blue-600" />}
-                  {quotationRequest.status === 'sent' && <Send className="h-6 w-6 text-purple-600" />}
-                  {quotationRequest.status === 'completed' && <CheckCircle2 className="h-6 w-6 text-green-600" />}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg text-gray-900">
-                    {quotationRequest.status === 'pending_admin' && '📤 Demande de cotation envoyée'}
-                    {quotationRequest.status === 'in_progress' && '⏳ Cotation en cours de traitement'}
-                    {quotationRequest.status === 'sent' && '📨 Demande envoyée aux fournisseurs'}
-                    {quotationRequest.status === 'completed' && '✅ Cotations reçues !'}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {quotationRequest.status === 'pending_admin' && 'En attente de traitement par l\'admin'}
-                    {quotationRequest.status === 'in_progress' && 'Notre équipe traite votre demande'}
-                    {quotationRequest.status === 'sent' && 'Les fournisseurs préparent leurs offres'}
-                    {quotationRequest.status === 'completed' && 'Consultez les prix ci-dessous'}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Demande #{quotationRequest.request_number}
-                  </p>
-                </div>
-              </div>
-              <Badge 
-                variant={quotationRequest.status === 'completed' ? 'default' : 'secondary'}
-                className={
-                  quotationRequest.status === 'pending_admin' ? 'bg-yellow-100 text-yellow-800' :
-                  quotationRequest.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                  quotationRequest.status === 'sent' ? 'bg-purple-100 text-purple-800' :
-                  quotationRequest.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  ''
-                }
-              >
-                {quotationRequest.status === 'pending_admin' && 'En attente'}
-                {quotationRequest.status === 'in_progress' && 'En cours'}
-                {quotationRequest.status === 'sent' && 'Envoyée'}
-                {quotationRequest.status === 'completed' && 'Terminée'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
 
       {/* Actions rapides - Style moderne */}
