@@ -895,15 +895,9 @@ export default function ProjectPage() {
 
         if (rateError) {
           console.error("Exchange rate error:", rateError);
-          // Utiliser un taux par défaut si non trouvé
-          const defaultRates: Record<string, number> = {
-            'CNY': 85,
-            'USD': 600,
-            'EUR': 650,
-            'TRY': 20,
-            'AED': 163,
-          };
-          convertedAmount = parseFloat(editingPrice.amount) * (defaultRates[editingPrice.currency] || 1);
+          toast.error(`Taux de change non trouvé pour ${editingPrice.currency}. Veuillez configurer le taux dans Admin > Taux de Change.`);
+          setIsSaving(false);
+          return;
         } else if (rateData) {
           convertedAmount = parseFloat(editingPrice.amount) * rateData.rate;
         }
