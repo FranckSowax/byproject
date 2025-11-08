@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler, ChevronDown, ChevronUp, XCircle } from 'lucide-react';
+import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler, ChevronDown, ChevronUp, XCircle, User, Calendar } from 'lucide-react';
+import { formatCommentDate } from '@/lib/comments';
 
 interface PriceVariation {
   id: string;
@@ -23,6 +24,15 @@ interface Price {
   variations: PriceVariation[];
 }
 
+interface MaterialComment {
+  id: string;
+  user_name: string;
+  user_email: string;
+  comment: string;
+  created_at: string;
+  translatedComment?: string;
+}
+
 interface Material {
   id: string;
   name: string;
@@ -37,6 +47,7 @@ interface Material {
   supplierImages?: string[];
   prices?: Price[];
   unavailable?: boolean;
+  comments?: MaterialComment[];
 }
 
 interface MaterialCardProps {
@@ -244,6 +255,62 @@ export function MaterialCard({
           )}
         </div>
       </div>
+
+      {/* Comments Section */}
+      {material.comments && material.comments.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <MessageSquare className="h-5 w-5 text-purple-600" />
+            <h4 className="font-semibold text-sm text-gray-900">
+              {language === 'fr' ? 'Commentaires' : language === 'en' ? 'Comments' : '评论'} ({material.comments.length})
+            </h4>
+          </div>
+          <div className="space-y-3">
+            {material.comments.map((comment, idx) => {
+              const locale = language === 'zh' ? 'zh-CN' : language === 'en' ? 'en-US' : 'fr-FR';
+              return (
+                <div 
+                  key={comment.id || idx} 
+                  className="bg-gradient-to-br from-purple-50 to-blue-50 p-3 rounded-lg border border-purple-100"
+                >
+                  {/* User info */}
+                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-purple-100">
+                    <div className="w-7 h-7 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-xs text-gray-900 truncate">
+                        {comment.user_name}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
+                      <Calendar className="h-3 w-3" />
+                      <span>{formatCommentDate(comment.created_at, locale)}</span>
+                    </div>
+                  </div>
+
+                  {/* Comment text */}
+                  <div className="text-sm text-gray-700 leading-relaxed">
+                    {comment.translatedComment || comment.comment}
+                  </div>
+
+                  {/* Show original if translated */}
+                  {comment.translatedComment && comment.translatedComment !== comment.comment && (
+                    <details className="mt-2">
+                      <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                        {language === 'en' ? 'Original (French)' : language === 'zh' ? '原文 (法语)' : 'Original'}
+                      </summary>
+                      <p className="text-xs text-gray-600 mt-1 italic pl-3 border-l-2 border-purple-200">
+                        {comment.comment}
+                      </p>
+                    </details>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

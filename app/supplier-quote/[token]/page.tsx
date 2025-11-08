@@ -36,6 +36,15 @@ interface Price {
   variations: PriceVariation[];
 }
 
+interface MaterialComment {
+  id: string;
+  user_name: string;
+  user_email: string;
+  comment: string;
+  created_at: string;
+  translatedComment?: string;
+}
+
 interface Material {
   id: string;
   name: string;
@@ -51,6 +60,7 @@ interface Material {
   supplierImages?: string[];
   prices?: Price[];
   unavailable?: boolean;
+  comments?: MaterialComment[];
 }
 
 interface SupplierRequest {
