@@ -75,7 +75,7 @@ export default function AdminProjectsPage() {
     try {
       setLoading(true);
 
-      // Load projects with user info
+      // Load projects
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
@@ -83,12 +83,9 @@ export default function AdminProjectsPage() {
 
       if (projectsError) throw projectsError;
 
-      // Enrich with user info and materials count
+      // Enrich with materials count
       const projectsWithMeta = await Promise.all(
         (projectsData || []).map(async (project: any) => {
-          // Get user info
-          const { data: { user } } = await supabase.auth.admin.getUserById(project.user_id);
-          
           // Get materials count
           const { data: materialsData } = await supabase
             .from('materials')
@@ -97,8 +94,8 @@ export default function AdminProjectsPage() {
 
           return {
             ...project,
-            user_name: user?.user_metadata?.full_name || 'Utilisateur',
-            user_email: user?.email || '',
+            user_name: project.user_id.substring(0, 8) + '...',
+            user_email: project.user_id,
             materials_count: materialsData?.length || 0,
           };
         })
