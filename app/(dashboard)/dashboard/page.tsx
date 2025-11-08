@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Calendar, Edit, Image as ImageIcon, X, Globe, ArrowRight } from "lucide-react";
+import { Plus, FolderOpen, Calendar, Edit, Image as ImageIcon, X, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -165,12 +165,6 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link href="/dashboard/supplier-requests">
-              <Button variant="outline" className="gap-2 border-2 border-[#5B5FC7] text-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white rounded-xl px-6 py-6 transition-all">
-                <Globe className="h-5 w-5" />
-                <span className="font-semibold">Demandes Fournisseurs</span>
-              </Button>
-            </Link>
             <Link href="/dashboard/projects/new">
               <Button className="gap-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 transition-all hover:scale-105">
                 <Plus className="h-5 w-5 text-white" />
