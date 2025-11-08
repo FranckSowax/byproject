@@ -64,6 +64,8 @@ interface User {
   email_confirmed_at: string | null;
   is_active: boolean;
   projects_count: number;
+  owned_projects_count?: number;
+  collaboration_projects_count?: number;
   raw_user_meta_data: any;
 }
 
@@ -115,13 +117,25 @@ export default function AdminUsersPage() {
       
       const authUsers = await response.json();
 
-      // Get projects count for each user
+      // Get projects count for each user (owned + collaborations)
       const usersWithProjects = await Promise.all(
         authUsers.map(async (user: any) => {
-          const { data: projects } = await supabase
+          // Count projects owned by user
+          const { data: ownedProjects } = await supabase
             .from('projects')
             .select('id', { count: 'exact', head: true })
             .eq('user_id', user.id);
+
+          // Count projects where user is a collaborator
+          const { data: collaborations } = await supabase
+            .from('project_collaborators')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('status', 'accepted');
+
+          const ownedCount = ownedProjects?.length || 0;
+          const collaborationCount = collaborations?.length || 0;
+          const totalProjects = ownedCount + collaborationCount;
 
           return {
             id: user.id,
@@ -132,7 +146,9 @@ export default function AdminUsersPage() {
             last_sign_in_at: user.last_sign_in_at,
             email_confirmed_at: user.email_confirmed_at,
             is_active: user.user_metadata?.is_active !== false, // Default to true if not set
-            projects_count: projects?.length || 0,
+            projects_count: totalProjects,
+            owned_projects_count: ownedCount,
+            collaboration_projects_count: collaborationCount,
             raw_user_meta_data: user.user_metadata,
           };
         })
@@ -665,8 +681,13 @@ export default function AdminUsersPage() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-gray-600">Projets créés</Label>
-                  <p className="mt-1 font-medium text-purple-600">{selectedUser.projects_count}</p>
+                  <Label className="text-gray-600">Projets</Label>
+                  <p className="mt-1 font-medium text-purple-600">{selectedUser.projects_count} total</p>
+                  {(selectedUser.owned_projects_count !== undefined && selectedUser.collaboration_projects_count !== undefined) && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {selectedUser.owned_projects_count} possédés · {selectedUser.collaboration_projects_count} collaborations
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
