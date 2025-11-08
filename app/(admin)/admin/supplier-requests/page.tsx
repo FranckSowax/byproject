@@ -92,7 +92,7 @@ export default function AdminSupplierRequestsPage() {
   const [requests, setRequests] = useState<SupplierRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('pending_admin'); // Filtre par défaut sur les demandes en attente
 
   useEffect(() => {
     loadRequests();
