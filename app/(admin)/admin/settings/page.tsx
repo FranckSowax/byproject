@@ -103,16 +103,55 @@ export default function SettingsPage() {
     maintenance_message: 'Maintenance en cours. Retour prévu dans 2 heures.'
   });
   
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Load settings from Supabase
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('key, value');
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const loadedSettings: any = {};
+        data.forEach((item: any) => {
+          // Parse JSON values
+          loadedSettings[item.key] = item.value;
+        });
+        setSettings(prev => ({ ...prev, ...loadedSettings }));
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      toast.error('Erreur lors du chargement des paramètres');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
       setLoading(true);
       
-      // Sauvegarder dans localStorage pour l'instant
-      // TODO: Créer une table system_settings dans Supabase
-      localStorage.setItem('system_settings', JSON.stringify(settings));
+      // Save each setting to Supabase
+      const updates = Object.entries(settings).map(([key, value]) => ({
+        key,
+        value,
+        category: getCategoryForKey(key),
+        description: getDescriptionForKey(key)
+      }));
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('system_settings')
+          .upsert(update, { onConflict: 'key' });
+
+        if (error) throw error;
+      }
       
       toast.success('Paramètres sauvegardés avec succès');
       setHasChanges(false);
@@ -124,13 +163,10 @@ export default function SettingsPage() {
     }
   };
 
-  const handleReset = () => {
-    const saved = localStorage.getItem('system_settings');
-    if (saved) {
-      setSettings(JSON.parse(saved));
-      setHasChanges(false);
-      toast.info('Paramètres réinitialisés');
-    }
+  const handleReset = async () => {
+    await loadSettings();
+    setHasChanges(false);
+    toast.info('Paramètres réinitialisés');
   };
 
   const updateSetting = (key: keyof SystemSettings, value: any) => {
@@ -138,11 +174,52 @@ export default function SettingsPage() {
     setHasChanges(true);
   };
 
+  // Helper functions to categorize settings
+  const getCategoryForKey = (key: string): string => {
+    if (['app_name', 'app_description', 'support_email', 'support_phone'].includes(key)) return 'general';
+    if (['default_language', 'enabled_languages'].includes(key)) return 'languages';
+    if (['default_currency', 'auto_convert_prices'].includes(key)) return 'currencies';
+    if (['email_notifications', 'push_notifications', 'notification_frequency'].includes(key)) return 'notifications';
+    if (['require_email_verification', 'password_min_length', 'session_timeout_minutes', 'max_login_attempts'].includes(key)) return 'security';
+    if (['max_projects_per_user', 'auto_archive_days', 'allow_project_sharing'].includes(key)) return 'projects';
+    if (['auto_approve_suppliers', 'supplier_verification_required'].includes(key)) return 'suppliers';
+    if (['max_exports_per_day', 'export_formats'].includes(key)) return 'exports';
+    if (['maintenance_mode', 'maintenance_message'].includes(key)) return 'maintenance';
+    return 'other';
+  };
+
+  const getDescriptionForKey = (key: string): string => {
+    const descriptions: Record<string, string> = {
+      app_name: 'Nom de l\'application',
+      app_description: 'Description de l\'application',
+      support_email: 'Email de support',
+      support_phone: 'Téléphone de support',
+      default_language: 'Langue par défaut',
+      enabled_languages: 'Langues activées',
+      default_currency: 'Devise par défaut',
+      auto_convert_prices: 'Conversion automatique des prix',
+      email_notifications: 'Notifications par email',
+      push_notifications: 'Notifications push',
+      notification_frequency: 'Fréquence des notifications',
+      require_email_verification: 'Vérification email obligatoire',
+      password_min_length: 'Longueur minimale du mot de passe',
+      session_timeout_minutes: 'Timeout de session en minutes',
+      max_login_attempts: 'Tentatives de connexion maximum',
+      max_projects_per_user: 'Projets maximum par utilisateur',
+      auto_archive_days: 'Archivage automatique en jours',
+      allow_project_sharing: 'Autoriser le partage de projets',
+      auto_approve_suppliers: 'Approbation automatique des fournisseurs',
+      supplier_verification_required: 'Vérification fournisseur obligatoire',
+      max_exports_per_day: 'Exports maximum par jour',
+      export_formats: 'Formats d\'export disponibles',
+      maintenance_mode: 'Mode maintenance',
+      maintenance_message: 'Message de maintenance'
+    };
+    return descriptions[key] || '';
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem('system_settings');
-    if (saved) {
-      setSettings(JSON.parse(saved));
-    }
+    loadSettings();
   }, []);
 
   return (
@@ -639,17 +716,17 @@ export default function SettingsPage() {
       </Tabs>
 
       {/* Info Card */}
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-green-200 bg-green-50">
         <CardContent className="py-4">
           <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+            <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-blue-900">
-                Sauvegarde Automatique
+              <p className="text-sm font-medium text-green-900">
+                Sauvegarde Supabase Active
               </p>
-              <p className="text-sm text-blue-700">
-                Les paramètres sont actuellement sauvegardés localement. Pour une sauvegarde permanente,
-                créez une table <code className="bg-blue-100 px-1 rounded">system_settings</code> dans Supabase.
+              <p className="text-sm text-green-700">
+                Les paramètres sont sauvegardés dans la base de données Supabase.
+                Tous les changements sont persistants et partagés entre les sessions.
               </p>
             </div>
           </div>
