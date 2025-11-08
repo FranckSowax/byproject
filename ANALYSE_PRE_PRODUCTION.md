@@ -66,10 +66,10 @@ L'application **By Project** dispose d'une base solide avec les fonctionnalités
 - ✅ **Index manquants sur certaines colonnes** (47 index ajoutés)
 
 ### 5. Gestion Utilisateur
-- ❌ **Vérification d'email**
-- ❌ **Page de profil utilisateur**
-- ❌ **Changement de mot de passe**
-- ❌ **Gestion des préférences**
+- ⏳ **Vérification d'email** (à activer dans Supabase)
+- ✅ **Page de profil utilisateur** (table user_profiles créée)
+- ⏳ **Changement de mot de passe** (composant à créer)
+- ✅ **Gestion des préférences** (table user_preferences créée)
 
 ---
 
