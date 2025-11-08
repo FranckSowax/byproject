@@ -47,3 +47,97 @@ export async function GET(
     );
   }
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await request.json();
+    
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Update user role in metadata
+    if (body.role) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(
+        params.id,
+        {
+          user_metadata: { role: body.role }
+        }
+      );
+
+      if (error) throw error;
+    }
+
+    // Toggle user active status (ban/unban)
+    if (body.is_active !== undefined) {
+      if (body.is_active) {
+        // Unban user
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(
+          params.id,
+          {
+            ban_duration: 'none'
+          }
+        );
+        if (error) throw error;
+      } else {
+        // Ban user indefinitely
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(
+          params.id,
+          {
+            ban_duration: '876000h' // 100 years
+          }
+        );
+        if (error) throw error;
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update user' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Delete user
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(params.id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete user' },
+      { status: 500 }
+    );
+  }
+}
