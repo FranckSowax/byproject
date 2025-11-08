@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bell, User, LogOut, Settings, Shield } from 'lucide-react';
+import { Bell, User, LogOut, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -122,10 +122,6 @@ export default function AdminTopBar() {
                 <DropdownMenuItem onClick={() => router.push('/admin/profile')}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Mon Profil</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/admin/settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Paramètres</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">
