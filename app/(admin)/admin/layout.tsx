@@ -32,6 +32,7 @@ import {
 import { cn } from '@/lib/utils';
 import AdminGuard from '@/components/admin/AdminGuard';
 import AdminTopBar from '@/components/admin/AdminTopBar';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 interface AdminLayoutProps {
   children: React.ReactNode;

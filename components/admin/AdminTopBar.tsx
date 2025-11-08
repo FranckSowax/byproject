@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Bell, User, LogOut, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export default function AdminTopBar() {
   const router = useRouter();
@@ -76,14 +77,7 @@ export default function AdminTopBar() {
         {/* Right side - User profile and notifications */}
         <div className="flex items-center gap-4">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            {notifications > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                {notifications}
-              </span>
-            )}
-          </Button>
+          <NotificationBell />
 
           {/* User Profile Dropdown */}
           {currentUser && (

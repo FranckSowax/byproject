@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function DashboardNav() {
   const pathname = usePathname();
@@ -120,6 +121,9 @@ export function DashboardNav() {
 
           {/* User Menu */}
           <div className="flex items-center gap-3">
+            {/* Notification Bell */}
+            <NotificationBell />
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
