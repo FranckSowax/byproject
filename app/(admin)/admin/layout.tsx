@@ -64,21 +64,28 @@ const adminNavigation = [
     ]
   },
   {
-    title: 'Gestion Utilisateurs',
+    title: 'Fournisseurs',
     items: [
       {
-        name: 'Utilisateurs',
-        href: '/admin/users',
-        icon: Users,
+        name: 'Quotations',
+        href: '/admin/quotations',
+        icon: FileCheck,
         badge: null,
-        description: 'Gestion des comptes'
+        description: 'Cotations reçues'
       },
       {
-        name: 'Rôles & Permissions',
-        href: '/admin/roles',
-        icon: Shield,
+        name: 'Cotations Chinoises',
+        href: '/admin/supplier-requests',
+        icon: Globe,
         badge: null,
-        description: 'Contrôle d\'accès'
+        description: 'Demandes fournisseurs'
+      },
+      {
+        name: 'Fournisseurs',
+        href: '/admin/suppliers',
+        icon: Users,
+        badge: null,
+        description: 'Base fournisseurs'
       },
     ]
   },
@@ -109,6 +116,25 @@ const adminNavigation = [
     ]
   },
   {
+    title: 'Gestion Utilisateurs',
+    items: [
+      {
+        name: 'Utilisateurs',
+        href: '/admin/users',
+        icon: Users,
+        badge: null,
+        description: 'Gestion des comptes'
+      },
+      {
+        name: 'Rôles & Permissions',
+        href: '/admin/roles',
+        icon: Shield,
+        badge: null,
+        description: 'Contrôle d\'accès'
+      },
+    ]
+  },
+  {
     title: 'Finance',
     items: [
       {
@@ -124,32 +150,6 @@ const adminNavigation = [
         icon: TrendingUp,
         badge: 'Auto',
         description: 'Taux de conversion'
-      },
-    ]
-  },
-  {
-    title: 'Fournisseurs',
-    items: [
-      {
-        name: 'Quotations',
-        href: '/admin/quotations',
-        icon: FileCheck,
-        badge: null,
-        description: 'Cotations reçues'
-      },
-      {
-        name: 'Cotations Chinoises',
-        href: '/admin/supplier-requests',
-        icon: Globe,
-        badge: null,
-        description: 'Demandes fournisseurs'
-      },
-      {
-        name: 'Fournisseurs',
-        href: '/admin/suppliers',
-        icon: Users,
-        badge: null,
-        description: 'Base fournisseurs'
       },
     ]
   },
