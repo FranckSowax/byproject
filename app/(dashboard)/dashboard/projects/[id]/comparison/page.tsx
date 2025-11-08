@@ -165,8 +165,29 @@ export default function ComparisonPage() {
     )
   ).sort() as string[];
 
-  // Calculer le coût local avec les meilleurs prix disponibles (tous pays confondus)
-  const totalLocal = calculateTotal();
+  // Définir les pays locaux (Afrique)
+  const localCountries = ['Cameroun', 'Gabon', 'Congo', 'RDC', 'Côte d\'Ivoire', 'Sénégal', 'Bénin', 'Togo'];
+  
+  // Fonction pour calculer le total local (meilleurs prix parmi les pays locaux)
+  const calculateLocalTotal = () => {
+    return materials.reduce((total, material) => {
+      const prices = pricesByMaterial[material.id] || [];
+      // Filtrer uniquement les prix des pays locaux
+      const localPrices = prices.filter(p => localCountries.includes(p.supplier?.country || ''));
+      if (localPrices.length === 0) return total;
+      
+      // Trouver le meilleur prix local
+      const bestLocalPrice = localPrices.reduce((min, p) => 
+        (p.converted_amount || p.amount) < (min.converted_amount || min.amount) ? p : min
+      );
+      
+      const quantity = material.quantity || 1;
+      return total + (bestLocalPrice.converted_amount || bestLocalPrice.amount) * quantity;
+    }, 0);
+  };
+  
+  // Calculer le coût local avec les meilleurs prix locaux uniquement
+  const totalLocal = calculateLocalTotal();
   const totalChina = calculateTotal('Chine');
   const volumeLocal = calculateVolume();
   const volumeChina = calculateVolume('Chine');
