@@ -1055,34 +1055,12 @@ export default function ProjectPage() {
       });
 
       if (result.success) {
-        toast.success("Demande de cotation créée !", {
-          description: `${materials.length} matériaux avec commentaires traduits`,
-          duration: 5000
+        toast.success("Demande de cotation envoyée !", {
+          description: "Votre demande est en attente de traitement par l'admin"
         });
 
-        // Copier le lien dans le presse-papier
-        if (result.supplierLink) {
-          try {
-            await navigator.clipboard.writeText(result.supplierLink);
-            toast.success("Lien copié dans le presse-papier !", {
-              description: "Partagez-le avec vos fournisseurs"
-            });
-          } catch (clipboardError) {
-            // Fallback si clipboard échoue
-            console.log('Clipboard error:', clipboardError);
-            toast.info("Lien de cotation créé !", {
-              description: "Vous pouvez le copier depuis la page des demandes"
-            });
-          }
-        }
-
-        // Recharger la demande de cotation
+        // Recharger la demande de cotation pour afficher la notification
         await loadQuotationRequest();
-
-        // Rediriger vers la page des demandes
-        setTimeout(() => {
-          router.push('/dashboard/supplier-requests');
-        }, 2000);
       } else {
         throw new Error(result.error || "Erreur inconnue");
       }
@@ -1476,29 +1454,6 @@ export default function ProjectPage() {
         </Card>
       )}
 
-      {/* Status */}
-      {project.mapping_status && (
-        <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#5B5FC7]/10 to-[#7B7FE8]/10 rounded-xl flex items-center justify-center">
-                <FileText className="h-6 w-6 text-[#5B5FC7]" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-[#4A5568]">Statut du mapping</p>
-                <p className="text-sm text-[#718096]">
-                  {project.mapping_status === 'pending' && 'En attente de traitement'}
-                  {project.mapping_status === 'completed' && 'Mapping complété'}
-                  {project.mapping_status === 'corrected' && 'Corrigé manuellement'}
-                </p>
-              </div>
-              <Badge variant={project.mapping_status === 'completed' ? 'default' : 'secondary'}>
-                {project.mapping_status}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Actions rapides - Style moderne */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
