@@ -54,6 +54,7 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
+    console.log('PATCH /api/admin/users/[id] - Request:', { userId: params.id, body });
     
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,10 +68,19 @@ export async function PATCH(
     );
 
     // Get current user to preserve existing metadata
-    const { data: { user: currentUser } } = await supabaseAdmin.auth.admin.getUserById(params.id);
+    const { data: { user: currentUser }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(params.id);
+    
+    if (getUserError) {
+      console.error('Error getting user:', getUserError);
+      throw getUserError;
+    }
+    
     if (!currentUser) {
+      console.error('User not found:', params.id);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    console.log('Current user metadata:', currentUser.user_metadata);
 
     const currentMetadata = currentUser.user_metadata || {};
 
@@ -85,21 +95,31 @@ export async function PATCH(
       updatedMetadata.is_active = body.is_active;
     }
 
+    console.log('Updated metadata:', updatedMetadata);
+
     // Update user with merged metadata
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       params.id,
       {
         user_metadata: updatedMetadata
       }
     );
 
-    if (error) throw error;
+    if (updateError) {
+      console.error('Error updating user:', updateError);
+      throw updateError;
+    }
+
+    console.log('Update successful:', updateData);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('API error:', error);
     return NextResponse.json(
-      { error: 'Failed to update user' },
+      { 
+        error: 'Failed to update user',
+        details: error?.message || 'Unknown error'
+      },
       { status: 500 }
     );
   }
