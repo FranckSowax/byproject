@@ -114,7 +114,7 @@ export function DashboardNav() {
                 }`}
               >
                 <Globe className="h-4 w-4" />
-                Cotation en ligne
+                Obtenir une Cotation
               </Button>
             </Link>
           </nav>

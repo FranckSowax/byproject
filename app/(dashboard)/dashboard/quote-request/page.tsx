@@ -178,12 +178,12 @@ export default function QuoteRequestPage() {
               <Globe className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 bg-clip-text text-transparent mb-4">
-              Cotation en Ligne
+              Obtenir une Cotation
             </h1>
             <p className="text-lg text-slate-600 leading-relaxed">
-              Obtenez des devis compétitifs de fournisseurs internationaux pour vos projets de construction.
+              Nous sourçons votre projet auprès d'un <span className="font-semibold text-blue-600">minimum de 3 fournisseurs ou usines chinoises</span> sélectionnés.
               <br />
-              <span className="font-semibold">Processus simple, rapide et sécurisé.</span>
+              Les cotations seront directement ajoutées à votre projet pour <span className="font-semibold">faciliter la comparaison</span>.
             </p>
           </div>
         </div>
@@ -197,8 +197,8 @@ export default function QuoteRequestPage() {
                   <Zap className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900 mb-1">Rapide</h3>
-                  <p className="text-sm text-slate-600">Recevez vos devis sous 48-72h</p>
+                  <h3 className="font-semibold text-slate-900 mb-1">Sourcing Expert</h3>
+                  <p className="text-sm text-slate-600">Minimum 3 fournisseurs chinois qualifiés</p>
                 </div>
               </div>
             </CardContent>
@@ -211,8 +211,8 @@ export default function QuoteRequestPage() {
                   <Shield className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900 mb-1">Sécurisé</h3>
-                  <p className="text-sm text-slate-600">Fournisseurs vérifiés et certifiés</p>
+                  <h3 className="font-semibold text-slate-900 mb-1">Comparaison Facile</h3>
+                  <p className="text-sm text-slate-600">Cotations ajoutées directement dans votre projet</p>
                 </div>
               </div>
             </CardContent>
@@ -225,8 +225,8 @@ export default function QuoteRequestPage() {
                   <Target className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900 mb-1">Compétitif</h3>
-                  <p className="text-sm text-slate-600">Comparez jusqu'à 5 fournisseurs</p>
+                  <h3 className="font-semibold text-slate-900 mb-1">Prix Compétitifs</h3>
+                  <p className="text-sm text-slate-600">Meilleurs tarifs usine directement</p>
                 </div>
               </div>
             </CardContent>
@@ -245,7 +245,7 @@ export default function QuoteRequestPage() {
                   <div>
                     <CardTitle className="text-2xl">Nouvelle Demande de Cotation</CardTitle>
                     <CardDescription className="text-base mt-1">
-                      Complétez les informations ci-dessous pour recevoir des devis personnalisés
+                      Nous contacterons plusieurs fournisseurs chinois et ajouterons leurs cotations à votre projet
                     </CardDescription>
                   </div>
                 </div>
