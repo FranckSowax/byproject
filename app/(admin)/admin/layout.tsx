@@ -12,6 +12,7 @@ import {
   FileText, 
   Package,
   DollarSign,
+  Globe,
   BarChart3,
   Settings,
   ChevronLeft,
@@ -65,6 +66,13 @@ const adminNavigation = [
         icon: FileCheck,
         badge: null,
         description: 'Cotations reçues'
+      },
+      {
+        name: 'Cotations Chinoises',
+        href: '/admin/supplier-requests',
+        icon: Globe,
+        badge: null,
+        description: 'Demandes fournisseurs'
       },
       {
         name: 'Fournisseurs',
