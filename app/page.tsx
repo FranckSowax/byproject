@@ -26,19 +26,6 @@ export default function Home() {
               />
             </Link>
 
-            {/* Navigation Menu */}
-            <nav className="hidden md:flex items-center gap-1">
-              <Link href="/">
-                <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
-                  Accueil
-                </Button>
-              </Link>
-              <Link href="#features">
-                <Button variant="ghost" className="text-[#4A5568] hover:text-[#5B5FC7] hover:bg-[#F5F6FF] font-medium">
-                  Fonctionnalités
-                </Button>
-              </Link>
-            </nav>
 
             {/* Auth Buttons */}
             <div className="flex items-center gap-3">
@@ -49,10 +36,10 @@ export default function Home() {
                 </Button>
               </Link>
               <Link href="/signup">
-                <Button className="gap-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white shadow-lg hover:shadow-xl transition-all">
-                  <UserPlus className="h-4 w-4" />
-                  <span className="hidden sm:inline">S'inscrire</span>
-                  <span className="sm:hidden">Inscription</span>
+                <Button className="gap-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] shadow-lg hover:shadow-xl transition-all">
+                  <UserPlus className="h-4 w-4 text-white" />
+                  <span className="hidden sm:inline text-white">S'inscrire</span>
+                  <span className="sm:hidden text-white">Inscription</span>
                 </Button>
               </Link>
             </div>
@@ -88,8 +75,8 @@ export default function Home() {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 px-4">
               <Link href="/login" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-base sm:text-lg">
-                  Commencer <ArrowRight className="ml-2 h-5 w-5" />
+                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-base sm:text-lg">
+                  <span className="text-white">Commencer</span> <ArrowRight className="ml-2 h-5 w-5 text-white" />
                 </Button>
               </Link>
             </div>
@@ -208,8 +195,8 @@ export default function Home() {
                   
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4 px-4">
                     <Link href="/login" className="w-full sm:w-auto">
-                      <Button size="lg" className="w-full sm:w-auto bg-white text-[#5B5FC7] hover:bg-white/90 shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-base sm:text-lg font-semibold">
-                        Commencer Maintenant <ArrowRight className="ml-2 h-5 w-5" />
+                      <Button size="lg" className="w-full sm:w-auto bg-white hover:bg-white/90 shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-base sm:text-lg font-semibold">
+                        <span className="text-[#5B5FC7]">Commencer Maintenant</span> <ArrowRight className="ml-2 h-5 w-5 text-[#5B5FC7]" />
                       </Button>
                     </Link>
                   </div>
