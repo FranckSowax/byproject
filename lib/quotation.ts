@@ -60,19 +60,12 @@ export async function createQuotationRequest(
       return { success: false, error: 'Aucun matériau trouvé dans ce projet' };
     }
 
-    // 3. Get material images
-    const { data: images } = await supabase
-      .from('material_images')
-      .select('material_id, image_url')
-      .in('material_id', materials.map(m => m.id));
-
-    // Group images by material_id
+    // 3. Extract images from materials (stored in specs or as array)
     const imagesByMaterial: Record<string, string[]> = {};
-    images?.forEach(img => {
-      if (!imagesByMaterial[img.material_id]) {
-        imagesByMaterial[img.material_id] = [];
-      }
-      imagesByMaterial[img.material_id].push(img.image_url);
+    materials.forEach(material => {
+      // Images can be in specs.images or material.images
+      const images = material.specs?.images || material.images || [];
+      imagesByMaterial[material.id] = Array.isArray(images) ? images : [];
     });
 
     // 4. Get comments for all materials

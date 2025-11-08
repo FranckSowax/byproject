@@ -1062,10 +1062,18 @@ export default function ProjectPage() {
 
         // Copier le lien dans le presse-papier
         if (result.supplierLink) {
-          navigator.clipboard.writeText(result.supplierLink);
-          toast.success("Lien copié dans le presse-papier !", {
-            description: "Partagez-le avec vos fournisseurs"
-          });
+          try {
+            await navigator.clipboard.writeText(result.supplierLink);
+            toast.success("Lien copié dans le presse-papier !", {
+              description: "Partagez-le avec vos fournisseurs"
+            });
+          } catch (clipboardError) {
+            // Fallback si clipboard échoue
+            console.log('Clipboard error:', clipboardError);
+            toast.info("Lien de cotation créé !", {
+              description: "Vous pouvez le copier depuis la page des demandes"
+            });
+          }
         }
 
         // Recharger la demande de cotation
