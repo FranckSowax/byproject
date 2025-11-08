@@ -5,13 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Globe, Bell, Shield, Palette } from "lucide-react";
+import { Globe, Bell, Palette } from "lucide-react";
 import { toast } from "sonner";
+import { useUserPreferences } from "@/lib/hooks/useUserPreferences";
+import { ChangePasswordForm } from "@/components/settings/ChangePasswordForm";
 
 export default function SettingsPage() {
-  const handleSave = () => {
-    toast.success("Paramètres sauvegardés!");
+  const { preferences, loading, updatePreferences } = useUserPreferences();
+
+  const handleLanguageChange = async (language: 'en' | 'fr' | 'zh') => {
+    await updatePreferences({ language });
   };
+
+  const handleThemeChange = async (theme: 'light' | 'dark' | 'system') => {
+    await updatePreferences({ theme });
+  };
+
+  const handleNotificationToggle = async (key: string, value: boolean) => {
+    await updatePreferences({ [key]: value } as any);
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Chargement...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -35,7 +51,10 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="language">Langue préférée</Label>
-              <Select defaultValue="fr">
+              <Select
+                value={preferences?.language || 'fr'}
+                onValueChange={(value) => handleLanguageChange(value as any)}
+              >
                 <SelectTrigger id="language">
                   <SelectValue />
                 </SelectTrigger>
@@ -46,7 +65,6 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleSave}>Sauvegarder</Button>
           </CardContent>
         </Card>
 
@@ -69,7 +87,10 @@ export default function SettingsPage() {
                   Recevoir des mises à jour par email
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={preferences?.email_notifications ?? true}
+                onCheckedChange={(checked) => handleNotificationToggle('email_notifications', checked)}
+              />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -78,7 +99,10 @@ export default function SettingsPage() {
                   Alertes sur les changements de projets
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={preferences?.project_notifications ?? true}
+                onCheckedChange={(checked) => handleNotificationToggle('project_notifications', checked)}
+              />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -87,7 +111,10 @@ export default function SettingsPage() {
                   Alertes quand un export est prêt
                 </p>
               </div>
-              <Switch />
+              <Switch
+                checked={preferences?.export_notifications ?? false}
+                onCheckedChange={(checked) => handleNotificationToggle('export_notifications', checked)}
+              />
             </div>
           </CardContent>
         </Card>
@@ -106,7 +133,10 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="theme">Thème</Label>
-              <Select defaultValue="light">
+              <Select
+                value={preferences?.theme || 'light'}
+                onValueChange={(value) => handleThemeChange(value as any)}
+              >
                 <SelectTrigger id="theme">
                   <SelectValue />
                 </SelectTrigger>
@@ -117,38 +147,11 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleSave}>Sauvegarder</Button>
           </CardContent>
         </Card>
 
-        {/* Sécurité */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-red-600" />
-              <CardTitle>Sécurité</CardTitle>
-            </div>
-            <CardDescription>
-              Paramètres de sécurité du compte
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-lg bg-amber-50 p-4">
-              <p className="text-sm text-amber-800">
-                ⚠️ Compte de test: Les paramètres de sécurité ne sont pas disponibles. 
-                Utilisez Supabase Auth en production pour la gestion complète de la sécurité.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Button variant="outline" disabled>
-                Changer le mot de passe
-              </Button>
-              <Button variant="outline" disabled className="ml-2">
-                Activer 2FA
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Sécurité - Changement de mot de passe */}
+        <ChangePasswordForm />
       </div>
     </div>
   );
