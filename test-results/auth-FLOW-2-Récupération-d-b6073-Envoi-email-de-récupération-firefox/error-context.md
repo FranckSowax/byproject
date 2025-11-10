@@ -1,0 +1,43 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - img "By Project Logo" [ref=e7]
+      - generic [ref=e8]: Mot de passe oublié
+      - generic [ref=e9]: Entrez votre email pour réinitialiser votre mot de passe
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: Adresse email
+        - textbox "Adresse email" [ref=e14]:
+          - /placeholder: votre@email.com
+          - text: sowaxcom@gmail.com
+      - button "Envoyer le lien" [ref=e15]:
+        - img
+        - text: Envoyer le lien
+      - link "Retour à la connexion" [ref=e16] [cursor=pointer]:
+        - /url: /login
+        - button "Retour à la connexion" [ref=e17]:
+          - img
+          - text: Retour à la connexion
+    - paragraph [ref=e19]:
+      - text: Vous n'avez pas de compte ?
+      - link "Créer un compte" [ref=e20] [cursor=pointer]:
+        - /url: /signup
+  - region "Notifications alt+T"
+  - generic [ref=e25] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e26]:
+      - img [ref=e27]
+    - generic [ref=e31]:
+      - button "Open issues overlay" [ref=e32]:
+        - generic [ref=e33]:
+          - generic [ref=e34]: "1"
+          - generic [ref=e35]: "2"
+        - generic [ref=e36]:
+          - text: Issue
+          - generic [ref=e37]: s
+      - button "Collapse issues badge" [ref=e38]:
+        - img [ref=e39]
+  - alert [ref=e41]
+```

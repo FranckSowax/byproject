@@ -1,0 +1,133 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - link "By Project" [ref=e6]:
+          - /url: /
+          - img "By Project" [ref=e7]
+        - generic [ref=e8]:
+          - link "Connexion" [ref=e9]:
+            - /url: /login
+            - button "Connexion" [ref=e10]:
+              - img [ref=e11]
+              - text: Connexion
+          - link "S'inscrireInscription" [ref=e14]:
+            - /url: /signup
+            - button "S'inscrireInscription" [ref=e15]:
+              - img [ref=e16]
+              - text: S'inscrireInscription
+    - main [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - img [ref=e23]
+          - text: Plateforme de comparaison et sourcing international
+        - heading "Comparez et sourcez vos matériaux" [level=1] [ref=e26]
+        - paragraph [ref=e27]: Gérez vos projets, importez vos matériaux avec l'IA, comparez les prix locaux vs internationaux, et sourcez auprès de fournisseurs chinois qualifiés. Tout en un.
+        - link "Commencer" [ref=e29]:
+          - /url: /login
+          - button "Commencer" [ref=e30]:
+            - text: Commencer
+            - img [ref=e31]
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - text: Sécurisé
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - text: IA Avancée
+          - generic [ref=e41]:
+            - img [ref=e42]
+            - text: Rapide
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - heading "Votre assistant pour vos missions en Chine" [level=2] [ref=e48]
+          - paragraph [ref=e49]: "De la préparation au rapport final : gérez vos visites fournisseurs comme un pro"
+        - generic [ref=e50]:
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - generic [ref=e54]:
+                - img [ref=e56]
+                - generic [ref=e59]: Étape 1 sur 5
+              - heading "Préparez votre mission en Chine" [level=3] [ref=e60]
+              - paragraph [ref=e61]: "Avant de partir : importez votre liste de matériaux ou créez-la manuellement. Organisez votre projet et identifiez vos besoins pour optimiser vos visites fournisseurs."
+              - generic [ref=e62]:
+                - button [ref=e63]:
+                  - img [ref=e64]
+                - button [ref=e66]:
+                  - img [ref=e67]
+                - generic [ref=e69]:
+                  - button "Aller à l'étape 1" [ref=e70]
+                  - button "Aller à l'étape 2" [ref=e71]
+                  - button "Aller à l'étape 3" [ref=e72]
+                  - button "Aller à l'étape 4" [ref=e73]
+                  - button "Aller à l'étape 5" [ref=e74]
+            - img "Préparez votre mission en Chine" [ref=e75]
+          - generic [ref=e76]:
+            - button "1" [ref=e77]:
+              - img [ref=e79]
+              - text: "1"
+            - button "2" [ref=e82]:
+              - img [ref=e84]
+              - text: "2"
+            - button "3" [ref=e87]:
+              - img [ref=e89]
+              - text: "3"
+            - button "4" [ref=e91]:
+              - img [ref=e93]
+              - text: "4"
+            - button "5" [ref=e95]:
+              - img [ref=e97]
+              - text: "5"
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - heading "Fonctionnalités Puissantes" [level=2] [ref=e104]
+          - paragraph [ref=e105]: Tous les outils dont vous avez besoin pour optimiser vos achats
+        - generic [ref=e106]:
+          - generic [ref=e108]:
+            - img [ref=e110]
+            - heading "Import Intelligent IA" [level=3] [ref=e112]
+            - paragraph [ref=e113]: Importez vos matériaux via Excel, CSV ou PDF. L'IA extrait et organise automatiquement toutes les données.
+          - generic [ref=e115]:
+            - img [ref=e117]
+            - heading "Gestion des Prix" [level=3] [ref=e120]
+            - paragraph [ref=e121]: Ajoutez les prix de multiples fournisseurs avec photos, coordonnées et notes. Conversion automatique des devises.
+          - generic [ref=e123]:
+            - img [ref=e125]
+            - heading "Comparaison Local vs Chine" [level=3] [ref=e127]
+            - paragraph [ref=e128]: Comparez automatiquement les meilleurs prix locaux africains vs chinois. Calcul des économies avec transport maritime.
+          - generic [ref=e130]:
+            - img [ref=e132]
+            - heading "Sourcing Chinois" [level=3] [ref=e135]
+            - paragraph [ref=e136]: "Demandez une cotation : nous contactons minimum 3 fournisseurs chinois et ajoutons leurs prix à votre projet."
+      - generic [ref=e141]:
+        - generic [ref=e142]:
+          - img [ref=e143]
+          - text: Commencez gratuitement
+        - heading "Prêt pour votre prochaine mission en Chine ?" [level=2] [ref=e146]
+        - paragraph [ref=e147]: Rejoignez les professionnels qui optimisent leurs achats de matériaux avec By Project.
+        - link "Commencer Maintenant" [ref=e149]:
+          - /url: /login
+          - button "Commencer Maintenant" [ref=e150]:
+            - text: Commencer Maintenant
+            - img [ref=e151]
+        - generic [ref=e153]:
+          - generic [ref=e154]:
+            - img [ref=e155]
+            - text: Sans carte bancaire
+          - generic [ref=e157]:
+            - img [ref=e158]
+            - text: Prêt en 2 minutes
+    - contentinfo [ref=e161]:
+      - generic [ref=e163]:
+        - link "By Project" [ref=e164]:
+          - /url: /
+          - img "By Project" [ref=e165]
+        - generic [ref=e166]:
+          - link "Connexion" [ref=e167]:
+            - /url: /login
+          - text: "|© 2025 By Project"
+  - region "Notifications alt+T"
+```
