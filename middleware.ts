@@ -23,7 +23,7 @@ export function middleware(request: NextRequest) {
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: https:;
     font-src 'self' data: https://fonts.gstatic.com;
-    connect-src 'self' https://ebmgtfftimezuuxxzyjm.supabase.co;
+    connect-src 'self' https://ebmgtfftimezuuxxzyjm.supabase.co wss://ebmgtfftimezuuxxzyjm.supabase.co;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
