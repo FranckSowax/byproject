@@ -104,24 +104,28 @@ export default function AdminQuotationsPage() {
   const loadQuotes = async () => {
     try {
       setLoading(true);
-      // @ts-ignore
-      const { data, error } = await supabase
-        .from('supplier_quotes')
-        .select(`
-          *,
-          supplier_requests (
-            id,
-            request_number,
-            project_id,
-            projects (
-              id,
-              name
-            )
-          )
-        `)
-        .order('submitted_at', { ascending: false });
+      
+      // Get the current session to get the access token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error('Session expirée. Veuillez vous reconnecter.');
+        return;
+      }
 
-      if (error) throw error;
+      // Use the admin API route which bypasses RLS issues
+      const response = await fetch('/api/admin/quotes', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load quotes');
+      }
+
+      const { data } = await response.json();
       setQuotes(data || []);
     } catch (error) {
       console.error('Error loading quotes:', error);
