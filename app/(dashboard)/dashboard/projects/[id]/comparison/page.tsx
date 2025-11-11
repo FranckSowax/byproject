@@ -328,7 +328,7 @@ export default function ComparisonPage() {
         if (sortedPrices.length > 0) {
           // Tableau des prix pour ce matériau
           const priceRows = sortedPrices.slice(0, 5).map((price, idx) => [
-            idx === 0 ? '🏆 ' + (price.supplier?.name || 'N/A') : price.supplier?.name || 'N/A',
+            idx === 0 ? '[MEILLEUR] ' + (price.supplier?.name || 'N/A') : price.supplier?.name || 'N/A',
             price.country,
             `${formatNumber(price.converted_amount || price.amount)} FCFA`,
             `${formatNumber((price.converted_amount || price.amount) * (material.quantity || 1))} FCFA`,

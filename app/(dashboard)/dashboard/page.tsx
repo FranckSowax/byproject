@@ -46,14 +46,15 @@ export default function DashboardPage() {
         return;
       }
 
+      // RLS filtre automatiquement par user_id, pas besoin de .eq()
       const { data, error } = await supabase
         .from('projects')
         .select('id, name, created_at, image_url')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error("Error loading projects:", error);
+        toast.error("Erreur lors du chargement des projets");
       } else {
         setProjects((data as unknown as Project[]) || []);
       }

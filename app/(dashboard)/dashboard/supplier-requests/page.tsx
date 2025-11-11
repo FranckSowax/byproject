@@ -67,13 +67,13 @@ export default function SupplierRequestsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // RLS filtre automatiquement par user_id
       const { data, error } = await supabase
         .from('supplier_requests')
         .select(`
           *,
           projects (name)
         `)
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

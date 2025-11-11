@@ -35,7 +35,7 @@ import { nanoid } from 'nanoid';
 interface Project {
   id: string;
   name: string;
-  created_at: string;
+  created_at: string | null;
 }
 
 export default function QuoteRequestPage() {
@@ -65,10 +65,10 @@ export default function QuoteRequestPage() {
       
       if (!user) return;
 
+      // RLS filtre automatiquement par user_id
       const { data, error } = await supabase
         .from('projects')
         .select('id, name, created_at')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
