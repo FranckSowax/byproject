@@ -48,26 +48,28 @@ export function SupplierImageUpload({
           throw new Error(`Fichier trop volumineux: ${file.name}`);
         }
 
-        // Generate unique filename
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${path}/supplier_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        // Get user ID from session
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id || 'anonymous';
 
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from(bucket)
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false,
-          });
+        // Upload via API route (contourne RLS)
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('userId', userId);
+        formData.append('bucket', bucket);
 
-        if (error) throw error;
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        });
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from(bucket)
-          .getPublicUrl(fileName);
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Upload failed');
+        }
 
-        return publicUrl;
+        const data = await response.json();
+        return data.publicUrl;
       });
 
       const uploadedUrls = await Promise.all(uploadPromises);

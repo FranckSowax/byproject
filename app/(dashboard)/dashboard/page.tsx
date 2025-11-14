@@ -100,22 +100,31 @@ export default function DashboardPage() {
         return;
       }
 
-      const imageExt = selectedImage.name.split('.').pop();
-      const imageStoragePath = `${user.id}/images/${Date.now()}.${imageExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('project-images')
-        .upload(imageStoragePath, selectedImage);
+      // Upload via API route (contourne RLS)
+      const formData = new FormData();
+      formData.append('file', selectedImage);
+      formData.append('userId', user.id);
+      formData.append('bucket', 'project-images');
 
-      if (uploadError) {
-        console.error("Upload error:", uploadError);
+      let publicUrl;
+      try {
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Upload failed');
+        }
+
+        const data = await response.json();
+        publicUrl = data.publicUrl;
+      } catch (error) {
+        console.error("Upload error:", error);
         toast.error("Erreur lors de l'upload de l'image");
         return;
       }
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('project-images')
-        .getPublicUrl(imageStoragePath);
 
       const { error: updateError } = await supabase
         .from('projects')

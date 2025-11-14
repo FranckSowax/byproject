@@ -1089,23 +1089,24 @@ export default function ProjectPage() {
       const photoUrls: string[] = [];
 
       for (const photo of uploadedPhotos) {
-        const fileExt = photo.file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `prices/${priceId}/${fileName}`;
+        // Utiliser l'API route pour uploader (contourne RLS)
+        const formData = new FormData();
+        formData.append('file', photo.file);
+        formData.append('userId', user?.id || '');
+        formData.append('bucket', 'project-images');
 
-        // Upload vers Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from('project-files')
-          .upload(filePath, photo.file);
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        });
 
-        if (uploadError) throw uploadError;
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Upload failed');
+        }
 
-        // Obtenir l'URL publique
-        const { data: { publicUrl } } = supabase.storage
-          .from('project-files')
-          .getPublicUrl(filePath);
-
-        photoUrls.push(publicUrl);
+        const data = await response.json();
+        photoUrls.push(data.publicUrl);
       }
 
       return photoUrls;

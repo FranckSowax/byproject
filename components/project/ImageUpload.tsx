@@ -38,6 +38,10 @@ export function ImageUpload({
     const newImages: string[] = [];
 
     try {
+      // Get user ID from session
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || 'anonymous';
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
@@ -53,31 +57,25 @@ export function ImageUpload({
           continue;
         }
 
-        // Generate unique filename
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = path ? `${path}/${fileName}` : fileName;
+        // Upload via API route (contourne RLS)
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('userId', userId);
+        formData.append('bucket', bucket);
 
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from(bucket)
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false,
-          });
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        });
 
-        if (error) {
-          console.error('Upload error:', error);
-          toast.error(`Erreur upload ${file.name}: ${error.message}`);
+        if (!response.ok) {
+          const error = await response.json();
+          toast.error(`Erreur upload ${file.name}: ${error.error}`);
           continue;
         }
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from(bucket)
-          .getPublicUrl(filePath);
-
-        newImages.push(publicUrl);
+        const data = await response.json();
+        newImages.push(data.publicUrl);
       }
 
       if (newImages.length > 0) {

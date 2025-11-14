@@ -1,0 +1,36 @@
+"
+COMMANDE DES MATERIAUX DU LOGEMENT 375 DU TYPE OGOOUE A BIKELE
+  
+";;;;;;;;;;;;;;;;;;;;;
+"
+SERIE 600: CHARPENTE - COUVERTURE - FAUX PLAFOND 
+  
+";;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+NO ORDRE;DESIGNATION;UNITE;QUANTITE;PRIX UNITAIRE HT;PRIX TOTAL HT;FOURNISSEUR;;;;;;;;;;;;;;;
+SERIE 600 : CHARPENTE - COUVERTURE;;;;;;;;;;;;;;;;;;;;;
+1;Fermes (2) de 12 m en dabéma (Planches de 4 m section 15*3) ;U;55;5 000; 	275 000 ;OURO IAI;;;;;;;;;;;;;;;
+2;Lattes en dabema (4mx8x4);U;12;3 600; 	43 200 ;OURO IAI;;;;;;;;;;;;;;;
+3;Pannes dabéma (4mx8x8);U;65;9 000; 	585 000 ;OURO IAI;;;;;;;;;;;;;;;
+4;Lattes en okoumé (4mx8x4);U;10;2 600; 	26 000 ;OURO IAI;;;;;;;;;;;;;;;
+5;Pointes ordinaires 80 pqt de 5Kg;paquet de 5kg;1;7 171; 	7 171 ;BRICORAMA;;;;;;;;;;;;;;;
+6;Pointes ordinaires 90 pqt de 5Kg;paquet de 5kg;2;7 171; 	14 342 ;BRICORAMA;;;;;;;;;;;;;;;
+7;Pointes ordinaires 120 pqt de 5Kg;paquet de 5kg;2;7 171; 	14 342 ;BRICORAMA;;;;;;;;;;;;;;;
+8;Pointes ordinaires 160 pqt de 5Kg;paquet de 5kg;4;10 000; 	40 000 ;BRICORAMA;;;;;;;;;;;;;;;
+COUVERTURE;;;;;;;;;;;;;;;;;;;;;
+9;Tirfond (paquet de 100 pièces);U;9,31;12 100; 	112 636 ;BRICORAMA;;;;;;;;;;;;;;;
+10;Tôle bac Alu de 7 m x 0,8 m;m²;116,36;7 857; 	914 241 ;;;;;;;;;;;;;;;;
+11;Tôle faitière à deux pentes ;ml;9,24;1 890; 	17 464 ;;;;;;;;;;;;;;;;
+FAUX PLAFOND;;;;;;;;;;;;;;;;;;;;;
+12;Lattes en okoumé (4mx8x4);U;70;2 600; 	182 000 ;OURO IAI;;;;;;;;;;;;;;;
+13;Contre plaqué 5 mm (feuilles de 2,5 x 1,2);U;40,00;7 815; 	312 600 ;BERNABE;;;;;;;;;;;;;;;
+14;Pointes toc 80 pqt de 1kg;Kg;4,00;8 049; 	32 196 ;BERNABE;;;;;;;;;;;;;;;
+15;Pointes ordinaires 80 pqt de 5kg;U;2,00;7 171; 	14 342 ;BRICORAMA;;;;;;;;;;;;;;;
+16;Pointes ordinaires 30 pqt de 5kg;U;2,00;8 715; 	17 430 ;BERNABE;;;;;;;;;;;;;;;
+17;Traitement au xilophène bidon de 20l;U;3;21848; 	65 544 ;BRICORAMA;;;;;;;;;;;;;;;
+18;Couvre joint pour portes et placards;pqt;4;10000; 	42 000 ;SYLLA BIKELE;;;;;;;;;;;;;;;
+19;Corniches ;pqt;9;10000; 	90 000 ;SYLLA BIKELE;;;;;;;;;;;;;;;
+20;Transport;ff;1;350 000; 	350 000 ;;;;;;;;;;;;;;;;
+TOTAL SERIE 600 : CHARPENTE - COUVERTURE - FAUX PLAFOND   ;;;;;3 155 509;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;DPPI;SEP;;;INGENIEUR;;;;;;;;;;;;;;;;

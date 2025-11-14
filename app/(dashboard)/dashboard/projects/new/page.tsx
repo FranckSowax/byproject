@@ -149,48 +149,64 @@ export default function NewProjectPage() {
       // Upload de l'image de présentation si présente
       let imageUrl = null;
       if (selectedImage) {
-        const imageExt = selectedImage.name.split('.').pop();
-        const imageStoragePath = `${user.id}/images/${Date.now()}.${imageExt}`;
-        
-        const { error: imageUploadError } = await supabase.storage
-          .from('project-images')
-          .upload(imageStoragePath, selectedImage);
+        // Utiliser l'API route pour uploader (contourne RLS)
+        const formData = new FormData();
+        formData.append('file', selectedImage);
+        formData.append('userId', user.id);
+        formData.append('bucket', 'project-images');
 
-        if (imageUploadError) {
-          console.error("Image upload error:", imageUploadError);
+        try {
+          const response = await fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Upload failed');
+          }
+
+          const data = await response.json();
+          imageUrl = data.publicUrl;
+        } catch (error) {
+          console.error("Image upload error:", error);
           toast.error("Erreur lors de l'upload de l'image");
           setIsLoading(false);
           return;
         }
-        
-        // Obtenir l'URL publique de l'image
-        const { data: { publicUrl } } = supabase.storage
-          .from('project-images')
-          .getPublicUrl(imageStoragePath);
-        
-        imageUrl = publicUrl;
       }
 
       // Upload du fichier si présent et mode fichier
       let filePath = null;
       let fileName = null;
       if (creationMode === 'file' && selectedFile) {
-        const fileExt = selectedFile.name.split('.').pop();
         fileName = selectedFile.name;
-        const storagePath = `${user.id}/${Date.now()}.${fileExt}`;
         
-        const { error: uploadError } = await supabase.storage
-          .from('project-files')
-          .upload(storagePath, selectedFile);
+        // Utiliser l'API route pour uploader (contourne RLS)
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('userId', user.id);
+        formData.append('bucket', 'project-files');
 
-        if (uploadError) {
-          console.error("Upload error:", uploadError);
+        try {
+          const response = await fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Upload failed');
+          }
+
+          const data = await response.json();
+          filePath = data.path;
+        } catch (error) {
+          console.error("Upload error:", error);
           toast.error("Erreur lors de l'upload du fichier");
           setIsLoading(false);
           return;
         }
-        
-        filePath = storagePath;
       }
 
       // Créer le projet dans la base de données

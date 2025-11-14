@@ -16,7 +16,7 @@ Après: Requêtes séparées + enrichissement manuel
 
 ---
 
-## 🧪 Tests à Effectuer
+## 🧪 Tests à Effectuern a 
 
 ### **Test 1 : API Endpoint**
 

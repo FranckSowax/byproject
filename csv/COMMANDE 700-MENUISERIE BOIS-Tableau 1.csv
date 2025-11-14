@@ -1,0 +1,42 @@
+"
+COMMANDE DES MATERIAUX DU LOGEMENT 375 DU TYPE OGOOUE A BIKELE
+  
+";;;;;;;;;;;;;;;;;;;;;
+"
+SERIE 700 : MENUISERIE BOIS 
+  
+";;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+No ORDRE;DESIGNATION;UNITE;QUANTITE;PRIX UNITAIRE HT;PRIX TOTAL HT;FOURNISSEUR;;;;;;;;;;;;;;;
+SERIE 700 : MENUISERIE BOIS;;;;;;;;;;;;;;;;;;;;;
+;Cadres de portes pleines et isoplanes en bois dur (Mouvengui): ;;;; 	- 0;;;;;;;;;;;;;;;;
+1;* Planches de 25 en bois dur longeur 3 m, ep 4cm ;u;22; 	8 000 ; 	176 000 ;MATERIAUX ESTURAIRE;;;;;;;;;;;;;;;
+;Cadres de placards en bois dur (Mouvengui):;;;; 	- 0;;;;;;;;;;;;;;;;
+2;* Planches de 30 en bois dur longeur 3 m ;u;10; 	12 000 ; 	120 000 ;MATERIAUX ESTURAIRE;;;;;;;;;;;;;;;
+;Portes pleines en bois dur (Mouvengui) : ;;;; 	- 0;;;;;;;;;;;;;;;;
+3;* Planches de 30 en bois dur longeur 3 m, ep 4cm;u;9; 	12 000 ; 	108 000 ;MATERIAUX ESTURAIRE;;;;;;;;;;;;;;;
+4;* Colle forte à bois ;bte;1; 	13 500 ; 	13 500 ;BRICORAMA;;;;;;;;;;;;;;;
+5;* Cheville metalliques de 25;pqt;1; 	1 071 ; 	1 071 ;;;;;;;;;;;;;;;;
+6;* Paumelles de 140 (3 de gauche et 3 de droite);u;6; 	2 035 ; 	12 210 ;;;;;;;;;;;;;;;;
+7;* Vis à paumelles;pqt;1; 	1 071 ; 	1 071 ;;;;;;;;;;;;;;;;
+8;* Serrures ;u;2; 	26 785 ; 	53 570 ;;;;;;;;;;;;;;;;
+9;* Couvres joints (2,50 ml);pqt;1; 	10 000 ; 	10 000 ;SYLLA BIKELE;;;;;;;;;;;;;;;
+;Portes pleines en CP (portes fournies par la SNI): ;;;; 	- 0;;;;;;;;;;;;;;;;
+10;* Paumelles  de 140 (2 de gauche et 6 de droite);u;16; 	2 035 ; 	32 560 ;BRICORAMA;;;;;;;;;;;;;;;
+11;* Vis à paumelle;pqt;1; 	1 071 ; 	1 071 ;;;;;;;;;;;;;;;;
+12;* Serrures pour portes isoplanes de 83;u;5; 	20 000 ; 	100 000 ;;;;;;;;;;;;;;;;
+13;* Serrures pour portes isoplanes de 73;u;3; 	18 000 ; 	54 000 ;;;;;;;;;;;;;;;;
+14;* Couvres joints (2,50 ml);pqt;4; 	10 000 ; 	40 000 ;SYLLA BIKELE;;;;;;;;;;;;;;;
+;Portes des placards en CP de 19 (cuisine et chambre) :;;;; 	- 0;;;;;;;;;;;;;;;;
+15;* Feuille de contre plaqué  de 15 mm (séparation-grand format ) ;u;4; 	35 000 ; 	140 000 ;MATERIAUX ESTURAIRE;;;;;;;;;;;;;;;
+16;* Feuille de contre plaqué de 19 mm pour les portes ( grand format );u;8; 	45 000 ; 	360 000 ;MATERIAUX ESTURAIRE;;;;;;;;;;;;;;;
+17;* Paumelles castrées;u;32; 	1 000 ; 	32 000 ;BRICORAMA;;;;;;;;;;;;;;;
+18;* Aimants ;u;28; 	1 000 ; 	28 000 ;;;;;;;;;;;;;;;;
+19;* Crochets;u;8; 	1 000 ; 	8 000 ;;;;;;;;;;;;;;;;
+20;* Poignets;u;16; 	2 500 ; 	40 000 ;;;;;;;;;;;;;;;;
+21;* Vis;pqt;2; 	3 000 ; 	6 000 ;;;;;;;;;;;;;;;;
+22;* Chevilles;pqt;1; 	3 000 ; 	3 000 ;;;;;;;;;;;;;;;;
+23;Transport;ff;1;150 000; 	150 000 ;;;;;;;;;;;;;;;;
+TOTAL SERIE 700 : MENUISERIE BOIS   ;;;;; 	1 490 053 ;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;DPPI;SEP;;;INGENIEUR;;;;;;;;;;;;;;;;
