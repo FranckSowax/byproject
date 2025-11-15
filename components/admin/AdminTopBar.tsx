@@ -37,7 +37,7 @@ export default function AdminTopBar() {
     try {
       await supabase.auth.signOut();
       toast.success('Déconnexion réussie');
-      router.push('/auth/login');
+      router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Erreur lors de la déconnexion');

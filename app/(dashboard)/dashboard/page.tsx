@@ -33,30 +33,91 @@ export default function DashboardPage() {
 
   const loadProjects = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Récupérer l'utilisateur depuis la session
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (!user) {
-        // Si pas d'utilisateur Supabase, vérifier le mock user
+      if (!session?.user) {
+        // Si pas d'utilisateur, vérifier le mock user
         const mockUser = localStorage.getItem("mockUser");
         if (mockUser) {
-          // Pour le mock user, on affiche un projet vide
           setProjects([]);
         }
         setIsLoading(false);
         return;
       }
 
-      // RLS filtre automatiquement par user_id, pas besoin de .eq()
-      const { data, error } = await supabase
-        .from('projects')
-        .select('id, name, created_at, image_url')
-        .order('created_at', { ascending: false });
+      // Récupérer l'utilisateur depuis la table users personnalisée
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, role_id')
+        .eq('id', session.user.id)
+        .single();
 
-      if (error) {
-        console.error("Error loading projects:", error);
-        toast.error("Erreur lors du chargement des projets");
+      if (userError || !userData) {
+        console.error("Error loading user:", userError);
+        setIsLoading(false);
+        return;
+      }
+
+      // Si admin (role_id = 1), charger tous les projets
+      if (userData.role_id === 1) {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, name, created_at, image_url')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error("Error loading projects:", error);
+          toast.error("Erreur lors du chargement des projets");
+        } else {
+          setProjects((data as unknown as Project[]) || []);
+        }
       } else {
-        setProjects((data as unknown as Project[]) || []);
+        // Pour les non-admins, charger uniquement leurs projets + collaborations
+        // 1. Projets créés par l'utilisateur
+        const { data: ownProjects, error: ownError } = await supabase
+          .from('projects')
+          .select('id, name, created_at, image_url')
+          .eq('user_id', userData.id);
+
+        // 2. Projets où l'utilisateur est collaborateur accepté
+        const { data: collabData, error: collabError } = await supabase
+          .from('project_collaborators')
+          .select('project_id')
+          .eq('user_id', userData.id)
+          .eq('status', 'accepted');
+
+        if (ownError || collabError) {
+          console.error("Error loading projects:", ownError || collabError);
+          toast.error("Erreur lors du chargement des projets");
+          setProjects([]);
+        } else {
+          const collabProjectIds = collabData?.map(c => c.project_id) || [];
+          
+          // Charger les projets collaborés
+          let collabProjects: Project[] = [];
+          if (collabProjectIds.length > 0) {
+            const { data: collabProjectsData } = await supabase
+              .from('projects')
+              .select('id, name, created_at, image_url')
+              .in('id', collabProjectIds);
+            
+            collabProjects = (collabProjectsData as unknown as Project[]) || [];
+          }
+
+          // Combiner et dédupliquer
+          const allProjects = [...(ownProjects || []), ...collabProjects];
+          const uniqueProjects = Array.from(
+            new Map(allProjects.map(p => [p.id, p])).values()
+          );
+          
+          // Trier par date de création
+          uniqueProjects.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          
+          setProjects(uniqueProjects as Project[]);
+        }
       }
     } catch (error) {
       console.error("Error:", error);

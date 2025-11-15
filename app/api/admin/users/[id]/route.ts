@@ -6,9 +6,6 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check if user is authenticated as admin
-    // (You may want to add proper admin authentication here)
-    
     // Create Supabase admin client with service role key
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,8 +18,12 @@ export async function GET(
       }
     );
 
-    // Get user by ID using admin API
-    const { data: { user }, error } = await supabaseAdmin.auth.admin.getUserById(params.id);
+    // Get user from custom users table
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, email, full_name, created_at, role_id')
+      .eq('id', params.id)
+      .single();
 
     if (error || !user) {
       console.error('Error fetching user:', error);
@@ -32,12 +33,13 @@ export async function GET(
       );
     }
 
-    // Return only necessary user info
+    // Return user info
     return NextResponse.json({
       id: user.id,
       email: user.email || '',
-      full_name: user.user_metadata?.full_name || user.user_metadata?.name || 'Utilisateur',
+      full_name: user.full_name || 'Utilisateur',
       created_at: user.created_at,
+      role_id: user.role_id,
     });
   } catch (error) {
     console.error('API error:', error);
