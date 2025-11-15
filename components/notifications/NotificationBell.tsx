@@ -99,13 +99,28 @@ export function NotificationBell() {
 
   const loadNotifications = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
 
-      const { data, error } = await supabase
+      // Vérifier si l'utilisateur est admin
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role_id')
+        .eq('id', session.user.id)
+        .single();
+
+      const isAdmin = userData?.role_id === 1;
+
+      // Si admin, charger toutes les notifications, sinon uniquement celles de l'utilisateur
+      let query = supabase
         .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
+        .select('*');
+
+      if (!isAdmin) {
+        query = query.eq('user_id', session.user.id);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(20);
 
