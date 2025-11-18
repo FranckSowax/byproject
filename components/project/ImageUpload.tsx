@@ -133,28 +133,24 @@ export function ImageUpload({
           onChange={handleFileSelect}
           disabled={uploading || images.length >= maxImages}
         />
-        <label htmlFor="image-upload">
+        <label htmlFor="image-upload" className="block">
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="w-full cursor-pointer"
             disabled={uploading || images.length >= maxImages}
-            onClick={() => document.getElementById('image-upload')?.click()}
-            asChild
           >
-            <span>
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Upload en cours...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Ajouter des images ({images.length}/{maxImages})
-                </>
-              )}
-            </span>
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Upload en cours...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Ajouter des images ({images.length}/{maxImages})
+              </>
+            )}
           </Button>
         </label>
         <p className="text-xs text-gray-500 mt-1">

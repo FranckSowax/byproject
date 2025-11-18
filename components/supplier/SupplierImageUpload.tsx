@@ -122,27 +122,24 @@ export function SupplierImageUpload({
             className="hidden"
             disabled={isUploading}
           />
-          <label htmlFor="supplier-image-upload">
+          <label htmlFor="supplier-image-upload" className="block">
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full cursor-pointer"
               disabled={isUploading}
-              asChild
             >
-              <span className="cursor-pointer">
-                {isUploading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2" />
-                    Upload en cours...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Ajouter vos images ({supplierImages.length}/{maxImages})
-                  </>
-                )}
-              </span>
+              {isUploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2" />
+                  Upload en cours...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Ajouter vos images ({supplierImages.length}/{maxImages})
+                </>
+              )}
             </Button>
           </label>
           <p className="text-xs text-gray-500 mt-1">
