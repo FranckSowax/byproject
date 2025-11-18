@@ -1945,15 +1945,15 @@ export default function ProjectPage() {
 
       {/* Modal d'ajout */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Ajouter un matériau</DialogTitle>
             <DialogDescription>
               Ajoutez un nouveau matériau à votre projet
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-2">
             <div className="grid gap-2">
               <Label htmlFor="new-name">Nom *</Label>
               <Input
@@ -2046,7 +2046,7 @@ export default function ProjectPage() {
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 mt-4 pt-4 border-t">
             <Button
               variant="outline"
               onClick={() => {
