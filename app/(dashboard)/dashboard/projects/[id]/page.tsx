@@ -1945,15 +1945,21 @@ export default function ProjectPage() {
 
       {/* Modal d'ajout */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Ajouter un matériau</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] border-0 bg-white/95 backdrop-blur-sm shadow-2xl overflow-hidden flex flex-col">
+          <div className="h-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] absolute top-0 left-0 right-0 rounded-t-lg" />
+          <DialogHeader className="pt-4 flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#5B5FC7]/10 to-[#7B7FE8]/10 rounded-xl flex items-center justify-center">
+                <Package className="h-5 w-5 text-[#5B5FC7]" />
+              </div>
+              Ajouter un matériau
+            </DialogTitle>
+            <DialogDescription className="text-[#718096]">
               Ajoutez un nouveau matériau à votre projet
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-2">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-6">
             <div className="grid gap-2">
               <Label htmlFor="new-name">Nom *</Label>
               <Input
@@ -2046,7 +2052,7 @@ export default function ProjectPage() {
             />
           </div>
 
-          <DialogFooter className="flex-shrink-0 mt-4 pt-4 border-t">
+          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
             <Button
               variant="outline"
               onClick={() => {
