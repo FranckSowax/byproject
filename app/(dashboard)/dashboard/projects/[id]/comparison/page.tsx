@@ -19,6 +19,14 @@ interface Material {
   quantity: number | null;
 }
 
+interface PriceVariation {
+  id: string;
+  label: string;
+  amount: string;
+  notes?: string;
+  labelFr?: string;
+}
+
 interface Price {
   id: number;
   material_id: string;
@@ -30,10 +38,21 @@ interface Price {
   package_width?: number | null;
   package_height?: number | null;
   units_per_package?: number | null;
+  variations?: PriceVariation[] | null;
   supplier: {
     name: string;
     country: string;
   } | null;
+}
+
+// Type pour un matériau étendu incluant les variations
+interface ExtendedMaterial extends Material {
+  isVariation?: boolean;
+  parentId?: string;
+  parentName?: string;
+  variationLabel?: string;
+  variationPrice?: number;
+  basePrice?: Price;
 }
 
 export default function ComparisonPage() {
@@ -51,15 +70,53 @@ export default function ComparisonPage() {
     loadData();
   }, [params.id]);
 
+  // Fonction pour "exploser" les matériaux avec variations
+  const expandMaterialsWithVariations = (materials: Material[], pricesByMaterial: Record<string, Price[]>): ExtendedMaterial[] => {
+    const expanded: ExtendedMaterial[] = [];
+
+    materials.forEach(material => {
+      // Ajouter le matériau de base
+      expanded.push(material);
+
+      // Vérifier si ce matériau a des prix avec variations
+      const prices = pricesByMaterial[material.id] || [];
+      
+      prices.forEach(price => {
+        if (price.variations && price.variations.length > 0) {
+          price.variations.forEach((variation, index) => {
+            // Créer un "matériau virtuel" pour chaque variation
+            const variationMaterial: ExtendedMaterial = {
+              id: `${material.id}-var-${price.id}-${index}`,
+              name: `${material.name} - ${variation.label}`,
+              quantity: material.quantity,
+              isVariation: true,
+              parentId: material.id,
+              parentName: material.name,
+              variationLabel: variation.label,
+              variationPrice: parseFloat(variation.amount) || 0,
+              basePrice: price, // Garder référence au prix de base pour supplier info
+            };
+            expanded.push(variationMaterial);
+          });
+        }
+      });
+    });
+
+    return expanded;
+  };
+
   const loadData = async () => {
     try {
       setIsLoading(true);
+      
+      const projectId = params.id as string;
+      if (!projectId) return;
 
       // Charger le projet
       const { data: projectData } = await supabase
         .from('projects')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', projectId)
         .single();
 
       setProject(projectData);
@@ -68,7 +125,7 @@ export default function ComparisonPage() {
       const { data: materialsData } = await supabase
         .from('materials')
         .select('id, name, quantity')
-        .eq('project_id', params.id)
+        .eq('project_id', projectId)
         .order('name');
 
       setMaterials((materialsData as unknown as Material[]) || []);
@@ -118,7 +175,16 @@ export default function ComparisonPage() {
   };
 
   const calculateTotal = (country?: string) => {
-    return materials.reduce((total, material) => {
+    const expandedMaterials = expandMaterialsWithVariations(materials, pricesByMaterial);
+    
+    return expandedMaterials.reduce((total, material) => {
+      // Si c'est une variation, utiliser son prix spécifique
+      if (material.isVariation && material.variationPrice) {
+        const quantity = material.quantity || 1;
+        return total + (material.variationPrice * quantity);
+      }
+      
+      // Sinon, utiliser la logique normale
       const bestPrice = getBestPrice(material.id, country);
       if (!bestPrice) return total;
       const quantity = material.quantity || 1;
@@ -177,7 +243,21 @@ export default function ComparisonPage() {
   
   // Fonction pour calculer le total local (meilleurs prix parmi les pays locaux)
   const calculateLocalTotal = () => {
-    return materials.reduce((total, material) => {
+    const expandedMaterials = expandMaterialsWithVariations(materials, pricesByMaterial);
+    
+    return expandedMaterials.reduce((total, material) => {
+      // Si c'est une variation avec prix local/non spécifié à un pays, inclure
+      if (material.isVariation && material.variationPrice && material.basePrice) {
+        // Vérifier si le prix de base est d'un pays local
+        const isLocal = localCountries.includes(material.basePrice.country || '') || 
+                       localCountries.includes(material.basePrice.supplier?.country || '');
+        if (isLocal) {
+          const quantity = material.quantity || 1;
+          return total + (material.variationPrice * quantity);
+        }
+        return total;
+      }
+      
       const prices = pricesByMaterial[material.id] || [];
       // Filtrer uniquement les prix des pays locaux (vérifier price.country et supplier.country)
       const localPrices = prices.filter(p => 
@@ -559,7 +639,72 @@ export default function ComparisonPage() {
 
         {/* Tableau de Comparaison - Accordéon Mobile Responsive */}
         <Accordion type="multiple" className="space-y-4">
-          {materials.map(material => {
+          {expandMaterialsWithVariations(materials, pricesByMaterial).map(material => {
+            // Si c'est une variation, afficher son prix fixe
+            if (material.isVariation && material.variationPrice && material.basePrice) {
+              const quantity = material.quantity || 1;
+              const totalPrice = material.variationPrice * quantity;
+              
+              return (
+                <AccordionItem 
+                  key={material.id} 
+                  value={material.id}
+                  className="border-0 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all"
+                >
+                  <AccordionTrigger className="hover:no-underline p-0 [&>svg]:hidden">
+                    <div className="w-full transition-all flex items-center">
+                      {/* Titre avec badge variation */}
+                      <div className="flex-1 p-4 sm:p-6 text-left">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-purple-600 text-white">Variation</Badge>
+                          <h3 className="font-bold text-base sm:text-lg text-[#2D3748]">
+                            {material.name}
+                          </h3>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-[#718096]">
+                          <Badge variant="outline" className="bg-white/50">
+                            Qté: {quantity}
+                          </Badge>
+                          <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
+                            Prix unitaire: {material.variationPrice.toLocaleString()} FCFA
+                          </Badge>
+                          <Badge variant="outline" className="bg-[#48BB78]/10 text-[#48BB78] border-[#48BB78]/30">
+                            Total: {totalPrice.toLocaleString()} FCFA
+                          </Badge>
+                        </div>
+                        {material.basePrice?.supplier && (
+                          <p className="text-xs text-gray-600 mt-2">
+                            📍 {material.basePrice.supplier.name} - {material.basePrice.country}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Zone chevron */}
+                      <div className="w-1/4 min-w-[80px] bg-purple-100 hover:bg-purple-200 transition-colors flex items-center justify-center h-full py-4 sm:py-6 border-l border-purple-200">
+                        <ChevronDown className="h-6 w-6 sm:h-7 sm:w-7 text-purple-600 shrink-0 transition-transform duration-200" />
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+
+                  <AccordionContent className="p-4 sm:p-6 bg-gradient-to-b from-purple-50 to-white">
+                    <div className="bg-white rounded-lg p-4 border-2 border-purple-200">
+                      <p className="text-sm text-gray-700">
+                        <span className="font-semibold">Variation de prix</span> pour différentes quantités/caractéristiques du matériau <span className="font-semibold">{material.parentName}</span>
+                      </p>
+                      {material.basePrice && (
+                        <div className="mt-3 pt-3 border-t space-y-1 text-sm">
+                          <p><span className="text-gray-600">Fournisseur:</span> <span className="font-medium">{material.basePrice.supplier?.name}</span></p>
+                          <p><span className="text-gray-600">Pays:</span> <span className="font-medium">{material.basePrice.country}</span></p>
+                          <p><span className="text-gray-600">Devise:</span> <span className="font-medium">{material.basePrice.currency}</span></p>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            }
+            
+            // Affichage normal pour les matériaux standards
             const prices = pricesByMaterial[material.id] || [];
             const filteredPrices = selectedCountry === 'all' 
               ? prices 
