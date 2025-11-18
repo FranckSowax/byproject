@@ -222,6 +222,14 @@ export default function SupplierQuotePage() {
             };
           }
 
+          // Load material photos
+          // @ts-ignore - Photos table not in generated types yet
+          const { data: materialPhotos } = await supabase
+            .from('photos')
+            .select('url')
+            .eq('material_id', material.id)
+            .eq('photo_type', 'material');
+
           // Load prices
           const { data: prices } = await supabase
             .from('prices')
@@ -237,6 +245,23 @@ export default function SupplierQuotePage() {
             `)
             .eq('material_id', material.id)
             .eq('supplier_id', currentSupplierId); // Filter by current supplier
+
+          // Load photos for each price
+          const pricesWithPhotos = await Promise.all(
+            (prices || []).map(async (price: any) => {
+              // @ts-ignore - Photos table not in generated types yet
+              const { data: pricePhotos } = await supabase
+                .from('photos')
+                .select('url')
+                .eq('price_id', price.id)
+                .eq('photo_type', 'price');
+
+              return {
+                ...price,
+                productImages: pricePhotos?.map((p: any) => p.url) || [],
+              };
+            })
+          );
 
           // Load availability status
           // @ts-ignore - Table not in generated types yet
@@ -259,14 +284,16 @@ export default function SupplierQuotePage() {
 
           return {
             ...material,
-            prices: prices?.map((p: any) => ({
+            supplierImages: materialPhotos?.map((p: any) => p.url) || [],
+            prices: pricesWithPhotos.map((p: any) => ({
               id: p.id,
               amount: p.amount,
               currency: p.currency,
               country: p.country,
               supplier_name: p.suppliers?.name || '',
               variations: p.variations || [],
-            })) || [],
+              productImages: p.productImages || [],
+            })),
             unavailable: availability ? availability.is_available === false : false,
           };
         })
@@ -413,7 +440,7 @@ export default function SupplierQuotePage() {
       setSupplierInfo(supplierInfoToSave);
 
       // Create main price with French translation
-      const { error: priceError } = await supabase
+      const { data: priceInserted, error: priceError } = await supabase
         .from('prices')
         .insert({
           material_id: selectedMaterial?.id,
@@ -424,13 +451,28 @@ export default function SupplierQuotePage() {
           notes: priceData.notes,
           notes_fr: notesFr,
           variations: variationsFr,
-        });
+        })
+        .select()
+        .single();
 
       if (priceError) throw priceError;
 
       // Save product images if any
-      if (priceData.productImages && priceData.productImages.length > 0) {
-        // TODO: Save images to photos table
+      if (priceData.productImages && priceData.productImages.length > 0 && priceInserted?.id) {
+        const photoInserts = priceData.productImages.map((url: string) => ({
+          price_id: priceInserted.id,
+          url,
+          photo_type: 'price'
+        }));
+
+        // @ts-ignore - Photos table not in generated types yet
+        const { error: photoError } = await supabase
+          .from('photos')
+          .insert(photoInserts);
+
+        if (photoError) {
+          console.error('Error saving price photos:', photoError);
+        }
       }
 
       toast.success(language === 'fr' ? 'Prix ajouté' : language === 'en' ? 'Price added' : '价格已添加');
@@ -495,6 +537,40 @@ export default function SupplierQuotePage() {
 
       if (error) throw error;
 
+      // Save supplier images if any
+      if (data.supplierImages && data.supplierImages.length > 0 && selectedMaterial?.id) {
+        // Get existing photos
+        // @ts-ignore - Photos table not in generated types yet
+        const { data: existingPhotos } = await supabase
+          .from('photos')
+          .select('url')
+          .eq('material_id', selectedMaterial.id)
+          .eq('photo_type', 'material');
+
+        const existingUrls = existingPhotos?.map((p: any) => p.url) || [];
+        
+        // Find new photos to insert (photos that don't exist yet)
+        const newPhotos = data.supplierImages.filter((url: string) => !existingUrls.includes(url));
+        
+        // Insert only new photos
+        if (newPhotos.length > 0) {
+          const photoInserts = newPhotos.map((url: string) => ({
+            material_id: selectedMaterial.id,
+            url,
+            photo_type: 'material'
+          }));
+
+          // @ts-ignore - Photos table not in generated types yet
+          const { error: photoError } = await supabase
+            .from('photos')
+            .insert(photoInserts);
+
+          if (photoError) {
+            console.error('Error saving photos:', photoError);
+          }
+        }
+      }
+
       toast.success(language === 'fr' ? 'Matériau mis à jour' : language === 'en' ? 'Material updated' : '材料已更新');
       
       // Update local state without reload
@@ -510,6 +586,7 @@ export default function SupplierQuotePage() {
                 surface: data.surface !== undefined ? data.surface : m.surface,
                 weight: data.weight !== undefined ? data.weight : m.weight,
                 volume: data.volume !== undefined ? data.volume : m.volume,
+                supplierImages: data.supplierImages || m.supplierImages,
               }
             : m
         )

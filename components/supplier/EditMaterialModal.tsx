@@ -142,13 +142,13 @@ export function EditMaterialModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-2xl font-bold">{t.title}</DialogTitle>
           <DialogDescription>{t.subtitle}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto flex-1 pr-2">
           {/* Name */}
           <div>
             <Label htmlFor="name">{t.name} {t.required}</Label>
@@ -260,7 +260,7 @@ export function EditMaterialModal({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 mt-4 pt-4 border-t">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             {t.cancel}
           </Button>

@@ -14,31 +14,88 @@ export type Database = {
   }
   public: {
     Tables: {
-      column_mappings: {
+      photos: {
         Row: {
-          ai_mapping: Json | null
           id: number
-          project_id: string | null
-          updated_at: string | null
-          user_mapping: Json | null
+          material_id: string | null
+          price_id: number | null
+          url: string
+          photo_type: string | null
+          uploaded_at: string | null
         }
         Insert: {
-          ai_mapping?: Json | null
           id?: number
-          project_id?: string | null
-          updated_at?: string | null
-          user_mapping?: Json | null
+          material_id?: string | null
+          price_id?: number | null
+          url: string
+          photo_type?: string | null
+          uploaded_at?: string | null
         }
         Update: {
-          ai_mapping?: Json | null
           id?: number
-          project_id?: string | null
-          updated_at?: string | null
-          user_mapping?: Json | null
+          material_id?: string | null
+          price_id?: number | null
+          url?: string
+          photo_type?: string | null
+          uploaded_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "column_mappings_project_id_fkey"
+            foreignKeyName: "photos_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photos_price_id_fkey"
+            columns: ["price_id"]
+            isOneToOne: false
+            referencedRelation: "prices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      materials: {
+        Row: {
+          category: string | null
+          description: string | null
+          id: string
+          name: string
+          project_id: string | null
+          quantity: number | null
+          specs: Json
+          surface: number | null
+          volume: number | null
+          weight: number | null
+        }
+        Insert: {
+          category?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          project_id?: string | null
+          quantity?: number | null
+          specs?: Json
+          surface?: number | null
+          volume?: number | null
+          weight?: number | null
+        }
+        Update: {
+          category?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          quantity?: number | null
+          specs?: Json
+          surface?: number | null
+          volume?: number | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materials_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -46,59 +103,228 @@ export type Database = {
           },
         ]
       }
-      supplier_quotes: {
+      projects: {
         Row: {
-          attachments: Json | null
+          created_at: string | null
+          file_path: string | null
+          id: string
+          mapping_status: string | null
+          name: string
+          source_url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_path?: string | null
+          id?: string
+          mapping_status?: string | null
+          name: string
+          source_url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_path?: string | null
+          id?: string
+          mapping_status?: string | null
+          name?: string
+          source_url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      prices: {
+        Row: {
+          amount: number
+          converted_amount: number | null
+          country: string | null
           created_at: string | null
           currency: string | null
-          id: string
+          id: number
+          material_id: string | null
           notes: string | null
-          quoted_materials: Json
-          status: string
-          submitted_at: string | null
-          supplier_company: string | null
-          supplier_country: string | null
-          supplier_email: string | null
-          supplier_name: string
-          supplier_request_id: string
-          total_quote_amount: number | null
+          notes_fr: string | null
+          supplier_id: string | null
+          variations: Json | null
+        }
+        Insert: {
+          amount: number
+          converted_amount?: number | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: number
+          material_id?: string | null
+          notes?: string | null
+          notes_fr?: string | null
+          supplier_id?: string | null
+          variations?: Json | null
+        }
+        Update: {
+          amount?: number
+          converted_amount?: number | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: number
+          material_id?: string | null
+          notes?: string | null
+          notes_fr?: string | null
+          supplier_id?: string | null
+          variations?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prices_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          contact_info: Json | null
+          contact_name: string | null
+          country: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+          wechat: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          contact_info?: Json | null
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+          wechat?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          contact_info?: Json | null
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          wechat?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      supplier_material_availability: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_available: boolean
+          material_id: string
+          notes: string | null
+          supplier_id: string
           updated_at: string | null
         }
         Insert: {
-          attachments?: Json | null
           created_at?: string | null
-          currency?: string | null
           id?: string
+          is_available?: boolean
+          material_id: string
           notes?: string | null
-          quoted_materials: Json
-          status?: string
-          submitted_at?: string | null
-          supplier_company?: string | null
-          supplier_country?: string | null
-          supplier_email?: string | null
-          supplier_name: string
-          supplier_request_id: string
-          total_quote_amount?: number | null
+          supplier_id: string
           updated_at?: string | null
         }
         Update: {
-          attachments?: Json | null
           created_at?: string | null
-          currency?: string | null
           id?: string
+          is_available?: boolean
+          material_id?: string
           notes?: string | null
-          quoted_materials?: Json
-          status?: string
-          submitted_at?: string | null
-          supplier_company?: string | null
-          supplier_country?: string | null
-          supplier_email?: string | null
-          supplier_name?: string
-          supplier_request_id?: string
-          total_quote_amount?: number | null
+          supplier_id?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "supplier_material_availability_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_material_availability_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_quotes: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          id: string
+          is_accepted: boolean | null
+          notes: string | null
+          rejected_at: string | null
+          status: string | null
+          supplier_id: string
+          supplier_request_id: string
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_accepted?: boolean | null
+          notes?: string | null
+          rejected_at?: string | null
+          status?: string | null
+          supplier_id: string
+          supplier_request_id: string
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_accepted?: boolean | null
+          notes?: string | null
+          rejected_at?: string | null
+          status?: string | null
+          supplier_id?: string
+          supplier_request_id?: string
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_quotes_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supplier_quotes_supplier_request_id_fkey"
             columns: ["supplier_request_id"]
@@ -108,93 +334,12 @@ export type Database = {
           },
         ]
       }
-      supplier_requests: {
-        Row: {
-          admin_notes: string | null
-          completed_at: string | null
-          created_at: string | null
-          expires_at: string | null
-          filled_materials: number | null
-          id: string
-          materials_data: Json
-          materials_translated_en: Json | null
-          materials_translated_zh: Json | null
-          num_suppliers: number
-          progress_percentage: number | null
-          project_id: string
-          public_token: string
-          request_number: string
-          sent_at: string | null
-          status: string
-          supplier_responses: Json | null
-          total_materials: number
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          admin_notes?: string | null
-          completed_at?: string | null
-          created_at?: string | null
-          expires_at?: string | null
-          filled_materials?: number | null
-          id?: string
-          materials_data: Json
-          materials_translated_en?: Json | null
-          materials_translated_zh?: Json | null
-          num_suppliers?: number
-          progress_percentage?: number | null
-          project_id: string
-          public_token: string
-          request_number: string
-          sent_at?: string | null
-          status?: string
-          supplier_responses?: Json | null
-          total_materials: number
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          admin_notes?: string | null
-          completed_at?: string | null
-          created_at?: string | null
-          expires_at?: string | null
-          filled_materials?: number | null
-          id?: string
-          materials_data?: Json
-          materials_translated_en?: Json | null
-          materials_translated_zh?: Json | null
-          num_suppliers?: number
-          progress_percentage?: number | null
-          project_id?: string
-          public_token?: string
-          request_number?: string
-          sent_at?: string | null
-          status?: string
-          supplier_responses?: Json | null
-          total_materials?: number
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "supplier_requests_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      // ... autres tables
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      generate_request_number: { Args: never; Returns: string }
-      get_user_project_role:
-        | { Args: { p_project_id: string; p_user_id: string }; Returns: string }
-        | { Args: { project_uuid: string }; Returns: string }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
@@ -237,93 +382,3 @@ export type Tables<
       ? R
       : never
     : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
