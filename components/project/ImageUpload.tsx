@@ -122,8 +122,12 @@ export function ImageUpload({
 
   return (
     <div className="space-y-4">
-      {/* Upload Button */}
-      <div>
+      {/* Upload Zone - Clickable Dashed Border */}
+      <div className={`border-2 border-dashed rounded-lg p-4 transition-colors ${
+        uploading || images.length >= maxImages 
+          ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+          : 'border-gray-400 hover:border-gray-500 cursor-pointer'
+      }`}>
         <input
           type="file"
           id="image-upload"
@@ -133,71 +137,58 @@ export function ImageUpload({
           onChange={handleFileSelect}
           disabled={uploading || images.length >= maxImages}
         />
-        <label htmlFor="image-upload" className="block">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full cursor-pointer"
-            disabled={uploading || images.length >= maxImages}
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Upload en cours...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-2" />
-                Ajouter des images ({images.length}/{maxImages})
-              </>
-            )}
-          </Button>
+        <label
+          htmlFor="image-upload"
+          className={`flex flex-col items-center ${
+            uploading || images.length >= maxImages ? 'cursor-not-allowed' : 'cursor-pointer'
+          }`}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="h-12 w-12 text-gray-400 mb-2 animate-spin" />
+              <span className="text-sm text-gray-600">Upload en cours...</span>
+            </>
+          ) : (
+            <>
+              <ImageIcon className="h-12 w-12 text-gray-400 mb-2" />
+              <span className="text-sm text-gray-600">
+                {images.length >= maxImages 
+                  ? `Maximum ${maxImages} images atteint` 
+                  : 'Cliquez pour ajouter des images'}
+              </span>
+              <span className="text-xs text-gray-500 mt-1">
+                JPG, PNG, GIF jusqu'à 5MB. {images.length}/{maxImages} images
+              </span>
+            </>
+          )}
         </label>
-        <p className="text-xs text-gray-500 mt-1">
-          JPG, PNG, GIF jusqu'à 5MB. Maximum {maxImages} images.
-        </p>
       </div>
 
       {/* Images Grid */}
       {images.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-2">
           {images.map((imageUrl, index) => (
-            <Card key={index} className="relative group overflow-hidden">
-              <div className="aspect-square relative">
-                <img
-                  src={imageUrl}
-                  alt={`Image ${index + 1}`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = '/placeholder-image.png';
-                  }}
-                />
-                {/* Remove Button */}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveImage(imageUrl)}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                  title="Supprimer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </Card>
+            <div key={index} className="relative group">
+              <img
+                src={imageUrl}
+                alt={`Image ${index + 1}`}
+                className="w-full h-24 object-cover rounded"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder-image.png';
+                }}
+              />
+              {/* Remove Button */}
+              <button
+                type="button"
+                onClick={() => handleRemoveImage(imageUrl)}
+                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Supprimer"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
           ))}
         </div>
-      )}
-
-      {/* Empty State */}
-      {images.length === 0 && (
-        <Card className="border-2 border-dashed border-gray-300 bg-gray-50">
-          <div className="p-8 text-center">
-            <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-            <p className="text-sm text-gray-600 mb-2">Aucune image</p>
-            <p className="text-xs text-gray-500">
-              Cliquez sur "Ajouter des images" pour commencer
-            </p>
-          </div>
-        </Card>
       )}
     </div>
   );
