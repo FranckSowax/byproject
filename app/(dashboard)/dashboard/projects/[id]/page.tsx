@@ -102,6 +102,7 @@ export default function ProjectPage() {
     package_height: '',
     package_weight: '',
     units_per_package: '',
+    variations: [] as any[],
   });
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>('new');
@@ -822,6 +823,7 @@ export default function ProjectPage() {
           currency: newPrice.currency,
           converted_amount: convertedAmount,
           notes: newPrice.notes,
+          variations: newPrice.variations && newPrice.variations.length > 0 ? newPrice.variations : null,
         })
         .select()
         .single();
@@ -849,6 +851,12 @@ export default function ProjectPage() {
         amount: '',
         currency: 'FCFA',
         notes: '',
+        package_length: '',
+        package_width: '',
+        package_height: '',
+        package_weight: '',
+        units_per_package: '',
+        variations: [],
       });
       setSelectedSupplier('new');
       setUploadedPhotos([]);
@@ -2514,6 +2522,102 @@ export default function ProjectPage() {
               <p className="text-xs text-gray-500">
                 💡 Ces informations permettent d'estimer les coûts de transport maritime ou aérien
               </p>
+            </div>
+
+            {/* Variations de Prix */}
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-semibold">Variations de Prix</Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ajoutez différents prix pour différentes quantités/tailles
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newVariations = [...(newPrice.variations || []), {
+                      id: Date.now().toString(),
+                      label: '',
+                      amount: '',
+                      notes: ''
+                    }];
+                    setNewPrice({ ...newPrice, variations: newVariations });
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter une variation
+                </Button>
+              </div>
+
+              {newPrice.variations && newPrice.variations.length > 0 && (
+                <div className="space-y-3">
+                  {newPrice.variations.map((variation: any, index: number) => (
+                    <div key={variation.id || index} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="text-sm font-medium text-gray-700">
+                          Variation {index + 1}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const newVariations = newPrice.variations.filter((_: any, i: number) => i !== index);
+                            setNewPrice({ ...newPrice, variations: newVariations });
+                          }}
+                        >
+                          <X className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Label</Label>
+                          <Input
+                            placeholder="Ex: 100-500 unités"
+                            value={variation.label}
+                            onChange={(e) => {
+                              const newVariations = [...newPrice.variations];
+                              newVariations[index].label = e.target.value;
+                              setNewPrice({ ...newPrice, variations: newVariations });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Montant</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={variation.amount}
+                            onChange={(e) => {
+                              const newVariations = [...newPrice.variations];
+                              newVariations[index].amount = e.target.value;
+                              setNewPrice({ ...newPrice, variations: newVariations });
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <Label className="text-xs">Notes</Label>
+                        <Input
+                          placeholder="MOQ, conditions..."
+                          value={variation.notes}
+                          onChange={(e) => {
+                            const newVariations = [...newPrice.variations];
+                            newVariations[index].notes = e.target.value;
+                            setNewPrice({ ...newPrice, variations: newVariations });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Upload Photos */}
