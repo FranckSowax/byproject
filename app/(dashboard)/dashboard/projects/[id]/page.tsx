@@ -2046,18 +2046,18 @@ export default function ProjectPage() {
                 />
               </div>
             </div>
-          </div>
 
-          {/* Images Upload */}
-          <div className="space-y-2">
-            <Label>Images</Label>
-            <ImageUpload
-              images={newMaterial.images || []}
-              onImagesChange={(images) => setNewMaterial({ ...newMaterial, images })}
-              maxImages={5}
-              bucket="project-materials"
-              path={params.id}
-            />
+            {/* Images Upload */}
+            <div className="space-y-2">
+              <Label>Images</Label>
+              <ImageUpload
+                images={newMaterial.images || []}
+                onImagesChange={(images) => setNewMaterial({ ...newMaterial, images })}
+                maxImages={5}
+                bucket="project-materials"
+                path={params.id}
+              />
+            </div>
           </div>
 
           <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
