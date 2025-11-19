@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Building2, Home, Wrench, ShoppingCart, Star, Search, TrendingUp, Download, Eye, MapPin, Ruler, DollarSign, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Building2, Home, Wrench, ShoppingCart, Star, Search, TrendingUp, Download, Eye, MapPin, Ruler, DollarSign, Play, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -86,13 +86,31 @@ export default function TemplatesPage() {
   const getCategoryLabel = (cat: string) => cat === 'residential' ? 'Résidentiel' : cat === 'commercial' ? 'Commercial' : 'Rénovation';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-80 bg-white border-r p-6 h-screen sticky top-0 overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-bold">Filtres</h2>
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-blue-600">Effacer</Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header with Create Button */}
+      <div className="bg-white border-b px-6 py-4 sticky top-0 z-10">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Templates de Projets</h1>
+            <p className="text-sm text-gray-600 mt-1">Gagnez du temps avec nos templates professionnels</p>
+          </div>
+          <Button 
+            onClick={() => router.push('/dashboard/templates/create')}
+            className="bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#7B7FE8] hover:to-[#5B5FC7] text-white shadow-lg"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Créer un Template
+          </Button>
         </div>
+      </div>
+
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className="w-80 bg-white border-r p-6 h-[calc(100vh-80px)] sticky top-[80px] overflow-y-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-bold">Filtres</h2>
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-blue-600">Effacer</Button>
+          </div>
 
         <div className="space-y-6">
           <div>
@@ -301,6 +319,7 @@ export default function TemplatesPage() {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
