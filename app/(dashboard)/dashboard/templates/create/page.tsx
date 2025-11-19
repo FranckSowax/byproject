@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { MaterialsFilter } from '@/components/materials/MaterialsFilter';
 import { ArrowLeft, Upload, FileText, Plus, Loader2, File, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,6 +41,7 @@ export default function CreateTemplatePage() {
   
   // Manual materials
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [filteredMaterials, setFilteredMaterials] = useState<Material[]>([]);
   const [newMaterial, setNewMaterial] = useState<Material>({
     name: '',
     description: '',
@@ -397,27 +399,46 @@ export default function CreateTemplatePage() {
                 
                 {/* Materials List */}
                 {materials.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <h3 className="font-semibold">Matériaux ajoutés ({materials.length})</h3>
-                    {materials.map((material, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-white border rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">{material.name}</p>
-                          <p className="text-sm text-gray-600">
-                            {material.quantity} {material.unit}
-                            {material.description && ` - ${material.description}`}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveMaterial(index)}
-                          className="text-red-600"
-                        >
-                          Supprimer
-                        </Button>
-                      </div>
-                    ))}
+                    
+                    {/* Filtrage et Recherche Dynamique */}
+                    <MaterialsFilter 
+                      materials={materials}
+                      onFilteredChange={setFilteredMaterials}
+                      showPriceSort={false}
+                    />
+                    
+                    <div className="space-y-2">
+                      {filteredMaterials.map((material, index) => {
+                        // Find original index for removal
+                        const originalIndex = materials.findIndex(m => 
+                          m.name === material.name && 
+                          m.quantity === material.quantity && 
+                          m.unit === material.unit
+                        );
+                        
+                        return (
+                          <div key={index} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:border-blue-500 transition-colors">
+                            <div className="flex-1">
+                              <p className="font-medium">{material.name}</p>
+                              <p className="text-sm text-gray-600">
+                                {material.quantity} {material.unit}
+                                {material.description && ` - ${material.description}`}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveMaterial(originalIndex)}
+                              className="text-red-600 hover:bg-red-50"
+                            >
+                              Supprimer
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </TabsContent>

@@ -15,6 +15,7 @@ import { ShareProjectDialog } from "@/components/collaboration/ShareProjectDialo
 import { MaterialComments } from "@/components/collaboration/MaterialComments";
 import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
 import { ImageUpload } from "@/components/project/ImageUpload";
+import { MaterialsFilter } from "@/components/materials/MaterialsFilter";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,7 @@ export default function ProjectPage() {
   const supabase = createClient();
   const [project, setProject] = useState<Project | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [filteredMaterials, setFilteredMaterials] = useState<Material[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
   
@@ -1486,20 +1488,16 @@ export default function ProjectPage() {
               <p className="text-[#718096] font-medium">Chargement des matériaux...</p>
             </div>
           ) : materials.length > 0 ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between mb-6 px-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-[#5B5FC7]/10 to-[#FF9B7B]/10 rounded-lg flex items-center justify-center">
-                    <span className="text-sm font-bold text-[#5B5FC7]">{materials.length}</span>
-                  </div>
-                  <p className="text-sm font-medium text-[#4A5568]">
-                    matériau{materials.length > 1 ? 'x' : ''} détecté{materials.length > 1 ? 's' : ''}
-                  </p>
-                </div>
-              </div>
+            <div className="space-y-6">
+              {/* Filtrage et Recherche Dynamique */}
+              <MaterialsFilter 
+                materials={materials}
+                onFilteredChange={setFilteredMaterials}
+                showPriceSort={true}
+              />
               
               <div className="space-y-3">
-                {materials.map((material) => (
+                {filteredMaterials.map((material) => (
                   <div 
                     key={material.id} 
                     className="group relative bg-gradient-to-br from-white to-[#F8F9FF] border-2 border-[#E0E4FF] hover:border-[#5B5FC7] rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-[1.01]
