@@ -17,8 +17,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 export type SortOption = 
   | 'name-asc' 
   | 'name-desc' 
-  | 'date-newest' 
-  | 'date-oldest' 
   | 'quantity-high' 
   | 'quantity-low'
   | 'price-high'
@@ -36,7 +34,7 @@ export function MaterialsFilter({
   showPriceSort = false 
 }: MaterialsFilterProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('date-newest');
+  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -79,10 +77,6 @@ export function MaterialsFilter({
           return (a.name || '').localeCompare(b.name || '');
         case 'name-desc':
           return (b.name || '').localeCompare(a.name || '');
-        case 'date-newest':
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-        case 'date-oldest':
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
         case 'quantity-high':
           return (b.quantity || 0) - (a.quantity || 0);
         case 'quantity-low':
@@ -124,7 +118,7 @@ export function MaterialsFilter({
   const clearAllFilters = () => {
     setSearchQuery('');
     setSelectedCategories([]);
-    setSortBy('date-newest');
+    setSortBy('name-asc');
   };
 
   const activeFiltersCount = selectedCategories.length + (searchQuery ? 1 : 0);
@@ -152,16 +146,14 @@ export function MaterialsFilter({
           )}
         </div>
 
-        {/* Sort */}
-        <div className="flex gap-2">
+        {/* Sort and Filters */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SlidersHorizontal className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="date-newest">Plus récent</SelectItem>
-              <SelectItem value="date-oldest">Plus ancien</SelectItem>
               <SelectItem value="name-asc">Nom (A-Z)</SelectItem>
               <SelectItem value="name-desc">Nom (Z-A)</SelectItem>
               <SelectItem value="quantity-high">Quantité ↓</SelectItem>
@@ -179,7 +171,7 @@ export function MaterialsFilter({
           {categories.length > 0 && (
             <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="relative">
+                <Button variant="outline" className="relative w-full sm:w-auto">
                   <Filter className="h-4 w-4 mr-2" />
                   Filtres
                   {activeFiltersCount > 0 && (
