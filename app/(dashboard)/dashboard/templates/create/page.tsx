@@ -6,13 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { MaterialsFilter } from '@/components/materials/MaterialsFilter';
-import { ArrowLeft, Upload, FileText, Plus, Loader2, File, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ImageUpload } from '@/components/project/ImageUpload';
+import { ArrowLeft, Upload, FileText, Plus, Loader2, File, CheckCircle2, AlertCircle, Image as ImageIcon, Trash2, Building2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Material {
@@ -20,6 +22,15 @@ interface Material {
   description: string;
   quantity: number;
   unit: string;
+  category?: string;
+  supplier?: {
+    name: string;
+    contact: string;
+    phone: string;
+    email: string;
+    whatsapp?: string;
+    address?: string;
+  };
 }
 
 interface ParsingChunk {
@@ -39,6 +50,11 @@ export default function CreateTemplatePage() {
   const [templateDescription, setTemplateDescription] = useState('');
   const [category, setCategory] = useState<'residential' | 'commercial' | 'renovation'>('residential');
   
+  // Presentation info
+  const [presentationDescription, setPresentationDescription] = useState('');
+  const [templateImages, setTemplateImages] = useState<string[]>([]);
+  const [mainImageIndex, setMainImageIndex] = useState(0);
+  
   // Manual materials
   const [materials, setMaterials] = useState<Material[]>([]);
   const [filteredMaterials, setFilteredMaterials] = useState<Material[]>([]);
@@ -46,7 +62,20 @@ export default function CreateTemplatePage() {
     name: '',
     description: '',
     quantity: 1,
-    unit: 'unité'
+    unit: 'unité',
+    category: '',
+    supplier: undefined
+  });
+  
+  // Supplier for current material
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [supplierData, setSupplierData] = useState({
+    name: '',
+    contact: '',
+    phone: '',
+    email: '',
+    whatsapp: '',
+    address: ''
   });
   
   // File upload
@@ -65,13 +94,29 @@ export default function CreateTemplatePage() {
       return;
     }
     
-    setMaterials([...materials, { ...newMaterial }]);
+    const materialToAdd = {
+      ...newMaterial,
+      supplier: showSupplierForm && supplierData.name ? { ...supplierData } : undefined
+    };
+    
+    setMaterials([...materials, materialToAdd]);
     setNewMaterial({
       name: '',
       description: '',
       quantity: 1,
-      unit: 'unité'
+      unit: 'unité',
+      category: '',
+      supplier: undefined
     });
+    setSupplierData({
+      name: '',
+      contact: '',
+      phone: '',
+      email: '',
+      whatsapp: '',
+      address: ''
+    });
+    setShowSupplierForm(false);
     toast.success('Matériau ajouté');
   };
   
@@ -236,20 +281,30 @@ export default function CreateTemplatePage() {
           category,
           materials_count: materials.length,
           is_active: true,
-          user_id: user.id
+          user_id: user.id,
+          presentation_description: presentationDescription,
+          images: templateImages,
+          main_image_index: mainImageIndex
         })
         .select()
         .single();
       
       if (templateError) throw templateError;
       
-      // Save materials
+      // Save materials with supplier info
       const materialsData = materials.map(m => ({
         template_id: template.id,
         name: m.name,
         description: m.description,
         quantity: m.quantity,
-        unit: m.unit
+        unit: m.unit,
+        category: m.category || null,
+        supplier_name: m.supplier?.name || null,
+        supplier_contact: m.supplier?.contact || null,
+        supplier_phone: m.supplier?.phone || null,
+        supplier_email: m.supplier?.email || null,
+        supplier_whatsapp: m.supplier?.whatsapp || null,
+        supplier_address: m.supplier?.address || null
       }));
       
       const { error: materialsError } = await supabase
@@ -335,6 +390,78 @@ export default function CreateTemplatePage() {
           </CardContent>
         </Card>
         
+        {/* Presentation Info Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Présentation du Template
+            </CardTitle>
+            <CardDescription>
+              Ces informations seront visibles quand on clique sur "Voir" le template
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="presentation-desc">Description de présentation</Label>
+              <Textarea
+                id="presentation-desc"
+                value={presentationDescription}
+                onChange={(e) => setPresentationDescription(e.target.value)}
+                placeholder="Décrivez ce template en détail (matériaux, spécificités, cas d'usage...)"
+                rows={4}
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Cette description apparaîtra dans la vue détaillée du template
+              </p>
+            </div>
+            
+            <div>
+              <Label className="text-base font-semibold mb-3 block">Images & Vidéos du Template</Label>
+              <ImageUpload
+                images={templateImages}
+                onImagesChange={setTemplateImages}
+                maxImages={10}
+                bucket="templates"
+                path="presentation"
+              />
+              {templateImages.length > 0 && (
+                <div className="mt-4">
+                  <Label className="text-sm">Image principale</Label>
+                  <div className="grid grid-cols-5 gap-2 mt-2">
+                    {templateImages.map((img, index) => (
+                      <div
+                        key={index}
+                        onClick={() => setMainImageIndex(index)}
+                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                          mainImageIndex === index
+                            ? 'border-blue-500 ring-2 ring-blue-200'
+                            : 'border-gray-200 hover:border-blue-300'
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt={`Image ${index + 1}`}
+                          className="w-full h-20 object-cover"
+                        />
+                        {mainImageIndex === index && (
+                          <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">
+                            <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Cliquez sur une image pour la définir comme image principale
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        
         {/* Materials Section */}
         <Card>
           <CardHeader>
@@ -382,15 +509,111 @@ export default function CreateTemplatePage() {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <Label>Description</Label>
-                    <Textarea
-                      value={newMaterial.description}
-                      onChange={(e) => setNewMaterial({ ...newMaterial, description: e.target.value })}
-                      placeholder="Description optionnelle..."
-                      rows={2}
-                    />
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Catégorie</Label>
+                      <Input
+                        value={newMaterial.category}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, category: e.target.value })}
+                        placeholder="Ex: Maçonnerie"
+                      />
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Input
+                        value={newMaterial.description}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, description: e.target.value })}
+                        placeholder="Description optionnelle..."
+                      />
+                    </div>
                   </div>
+                  
+                  {/* Supplier Form Toggle */}
+                  <div className="mt-4 border-t pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowSupplierForm(!showSupplierForm)}
+                      className="w-full"
+                    >
+                      <Building2 className="h-4 w-4 mr-2" />
+                      {showSupplierForm ? 'Masquer' : 'Ajouter un fournisseur'}
+                    </Button>
+                    
+                    {showSupplierForm && (
+                      <div className="mt-4 p-4 border rounded-lg bg-blue-50 space-y-3">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Informations Fournisseur
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Nom du fournisseur *</Label>
+                            <Input
+                              value={supplierData.name}
+                              onChange={(e) => setSupplierData({ ...supplierData, name: e.target.value })}
+                              placeholder="Nom de l'entreprise"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Contact</Label>
+                            <Input
+                              value={supplierData.contact}
+                              onChange={(e) => setSupplierData({ ...supplierData, contact: e.target.value })}
+                              placeholder="Nom du contact"
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Téléphone</Label>
+                            <Input
+                              value={supplierData.phone}
+                              onChange={(e) => setSupplierData({ ...supplierData, phone: e.target.value })}
+                              placeholder="+33 6 12 34 56 78"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">WhatsApp</Label>
+                            <Input
+                              value={supplierData.whatsapp}
+                              onChange={(e) => setSupplierData({ ...supplierData, whatsapp: e.target.value })}
+                              placeholder="+33 6 12 34 56 78"
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label className="text-xs">Email</Label>
+                          <Input
+                            type="email"
+                            value={supplierData.email}
+                            onChange={(e) => setSupplierData({ ...supplierData, email: e.target.value })}
+                            placeholder="contact@fournisseur.com"
+                            className="mt-1"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label className="text-xs">Adresse</Label>
+                          <Textarea
+                            value={supplierData.address}
+                            onChange={(e) => setSupplierData({ ...supplierData, address: e.target.value })}
+                            placeholder="Adresse complète du fournisseur"
+                            rows={2}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
                   <Button onClick={handleAddMaterial} className="mt-4 w-full">
                     <Plus className="h-4 w-4 mr-2" />
                     Ajouter ce matériau
@@ -419,22 +642,52 @@ export default function CreateTemplatePage() {
                         );
                         
                         return (
-                          <div key={index} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:border-blue-500 transition-colors">
-                            <div className="flex-1">
-                              <p className="font-medium">{material.name}</p>
-                              <p className="text-sm text-gray-600">
-                                {material.quantity} {material.unit}
-                                {material.description && ` - ${material.description}`}
-                              </p>
+                          <div key={index} className="p-3 bg-white border rounded-lg hover:border-blue-500 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{material.name}</p>
+                                  {material.category && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {material.category}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {material.quantity} {material.unit}
+                                  {material.description && ` - ${material.description}`}
+                                </p>
+                                
+                                {material.supplier && (
+                                  <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                                    <div className="flex items-center gap-1 text-xs font-semibold text-blue-700 mb-1">
+                                      <Building2 className="h-3 w-3" />
+                                      Fournisseur
+                                    </div>
+                                    <p className="text-xs text-gray-700">
+                                      <strong>{material.supplier.name}</strong>
+                                      {material.supplier.contact && ` - ${material.supplier.contact}`}
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-600">
+                                      {material.supplier.phone && (
+                                        <span>📞 {material.supplier.phone}</span>
+                                      )}
+                                      {material.supplier.email && (
+                                        <span>✉️ {material.supplier.email}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveMaterial(originalIndex)}
+                                className="text-red-600 hover:bg-red-50 ml-2"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveMaterial(originalIndex)}
-                              className="text-red-600 hover:bg-red-50"
-                            >
-                              Supprimer
-                            </Button>
                           </div>
                         );
                       })}
