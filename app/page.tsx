@@ -4,6 +4,8 @@ import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkl
 import Image from "next/image";
 import { HowItWorksSlider } from "@/components/home/HowItWorksSlider";
 import { PricingSection } from "@/components/home/PricingSection";
+import { SourcingServiceSection } from "@/components/home/SourcingServiceSection";
+import { EnterpriseWhiteLabelSection } from "@/components/home/EnterpriseWhiteLabelSection";
 
 // Force dynamic rendering to prevent static generation issues
 export const dynamic = 'force-dynamic';
@@ -29,11 +31,11 @@ export default function Home() {
 
             {/* Navigation Links (Desktop) */}
             <div className="hidden md:flex items-center gap-8">
+              <Link href="#sourcing" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
+                Sourcing
+              </Link>
               <Link href="#features" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
                 Fonctionnalités
-              </Link>
-              <Link href="#how-it-works" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
-                Comment ça marche
               </Link>
               <Link href="#pricing" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
                 Tarifs
@@ -83,7 +85,7 @@ export default function Home() {
             
             <p className="text-lg sm:text-xl md:text-2xl text-[#718096] max-w-3xl mx-auto leading-relaxed px-4">
               Gérez tout type de projet, importez vos listes de produits avec l'IA, comparez les offres locales vs internationales, 
-              et sourcez auprès de fournisseurs qualifiés. BTP, Commerce, Événementiel.
+              et sourcez auprès de fournisseurs chinois qualifiés. BTP, Commerce, Événementiel.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 px-4">
@@ -115,6 +117,9 @@ export default function Home() {
         <div id="how-it-works">
           <HowItWorksSlider />
         </div>
+
+        {/* Sourcing Service Section (NEW) */}
+        <SourcingServiceSection />
 
         {/* Features Section */}
         <section id="features" className="bg-gradient-to-b from-white to-[#F8F9FF] py-16 sm:py-24">
@@ -183,6 +188,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Enterprise & White Label Section (NEW) */}
+        <EnterpriseWhiteLabelSection />
 
         {/* Pricing Section */}
         <PricingSection />
