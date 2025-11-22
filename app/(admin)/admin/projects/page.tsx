@@ -75,47 +75,11 @@ export default function AdminProjectsPage() {
     try {
       setLoading(true);
 
-      // Load projects
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (projectsError) throw projectsError;
-
-      // Enrich with user info and materials count
-      const projectsWithMeta = await Promise.all(
-        (projectsData || []).map(async (project: any) => {
-          // Get user info from API route
-          let userName = 'Utilisateur';
-          let userEmail = '';
-          
-          try {
-            const userResponse = await fetch(`/api/admin/users/${project.user_id}`);
-            if (userResponse.ok) {
-              const userData = await userResponse.json();
-              userName = userData.full_name;
-              userEmail = userData.email;
-            }
-          } catch (error) {
-            console.warn('Could not fetch user info:', error);
-          }
-
-          // Get materials count
-          const { data: materialsData } = await supabase
-            .from('materials')
-            .select('id')
-            .eq('project_id', project.id);
-
-          return {
-            ...project,
-            user_name: userName,
-            user_email: userEmail,
-            materials_count: materialsData?.length || 0,
-          };
-        })
-      );
-
+      // Load projects from Admin API (bypasses RLS and enriches data)
+      const response = await fetch('/api/admin/projects');
+      if (!response.ok) throw new Error('Failed to fetch projects');
+      
+      const projectsWithMeta = await response.json();
       setProjects(projectsWithMeta);
     } catch (error) {
       console.error('Error loading projects:', error);
