@@ -53,45 +53,11 @@ export default function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const supabase = createClient();
-
-      // Charger les statistiques en parallèle
-      const [
-        usersCount,
-        projectsCount,
-        templatesCount,
-        supplierRequestsCount,
-        materialsCount,
-      ] = await Promise.all([
-        supabase.from('users').select('*', { count: 'exact', head: true }),
-        supabase.from('projects').select('*', { count: 'exact', head: true }),
-        supabase.from('templates' as any).select('*', { count: 'exact', head: true }),
-        supabase.from('supplier_requests' as any).select('*', { count: 'exact', head: true }),
-        supabase.from('materials').select('*', { count: 'exact', head: true }),
-      ]);
-
-      // Demandes actives
-      const { count: activeCount } = await supabase
-        .from('supplier_requests' as any)
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['pending', 'sent', 'in_progress']);
-
-      // Demandes complétées
-      const { count: completedCount } = await supabase
-        .from('supplier_requests' as any)
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'completed');
-
-      setStats({
-        totalUsers: usersCount.count || 0,
-        totalProjects: projectsCount.count || 0,
-        totalTemplates: templatesCount.count || 0,
-        totalSupplierRequests: supplierRequestsCount.count || 0,
-        activeRequests: activeCount || 0,
-        completedRequests: completedCount || 0,
-        totalMaterials: materialsCount.count || 0,
-        recentActivity: 0,
-      });
+      const response = await fetch('/api/admin/stats');
+      if (!response.ok) throw new Error('Failed to fetch stats');
+      
+      const data = await response.json();
+      setStats(data);
     } catch (error) {
       console.error('Error loading stats:', error);
     } finally {

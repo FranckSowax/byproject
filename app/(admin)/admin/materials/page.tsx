@@ -117,25 +117,11 @@ export default function AdminMaterialsPage() {
     try {
       setLoading(true);
 
-      // Load all materials with their projects and prices
-      const { data: materialsData, error: materialsError } = await supabase
-        .from('materials')
-        .select(`
-          *,
-          project:projects(id, name),
-          prices(
-            id,
-            amount,
-            currency,
-            converted_amount,
-            country,
-            created_at,
-            supplier:suppliers(name)
-          )
-        `)
-        .order('name');
-
-      if (materialsError) throw materialsError;
+      // Load all materials from Admin API
+      const response = await fetch('/api/admin/materials');
+      if (!response.ok) throw new Error('Failed to fetch materials');
+      
+      const materialsData = await response.json();
 
       // Transform data
       const transformedMaterials: Material[] = (materialsData || []).map((mat: any) => {

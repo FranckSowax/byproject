@@ -109,12 +109,10 @@ export default function AdminTemplatesPage() {
     try {
       setLoading(true);
 
-      const { data: templatesData, error } = await supabase
-        .from('templates')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const response = await fetch('/api/admin/templates');
+      if (!response.ok) throw new Error('Failed to fetch templates');
+      
+      const templatesData = await response.json();
 
       // Count materials for each template (if needed)
       const templatesWithCounts = (templatesData || []).map((template: any) => ({
