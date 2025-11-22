@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkles, Ship, Package, Home as HomeIcon, DollarSign, Briefcase, LogIn, UserPlus } from "lucide-react";
 import Image from "next/image";
 import { HowItWorksSlider } from "@/components/home/HowItWorksSlider";
+import { PricingSection } from "@/components/home/PricingSection";
 
 // Force dynamic rendering to prevent static generation issues
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,18 @@ export default function Home() {
               />
             </Link>
 
+            {/* Navigation Links (Desktop) */}
+            <div className="hidden md:flex items-center gap-8">
+              <Link href="#features" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
+                Fonctionnalités
+              </Link>
+              <Link href="#how-it-works" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
+                Comment ça marche
+              </Link>
+              <Link href="#pricing" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
+                Tarifs
+              </Link>
+            </div>
 
             {/* Auth Buttons */}
             <div className="flex items-center gap-3">
@@ -58,19 +71,19 @@ export default function Home() {
           <div className="relative mx-auto max-w-4xl space-y-10">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#F5F6FF] to-[#FFF5F2] border border-[#E0E4FF]">
               <Sparkles className="h-4 w-4 text-[#5B5FC7]" />
-              <span className="text-sm font-medium text-[#4A5568]">Plateforme de comparaison et sourcing international</span>
+              <span className="text-sm font-medium text-[#4A5568]">Plateforme de gestion de projet & sourcing international</span>
             </div>
             
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight px-4">
-              <span className="text-[#2D3748]">Comparez et sourcez </span>
+              <span className="text-[#2D3748]">Centralisez vos projets </span>
               <span className="bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] bg-clip-text text-transparent">
-                vos matériaux
+                simplifiez votre sourcing
               </span>
             </h1>
             
             <p className="text-lg sm:text-xl md:text-2xl text-[#718096] max-w-3xl mx-auto leading-relaxed px-4">
-              Gérez vos projets, importez vos matériaux avec l'IA, comparez les prix locaux vs internationaux, 
-              et sourcez auprès de fournisseurs chinois qualifiés. Tout en un.
+              Gérez tout type de projet, importez vos listes de produits avec l'IA, comparez les offres locales vs internationales, 
+              et sourcez auprès de fournisseurs qualifiés. BTP, Commerce, Événementiel.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 px-4">
@@ -91,25 +104,27 @@ export default function Home() {
                 <span className="whitespace-nowrap">IA Avancée</span>
               </div>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-[#FF9B7B]" />
-                <span className="whitespace-nowrap">Rapide</span>
+                <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-[#FF9B7B]" />
+                <span className="whitespace-nowrap">International</span>
               </div>
             </div>
           </div>
         </section>
 
         {/* How It Works Slider */}
-        <HowItWorksSlider />
+        <div id="how-it-works">
+          <HowItWorksSlider />
+        </div>
 
         {/* Features Section */}
-        <section className="bg-gradient-to-b from-white to-[#F8F9FF] py-16 sm:py-24">
+        <section id="features" className="bg-gradient-to-b from-white to-[#F8F9FF] py-16 sm:py-24">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="text-center mb-12 sm:mb-16">
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#2D3748] mb-4 px-4">
                 Fonctionnalités <span className="bg-gradient-to-r from-[#5B5FC7] to-[#FF9B7B] bg-clip-text text-transparent">Puissantes</span>
               </h2>
               <p className="text-base sm:text-lg text-[#718096] max-w-2xl mx-auto px-4">
-                Tous les outils dont vous avez besoin pour optimiser vos achats
+                Tous les outils dont vous avez besoin pour optimiser vos achats et votre logistique
               </p>
             </div>
             
@@ -122,7 +137,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-bold text-[#2D3748] mb-3">Import Intelligent IA</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Importez vos matériaux via Excel, CSV ou PDF. L'IA extrait et organise automatiquement toutes les données.
+                    Importez n'importe quelle liste (PDF, Excel, Image). L'IA extrait et structure automatiquement vos produits, matériaux ou équipements.
                   </p>
                 </div>
               </div>
@@ -131,11 +146,11 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-br from-[#FF9B7B]/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="relative">
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9B7B] to-[#FFB599] mb-6 shadow-lg">
-                    <Globe className="h-7 w-7 text-white" />
+                    <Package className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Gestion des Prix</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Gestion Multi-Fournisseurs</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Ajoutez les prix de multiples fournisseurs avec photos, coordonnées et notes. Conversion automatique des devises.
+                    Centralisez les prix de tous vos fournisseurs. Comparez les offres, gérez les contacts et suivez l'évolution des coûts.
                   </p>
                 </div>
               </div>
@@ -146,9 +161,9 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#6B8AFF] to-[#9B7BFF] mb-6 shadow-lg">
                     <BarChart3 className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Comparaison Local vs Chine</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Comparateur & Simulation</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Comparez automatiquement les meilleurs prix locaux africains vs chinois. Calcul des économies avec transport maritime.
+                    Simulez vos coûts d'importation (transport, douane). Comparez l'achat local vs international pour maximiser vos marges.
                   </p>
                 </div>
               </div>
@@ -159,15 +174,18 @@ export default function Home() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#48BB78] to-[#7BFFA8] mb-6 shadow-lg">
                     <FileText className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Sourcing Chinois</h3>
+                  <h3 className="text-xl font-bold text-[#2D3748] mb-3">Sourcing Simplifié</h3>
                   <p className="text-[#718096] leading-relaxed">
-                    Demandez une cotation : nous contactons minimum 3 fournisseurs chinois et ajoutons leurs prix à votre projet.
+                    Générez des liens de cotation publics. Vos fournisseurs remplissent leurs prix directement en ligne. Plus d'emails perdus.
                   </p>
                 </div>
               </div>
             </div>
           </div>
         </section>
+
+        {/* Pricing Section */}
+        <PricingSection />
 
         {/* CTA Section */}
         <section className="py-16 sm:py-24 relative overflow-hidden">
@@ -186,17 +204,17 @@ export default function Home() {
                   </div>
                   
                   <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white px-4">
-                    Prêt pour votre prochaine mission en Chine ?
+                    Prêt à optimiser vos achats ?
                   </h2>
                   
                   <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto leading-relaxed px-4">
-                    Rejoignez les professionnels qui optimisent leurs achats de matériaux avec By Project.
+                    Rejoignez les professionnels qui gagnent du temps et de l'argent avec By Project.
                   </p>
                   
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4 px-4">
-                    <Link href="/login" className="w-full sm:w-auto">
+                    <Link href="/signup" className="w-full sm:w-auto">
                       <Button size="lg" className="w-full sm:w-auto bg-white hover:bg-white/90 shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-base sm:text-lg font-semibold">
-                        <span className="text-[#5B5FC7]">Commencer Maintenant</span> <ArrowRight className="ml-2 h-5 w-5 text-[#5B5FC7]" />
+                        <span className="text-[#5B5FC7]">Créer un compte gratuit</span> <ArrowRight className="ml-2 h-5 w-5 text-[#5B5FC7]" />
                       </Button>
                     </Link>
                   </div>
@@ -204,11 +222,11 @@ export default function Home() {
                   <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-6 text-xs sm:text-sm text-white/80 px-4">
                     <div className="flex items-center gap-2">
                       <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
-                      <span className="whitespace-nowrap">Sans carte bancaire</span>
+                      <span className="whitespace-nowrap">Sans engagement</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
-                      <span className="whitespace-nowrap">Prêt en 2 minutes</span>
+                      <span className="whitespace-nowrap">Accès immédiat</span>
                     </div>
                   </div>
                 </div>
@@ -217,6 +235,7 @@ export default function Home() {
           </div>
         </section>
       </main>
+
 
       {/* Footer */}
       <footer className="border-t border-[#E0E4FF] bg-gradient-to-b from-white to-[#F8F9FF] py-8 sm:py-12">
