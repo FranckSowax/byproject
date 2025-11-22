@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkles, Ship, Package, Home as HomeIcon, DollarSign, Briefcase, LogIn, UserPlus } from "lucide-react";
 import Image from "next/image";
 import { HowItWorksSlider } from "@/components/home/HowItWorksSlider";
+import { TemplatesMarketplaceSection } from "@/components/home/TemplatesMarketplaceSection";
 import { PricingSection } from "@/components/home/PricingSection";
 import { SourcingServiceSection } from "@/components/home/SourcingServiceSection";
 import { EnterpriseWhiteLabelSection } from "@/components/home/EnterpriseWhiteLabelSection";
@@ -112,6 +113,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Templates Marketplace Section (NEW) */}
+        <TemplatesMarketplaceSection />
 
         {/* How It Works Slider */}
         <div id="how-it-works">
