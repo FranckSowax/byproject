@@ -35,6 +35,9 @@ export default function Home() {
               <Link href="#sourcing" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
                 Sourcing
               </Link>
+              <Link href="#templates" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
+                Modèles
+              </Link>
               <Link href="#features" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
                 Fonctionnalités
               </Link>
