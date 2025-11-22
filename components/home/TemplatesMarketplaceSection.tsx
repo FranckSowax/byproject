@@ -117,6 +117,11 @@ export function TemplatesMarketplaceSection() {
                     {template.category}
                   </span>
                 </div>
+                <div className="absolute top-4 right-4">
+                  <span className="px-3 py-1 bg-blue-600/90 backdrop-blur-md rounded-full text-xs font-bold text-white shadow-sm">
+                    Demo
+                  </span>
+                </div>
               </div>
 
               {/* Content */}
