@@ -3,61 +3,63 @@
 import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useState } from "react";
 
 export function PricingSection() {
-  const [isAnnual, setIsAnnual] = useState(true);
-
   const plans = [
     {
-      name: "Découverte",
+      name: "Starter",
       price: "0",
-      period: "toujours",
-      description: "Pour tester la puissance de l'IA et découvrir la plateforme.",
+      currency: "€",
+      period: "/ projet",
+      description: "Pour structurer votre liste et organiser vos idées.",
       features: [
-        "1 Projet actif",
-        "Import IA (limité à 3 pages/mois)",
-        "Gestion basique des fournisseurs",
-        "Comparateur de prix simple",
-        "Support par email"
+        "Jusqu'à 10 produits",
+        "Saisie manuelle des prix",
+        "Comparateur Local vs Chine",
+        "Organisation par catégories",
+        "Export PDF simple"
       ],
       cta: "Commencer gratuitement",
       popular: false,
+      highlight: false,
       href: "/signup"
     },
     {
-      name: "Professionnel",
-      price: isAnnual ? "29" : "39",
-      period: "mois",
-      description: "Pour les entrepreneurs et acheteurs réguliers.",
+      name: "Projet",
+      price: "15",
+      currency: "€",
+      period: "/ projet",
+      description: "Débloquez l'illimité et obtenez un prix de référence.",
       features: [
-        "Projets illimités",
-        "Import IA illimité (PDF, Excel, Images)",
-        "Sourcing Chine & International",
-        "Demandes de cotation prioritaires",
-        "Export PDF & Excel personnalisés",
-        "Support prioritaire 24/7"
+        "Produits illimités",
+        "Import Intelligent IA (PDF/Excel)",
+        "1 Cotation Fournisseur incluse",
+        "Calcul automatique Transport & Douane",
+        "Support par email"
       ],
-      cta: "Essayer gratuitement",
+      cta: "Lancer un projet",
       popular: true,
-      href: "/signup?plan=pro"
+      highlight: false,
+      href: "/signup?plan=project"
     },
     {
-      name: "Entreprise",
-      price: "Sur devis",
-      period: "",
-      description: "Pour les grandes équipes et besoins spécifiques.",
+      name: "Sourcing Premium",
+      price: "299",
+      currency: "€",
+      period: "/ projet",
+      description: "Nous trouvons les fournisseurs pour vous. Rentabilité garantie.",
       features: [
-        "Tout du plan Professionnel",
-        "Multi-utilisateurs & Rôles",
-        "API Access",
-        "Onboarding dédié",
-        "Sourcing agent dédié",
-        "Contrat SLA"
+        "Tout du pack Projet",
+        "3 Cotations Fournisseurs Garanties",
+        "Négociation des prix incluse",
+        "Vérification des fournisseurs",
+        "Organisation logistique complète",
+        "Agent de sourcing dédié"
       ],
-      cta: "Nous contacter",
+      cta: "Commander le sourcing",
       popular: false,
-      href: "mailto:contact@byproject.com"
+      highlight: true,
+      href: "/signup?plan=premium"
     }
   ];
 
@@ -72,57 +74,53 @@ export function PricingSection() {
       <div className="container mx-auto px-4 sm:px-6 relative">
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#2D3748] mb-4 px-4">
-            Tarifs Simples et <span className="bg-gradient-to-r from-[#5B5FC7] to-[#FF9B7B] bg-clip-text text-transparent">Transparents</span>
+            Payez par Projet, <span className="bg-gradient-to-r from-[#5B5FC7] to-[#FF9B7B] bg-clip-text text-transparent">Pas d'Abonnement</span>
           </h2>
           <p className="text-base sm:text-lg text-[#718096] max-w-2xl mx-auto px-4 mb-8">
-            Choisissez le plan adapté à votre volume d'activité. Changez à tout moment.
+            Une tarification claire et sans engagement. Vous ne payez que lorsque vous avez un projet concret.
           </p>
-
-          {/* Toggle Annuel/Mensuel */}
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <span className={`text-sm font-medium ${!isAnnual ? 'text-[#2D3748]' : 'text-[#718096]'}`}>Mensuel</span>
-            <button
-              onClick={() => setIsAnnual(!isAnnual)}
-              className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${isAnnual ? 'bg-[#5B5FC7]' : 'bg-gray-300'}`}
-            >
-              <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isAnnual ? 'translate-x-7' : 'translate-x-0'}`}></div>
-            </button>
-            <span className={`text-sm font-medium ${isAnnual ? 'text-[#2D3748]' : 'text-[#718096]'}`}>
-              Annuel <span className="text-[#5B5FC7] text-xs font-bold ml-1">-25%</span>
-            </span>
-          </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-3 max-w-7xl mx-auto">
+        <div className="grid gap-8 lg:grid-cols-3 max-w-7xl mx-auto items-start">
           {plans.map((plan, index) => (
             <div 
               key={index}
-              className={`relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border ${
-                plan.popular 
-                  ? 'border-[#5B5FC7] scale-105 z-10' 
-                  : 'border-[#E0E4FF] hover:border-[#5B5FC7]/50'
+              className={`relative bg-white rounded-2xl p-8 shadow-lg transition-all duration-300 border ${
+                plan.highlight
+                  ? 'border-[#FF9B7B] shadow-xl scale-105 z-10 ring-1 ring-[#FF9B7B]/20' 
+                  : plan.popular 
+                    ? 'border-[#5B5FC7] scale-100 z-0' 
+                    : 'border-[#E0E4FF] hover:border-[#5B5FC7]/50'
               }`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white px-4 py-1 rounded-full text-sm font-medium flex items-center gap-1 shadow-lg">
+                  <div className="bg-[#5B5FC7] text-white px-4 py-1 rounded-full text-sm font-medium shadow-lg">
+                    Le plus choisi
+                  </div>
+                </div>
+              )}
+              
+              {plan.highlight && (
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-full text-center px-4">
+                  <div className="bg-gradient-to-r from-[#FF9B7B] to-[#FF6B6B] text-white px-4 py-1 rounded-full text-sm font-medium shadow-lg inline-flex items-center gap-1">
                     <Sparkles className="h-3 w-3" />
-                    Plus Populaire
+                    Rentabilité Maximale
                   </div>
                 </div>
               )}
 
-              <div className="mb-8">
+              <div className="mb-8 pt-2">
                 <h3 className="text-xl font-bold text-[#2D3748] mb-2">{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-4">
                   <span className="text-4xl font-bold text-[#2D3748]">
-                    {plan.price === "Sur devis" ? "" : "€"}{plan.price}
+                    {plan.price}{plan.currency}
                   </span>
                   {plan.period && (
-                    <span className="text-[#718096]">/{plan.period}</span>
+                    <span className="text-[#718096]">{plan.period}</span>
                   )}
                 </div>
-                <p className="text-sm text-[#718096] leading-relaxed">
+                <p className="text-sm text-[#718096] leading-relaxed min-h-[40px]">
                   {plan.description}
                 </p>
               </div>
@@ -130,8 +128,8 @@ export function PricingSection() {
               <ul className="space-y-4 mb-8">
                 {plan.features.map((feature, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-[#4A5568]">
-                    <Check className={`h-5 w-5 flex-shrink-0 ${plan.popular ? 'text-[#5B5FC7]' : 'text-[#48BB78]'}`} />
-                    <span>{feature}</span>
+                    <Check className={`h-5 w-5 flex-shrink-0 ${plan.highlight ? 'text-[#FF9B7B]' : 'text-[#5B5FC7]'}`} />
+                    <span className="font-medium">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -139,9 +137,11 @@ export function PricingSection() {
               <Link href={plan.href} className="block">
                 <Button 
                   className={`w-full py-6 text-base font-semibold shadow-md transition-all ${
-                    plan.popular
-                      ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white hover:shadow-xl'
-                      : 'bg-white border-2 border-[#E0E4FF] text-[#4A5568] hover:border-[#5B5FC7] hover:text-[#5B5FC7]'
+                    plan.highlight
+                      ? 'bg-gradient-to-r from-[#FF9B7B] to-[#FF6B6B] hover:from-[#FF8B5B] hover:to-[#FF5B5B] text-white hover:shadow-xl'
+                      : plan.popular
+                        ? 'bg-[#5B5FC7] hover:bg-[#4A4DA6] text-white hover:shadow-xl'
+                        : 'bg-white border-2 border-[#E0E4FF] text-[#4A5568] hover:border-[#5B5FC7] hover:text-[#5B5FC7]'
                   }`}
                 >
                   {plan.cta}
@@ -149,6 +149,19 @@ export function PricingSection() {
               </Link>
             </div>
           ))}
+        </div>
+
+        <div className="mt-16 text-center bg-gray-50 rounded-2xl p-8 border border-gray-100 max-w-3xl mx-auto">
+          <h3 className="text-lg font-semibold text-[#2D3748] mb-2">Besoin d'une solution Marque Blanche ?</h3>
+          <p className="text-[#718096] mb-6">
+            Pour les agences d'état, les délégations et les structures gérant de multiples grands projets.
+            Obtenez votre propre plateforme personnalisée.
+          </p>
+          <Link href="mailto:contact@byproject.com">
+            <Button variant="outline" className="border-[#5B5FC7] text-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white">
+              Demander un devis Marque Blanche
+            </Button>
+          </Link>
         </div>
       </div>
     </section>
