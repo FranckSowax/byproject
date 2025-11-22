@@ -114,9 +114,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Templates Marketplace Section (NEW) */}
-        <TemplatesMarketplaceSection />
-
         {/* How It Works Slider */}
         <div id="how-it-works">
           <HowItWorksSlider />
@@ -124,6 +121,9 @@ export default function Home() {
 
         {/* Sourcing Service Section (NEW) */}
         <SourcingServiceSection />
+
+        {/* Templates Marketplace Section (NEW) */}
+        <TemplatesMarketplaceSection />
 
         {/* Features Section */}
         <section id="features" className="bg-gradient-to-b from-white to-[#F8F9FF] py-16 sm:py-24">
