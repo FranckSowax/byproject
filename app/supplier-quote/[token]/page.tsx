@@ -307,12 +307,29 @@ export default function SupplierQuotePage() {
     }
   };
 
+  const isSupplierInfoComplete = !!(
+    supplierInfo.companyName && 
+    supplierInfo.contactName && 
+    supplierInfo.email
+  );
+
   const handleOpenDescription = (material: Material) => {
     setSelectedMaterial(material);
     setIsDescriptionModalOpen(true);
   };
 
   const handleOpenPrice = (material: Material) => {
+    if (!isSupplierInfoComplete) {
+      toast.error(language === 'fr' ? 'Veuillez d\'abord remplir vos informations (Partie 1)' : language === 'en' ? 'Please fill in your information first (Part 1)' : '请先填写您的信息（第一部分）');
+      const element = document.getElementById('supplier-info-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+        // Highlight the section temporarily
+        element.classList.add('ring-2', 'ring-red-500');
+        setTimeout(() => element.classList.remove('ring-2', 'ring-red-500'), 2000);
+      }
+      return;
+    }
     setSelectedMaterial(material);
     setIsPriceModalOpen(true);
   };
@@ -803,21 +820,26 @@ export default function SupplierQuotePage() {
         </div>
 
         {/* PARTIE 1: Informations Fournisseur */}
-        <div className="mb-8">
-          <div className="mb-4 px-1">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              {language === 'fr' ? '📋 PARTIE 1 : Vos Informations' : language === 'en' ? '📋 PART 1: Your Information' : '📋 第一部分：您的信息'}
-            </h2>
-            <p className="text-sm text-gray-600">
-              {language === 'fr' ? 'Remplissez vos coordonnées une seule fois. Elles seront sauvegardées automatiquement.' : language === 'en' ? 'Fill in your contact details once. They will be saved automatically.' : '填写一次您的联系方式。它们将自动保存。'}
-            </p>
+        <div className="mb-8" id="supplier-info-section">
+          <div className="mb-4 px-1 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+                {language === 'fr' ? '📋 PARTIE 1 : Vos Informations' : language === 'en' ? '📋 PART 1: Your Information' : '📋 第一部分：您的信息'}
+                {isSupplierInfoComplete && (
+                  <CheckCircle className="h-6 w-6 text-green-500 animate-in zoom-in duration-300" />
+                )}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {language === 'fr' ? 'Remplissez vos coordonnées une seule fois. Elles seront sauvegardées automatiquement.' : language === 'en' ? 'Fill in your contact details once. They will be saved automatically.' : '填写一次您的联系方式。它们将自动保存。'}
+              </p>
+            </div>
           </div>
           
-          <Card className="border-2 border-blue-200 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+          <Card className={`border-2 shadow-lg transition-colors duration-300 ${isSupplierInfoComplete ? 'border-green-200' : 'border-blue-200'}`}>
+            <CardHeader className={`transition-colors duration-300 ${isSupplierInfoComplete ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-blue-50 to-indigo-50'}`}>
               <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
-                <span className="text-blue-900">{t.supplierInfo}</span>
+                <Building2 className={`h-5 w-5 ${isSupplierInfoComplete ? 'text-green-600' : 'text-blue-600'}`} />
+                <span className={isSupplierInfoComplete ? 'text-green-900' : 'text-blue-900'}>{t.supplierInfo}</span>
               </CardTitle>
             </CardHeader>
           <CardContent>
@@ -924,6 +946,16 @@ export default function SupplierQuotePage() {
             {t.submit}
           </Button>
         </div>
+      </div>
+
+      {/* Floating Submit Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={handleSubmitQuotation}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl rounded-full px-6 py-6 h-auto text-lg font-semibold transition-all hover:scale-105 animate-in slide-in-from-bottom-10"
+        >
+          {t.submit}
+        </Button>
       </div>
 
       {/* Modals */}
