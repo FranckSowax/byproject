@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
     );
 
     // Get all users using admin API
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({
+      perPage: 1000
+    });
 
     if (error) {
       console.error('Error fetching users:', error);
@@ -26,14 +28,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Return users with essential info
-    const usersData = users.map(user => ({
-      id: user.id,
-      email: user.email,
-      user_metadata: user.user_metadata,
-      created_at: user.created_at,
-      last_sign_in_at: user.last_sign_in_at,
-      email_confirmed_at: user.email_confirmed_at,
+    // Return users with project counts (bypass RLS using admin client)
+    const usersData = await Promise.all(users.map(async (user) => {
+      // Count owned projects
+      const { count: ownedCount } = await supabaseAdmin
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+        
+      // Count collaborations
+      const { count: collabCount } = await supabaseAdmin
+        .from('project_collaborators')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
+
+      return {
+        id: user.id,
+        email: user.email,
+        user_metadata: user.user_metadata,
+        created_at: user.created_at,
+        last_sign_in_at: user.last_sign_in_at,
+        email_confirmed_at: user.email_confirmed_at,
+        projects_count: (ownedCount || 0) + (collabCount || 0),
+        owned_projects_count: ownedCount || 0,
+        collaboration_projects_count: collabCount || 0
+      };
     }));
 
     return NextResponse.json(usersData);

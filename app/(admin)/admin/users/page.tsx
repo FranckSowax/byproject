@@ -112,49 +112,28 @@ export default function AdminUsersPage() {
       setLoading(true);
 
       // Fetch users from auth.users via API route
+      // The API now handles project counting with admin privileges to bypass RLS
       const response = await fetch('/api/admin/users');
       if (!response.ok) throw new Error('Failed to fetch users');
       
-      const authUsers = await response.json();
+      const usersWithProjects = await response.json();
 
-      // Get projects count for each user (owned + collaborations)
-      const usersWithProjects = await Promise.all(
-        authUsers.map(async (user: any) => {
-          // Count projects owned by user
-          const { data: ownedProjects } = await supabase
-            .from('projects')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+      const formattedUsers = usersWithProjects.map((user: any) => ({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+        role: user.user_metadata?.role || 'user',
+        created_at: user.created_at,
+        last_sign_in_at: user.last_sign_in_at,
+        email_confirmed_at: user.email_confirmed_at,
+        is_active: user.user_metadata?.is_active !== false, // Default to true if not set
+        projects_count: user.projects_count || 0,
+        owned_projects_count: user.owned_projects_count || 0,
+        collaboration_projects_count: user.collaboration_projects_count || 0,
+        raw_user_meta_data: user.user_metadata,
+      }));
 
-          // Count projects where user is a collaborator
-          const { data: collaborations } = await supabase
-            .from('project_collaborators')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('status', 'accepted');
-
-          const ownedCount = ownedProjects?.length || 0;
-          const collaborationCount = collaborations?.length || 0;
-          const totalProjects = ownedCount + collaborationCount;
-
-          return {
-            id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-            role: user.user_metadata?.role || 'user',
-            created_at: user.created_at,
-            last_sign_in_at: user.last_sign_in_at,
-            email_confirmed_at: user.email_confirmed_at,
-            is_active: user.user_metadata?.is_active !== false, // Default to true if not set
-            projects_count: totalProjects,
-            owned_projects_count: ownedCount,
-            collaboration_projects_count: collaborationCount,
-            raw_user_meta_data: user.user_metadata,
-          };
-        })
-      );
-
-      setUsers(usersWithProjects);
+      setUsers(formattedUsers);
     } catch (error) {
       console.error('Error loading users:', error);
       toast.error('Erreur lors du chargement des utilisateurs');
