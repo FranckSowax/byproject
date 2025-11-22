@@ -9,7 +9,7 @@ export function PricingSection() {
     {
       name: "Starter",
       price: "0",
-      currency: "€",
+      currency: "$",
       period: "/ projet",
       description: "Pour structurer votre liste et organiser vos idées.",
       features: [
@@ -27,14 +27,14 @@ export function PricingSection() {
     {
       name: "Projet",
       price: "15",
-      currency: "€",
+      currency: "$",
       period: "/ projet",
       description: "Débloquez l'illimité et obtenez un prix de référence.",
       features: [
         "Produits illimités",
         "Import Intelligent IA (PDF/Excel)",
         "1 Cotation Fournisseur incluse",
-        "Calcul automatique Transport & Douane",
+        "Calcul automatique Transport",
         "Support par email"
       ],
       cta: "Lancer un projet",
@@ -45,7 +45,7 @@ export function PricingSection() {
     {
       name: "Sourcing Premium",
       price: "299",
-      currency: "€",
+      currency: "$",
       period: "/ projet",
       description: "Nous trouvons les fournisseurs pour vous. Rentabilité garantie.",
       features: [
