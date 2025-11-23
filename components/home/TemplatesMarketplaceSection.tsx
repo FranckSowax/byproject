@@ -3,16 +3,10 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { 
   LayoutTemplate, 
-  ShoppingCart, 
-  Plane, 
-  FileText, 
-  Building2, 
   CheckCircle2,
-  Edit,
   Globe,
   ArrowRight,
-  Contact,
-  Calculator
+  Building2
 } from "lucide-react";
 
 const templates = [
@@ -45,33 +39,6 @@ const templates = [
   }
 ];
 
-const twinskServices = [
-  {
-    icon: Calculator,
-    title: "Listes Certifiées & Editables",
-    description: "Achetez un modèle et accédez instantanément à la liste complète des matériaux. Modifiez, ajustez et recalculez vos besoins en quelques clics.",
-    color: "bg-blue-100 text-blue-600"
-  },
-  {
-    icon: FileText,
-    title: "Cotations Twinsk by Project",
-    description: "Bénéficiez de prix négociés. Twinsk by Project agit comme votre fournisseur tampon et vous envoie des cotations officielles incluant transport et douane.",
-    color: "bg-purple-100 text-purple-600"
-  },
-  {
-    icon: Plane,
-    title: "Accompagnement Voyage Chine",
-    description: "Préparez votre mission d'achat. Nous organisons vos visites d'usines, la logistique sur place et la négociation directe avec les fournisseurs.",
-    color: "bg-orange-100 text-orange-600"
-  },
-  {
-    icon: Contact,
-    title: "Achat de Contacts Fournisseurs",
-    description: "Vous préférez gérer seul ? Achetez simplement les contacts vérifiés de nos fournisseurs partenaires pour ce projet spécifique.",
-    color: "bg-green-100 text-green-600"
-  }
-];
-
 export function TemplatesMarketplaceSection() {
   return (
     <section id="templates" className="py-20 sm:py-32 bg-[#F8F9FF] relative overflow-hidden">
@@ -100,7 +67,7 @@ export function TemplatesMarketplaceSection() {
         </div>
 
         {/* Templates Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {templates.map((template) => (
             <div key={template.id} className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 flex flex-col">
               {/* Image */}
@@ -161,52 +128,22 @@ export function TemplatesMarketplaceSection() {
           ))}
         </div>
 
-        {/* Twinsk Services - How it works */}
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            <div className="p-8 sm:p-12 lg:p-16 bg-gradient-to-br from-slate-900 to-slate-800 text-white flex flex-col justify-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-sm font-medium mb-6 w-fit">
-                <Building2 className="h-4 w-4" />
-                Service Twinsk by Project
-              </div>
-              <h3 className="text-3xl sm:text-4xl font-bold mb-6">
-                Plus qu'un simple fichier Excel. <br/>
-                <span className="text-blue-400">Une solution d'achat complète.</span>
-              </h3>
-              <p className="text-gray-300 text-lg mb-8 leading-relaxed">
-                Twinsk by Project est votre partenaire de confiance. Nous agissons comme fournisseur unique pour simplifier vos imports, ou comme facilitateur pour vos propres démarches.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white border-0">
-                  Découvrir les services
-                </Button>
-                <Button size="lg" variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white">
-                  Contacter un expert
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-8 sm:p-12 bg-white">
-              <div className="grid gap-8">
-                {twinskServices.map((service, idx) => {
-                  const Icon = service.icon;
-                  return (
-                    <div key={idx} className="flex gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${service.color}`}>
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-bold text-gray-900 mb-2">{service.title}</h4>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          {service.description}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+        {/* Simple Twinsk Teaser */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-sm font-medium mb-4">
+            <Building2 className="h-4 w-4" />
+            <span>Besoin d'accompagnement sur mesure ?</span>
           </div>
+          <h3 className="text-2xl font-bold text-slate-900 mb-4">Twinsk by Project</h3>
+          <p className="text-gray-600 max-w-2xl mx-auto mb-6">
+            Délégation, préparation de mission Chine, achat de contacts fournisseurs ou sourcing délégué. 
+            Découvrez nos services d'accompagnement premium.
+          </p>
+          <Link href="/services">
+            <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+              Découvrir les services Twinsk
+            </Button>
+          </Link>
         </div>
 
       </div>

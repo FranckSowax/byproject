@@ -5,8 +5,7 @@ import Image from "next/image";
 import { HowItWorksSlider } from "@/components/home/HowItWorksSlider";
 import { TemplatesMarketplaceSection } from "@/components/home/TemplatesMarketplaceSection";
 import { PricingSection } from "@/components/home/PricingSection";
-import { SourcingServiceSection } from "@/components/home/SourcingServiceSection";
-import { EnterpriseWhiteLabelSection } from "@/components/home/EnterpriseWhiteLabelSection";
+import { UserJourneySection } from "@/components/home/UserJourneySection";
 
 // Force dynamic rendering to prevent static generation issues
 export const dynamic = 'force-dynamic';
@@ -32,8 +31,8 @@ export default function Home() {
 
             {/* Navigation Links (Desktop) */}
             <div className="hidden md:flex items-center gap-8">
-              <Link href="#sourcing" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
-                Sourcing
+              <Link href="/services" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
+                Services Twinsk
               </Link>
               <Link href="#templates" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
                 Modèles
@@ -72,60 +71,44 @@ export default function Home() {
           {/* Background decorations */}
           <div className="absolute top-20 left-10 w-72 h-72 bg-[#5B5FC7] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
           <div className="absolute top-40 right-10 w-72 h-72 bg-[#FF9B7B] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-[#7BFFA8] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
           
-          <div className="relative mx-auto max-w-4xl space-y-10">
+          <div className="relative mx-auto max-w-4xl space-y-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#F5F6FF] to-[#FFF5F2] border border-[#E0E4FF]">
               <Sparkles className="h-4 w-4 text-[#5B5FC7]" />
-              <span className="text-sm font-medium text-[#4A5568]">Plateforme de gestion de projet & sourcing international</span>
+              <span className="text-sm font-medium text-[#4A5568]">Sourcing BTP & Industrie International</span>
             </div>
             
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight px-4">
-              <span className="text-[#2D3748]">Centralisez vos projets </span>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight px-4 text-[#2D3748]">
+              Votre Sourcing, <br />
               <span className="bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] bg-clip-text text-transparent">
-                simplifiez votre sourcing
+                Sans Frontières
               </span>
             </h1>
             
-            <p className="text-lg sm:text-xl md:text-2xl text-[#718096] max-w-3xl mx-auto leading-relaxed px-4">
-              Gérez tout type de projet, importez vos listes de produits avec l'IA, comparez les offres locales vs internationales, 
-              et sourcez auprès de fournisseurs chinois qualifiés. BTP, Commerce, Événementiel.
+            <p className="text-xl text-[#718096] max-w-2xl mx-auto leading-relaxed px-4">
+              Gérez vos projets, comparez les prix locaux vs import, et sécurisez vos achats en Chine.
+              <br/>Que vous soyez au bureau ou sur le terrain.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 px-4">
-              <Link href="/login" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-base sm:text-lg">
-                  <span className="text-white">Commencer</span> <ArrowRight className="ml-2 h-5 w-5 text-white" />
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4 px-4">
+              <Link href="/signup" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] shadow-xl hover:shadow-2xl transition-all px-8 py-6 text-lg">
+                  <span className="text-white">Commencer Gratuitement</span> <ArrowRight className="ml-2 h-5 w-5 text-white" />
                 </Button>
               </Link>
             </div>
-            
-            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 pt-8 text-xs sm:text-sm text-[#718096] px-4">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-[#48BB78]" />
-                <span className="whitespace-nowrap">Sécurisé</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#5B5FC7]" />
-                <span className="whitespace-nowrap">IA Avancée</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-[#FF9B7B]" />
-                <span className="whitespace-nowrap">International</span>
-              </div>
-            </div>
           </div>
         </section>
+
+        {/* User Journey Section (New Logic) */}
+        <UserJourneySection />
 
         {/* How It Works Slider */}
         <div id="how-it-works">
           <HowItWorksSlider />
         </div>
 
-        {/* Sourcing Service Section (NEW) */}
-        <SourcingServiceSection />
-
-        {/* Templates Marketplace Section (NEW) */}
+        {/* Templates Marketplace Section (Simplified) */}
         <TemplatesMarketplaceSection />
 
         {/* Features Section */}
@@ -195,9 +178,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* Enterprise & White Label Section (NEW) */}
-        <EnterpriseWhiteLabelSection />
 
         {/* Pricing Section */}
         <PricingSection />
