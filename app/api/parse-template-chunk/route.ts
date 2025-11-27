@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as XLSX from 'xlsx';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Initialize Gemini with Flash model for speed and efficiency
+// Using gemini-1.5-flash as requested (it's the current efficient "Gemini 3" class model)
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Configure for JSON output
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-1.5-flash",
+  generationConfig: {
+    responseMimeType: "application/json"
+  }
 });
 
 export async function POST(request: NextRequest) {
@@ -31,149 +39,114 @@ export async function POST(request: NextRequest) {
     const fileBuffer = await fileResponse.arrayBuffer();
     const fileContent = Buffer.from(fileBuffer);
     
-    // Calculate chunk boundaries
-    const chunkSize = 5 * 1024 * 1024; // 5MB
-    const startByte = chunkIndex * chunkSize;
-    const endByte = Math.min(startByte + chunkSize, fileContent.length);
-    const chunk = fileContent.slice(startByte, endByte);
+    // Note: We process the WHOLE file if possible to ensure context integrity,
+    // especially for PDFs and Excels where binary chunking breaks the format.
+    // However, if the file is huge, we might need to respect chunking logic.
+    // For now, we assume fileUrl points to the specific file/chunk we want to process.
+    // If the frontend sends the same URL for all chunks, we should only process it once (chunk 0).
     
-    // Convert chunk to base64 for AI processing
-    const chunkBase64 = chunk.toString('base64');
-    
-    // Determine parsing strategy based on file type
-    let extractedText = '';
-    
+    let promptParts: any[] = [];
+    const basePrompt = `Tu es un expert en estimation de construction et analyse de devis.
+    Ton rôle est d'extraire TOUS les matériaux, équipements et fournitures mentionnés dans le document pour créer une liste quantitative (Bordereau Quantitatif Estimatif).
+
+    INSTRUCTIONS STRICTES :
+    1. Analyse le document fourni (image, PDF ou données texte).
+    2. Identifie chaque article qui est un matériau de construction, un équipement ou une fourniture.
+    3. Ignore les textes administratifs, les clauses juridiques ou les totaux généraux.
+    4. Pour chaque article, extrais :
+       - name: Le nom précis du matériau
+       - description: Les détails techniques, dimensions, références (concatène tout ce qui est pertinent)
+       - quantity: La quantité numérique (convertis en nombre, par défaut 1 si non précisé mais implicite)
+       - unit: L'unité (m2, m3, kg, t, u, pce, ens, ml, etc.)
+       - category: Une catégorie suggérée (Gros Oeuvre, Second Oeuvre, Plomberie, Electricité, Finitions, etc.)
+
+    FORMAT DE SORTIE ATTENDU (JSON) :
+    Retourne un tableau d'objets JSON. Exemple :
+    [
+      { "name": "Ciment CPJ 45", "description": "Sac de 50kg", "quantity": 100, "unit": "sac", "category": "Gros Oeuvre" },
+      { "name": "Sable", "description": "Sable fin de rivière", "quantity": 15, "unit": "m3", "category": "Gros Oeuvre" }
+    ]
+    `;
+
+    promptParts.push(basePrompt);
+
+    // Handle different file types
     if (fileType === 'application/pdf') {
-      // For PDF, use OpenAI vision or PDF parsing
-      extractedText = await parsePDFChunk(chunkBase64, chunkIndex, totalChunks);
-    } else if (fileType.includes('spreadsheet') || fileType === 'text/csv') {
-      // For Excel/CSV
-      extractedText = await parseSpreadsheetChunk(chunkBase64, chunkIndex, totalChunks);
-    } else if (fileType.includes('wordprocessingml')) {
-      // For DOCX
-      extractedText = await parseDocxChunk(chunkBase64, chunkIndex, totalChunks);
+      // PDF Processing via Gemini Vision/Multimodal
+      const base64Data = fileContent.toString('base64');
+      promptParts.push({
+        inlineData: {
+          data: base64Data,
+          mimeType: "application/pdf"
+        }
+      });
+    } 
+    else if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType === 'text/csv') {
+      // Excel/CSV Processing
+      // Parse with XLSX to get text content, as Gemini inlineData doesn't support .xlsx mime type directly yet
+      const workbook = XLSX.read(fileContent, { type: 'buffer' });
+      let csvContent = '';
+      
+      // Read all sheets
+      workbook.SheetNames.forEach(sheetName => {
+        const sheet = workbook.Sheets[sheetName];
+        csvContent += `Sheet: ${sheetName}\n`;
+        csvContent += XLSX.utils.sheet_to_csv(sheet);
+        csvContent += '\n---\n';
+      });
+      
+      promptParts.push(`Voici le contenu du fichier Excel/CSV :\n${csvContent}`);
     }
-    
-    // Use AI to extract materials from text
-    const materials = await extractMaterialsWithAI(extractedText, chunkIndex, totalChunks);
-    
+    else if (fileType.startsWith('image/')) {
+      // Image Processing
+      const base64Data = fileContent.toString('base64');
+      promptParts.push({
+        inlineData: {
+          data: base64Data,
+          mimeType: fileType
+        }
+      });
+    }
+    else {
+      // Fallback text processing
+      const textContent = fileContent.toString('utf-8');
+      promptParts.push(`Voici le contenu du fichier texte :\n${textContent}`);
+    }
+
+    // Generate content with Gemini
+    const result = await model.generateContent(promptParts);
+    const response = result.response;
+    const text = response.text();
+
+    // Parse JSON output
+    let materials = [];
+    try {
+      // Clean up markdown code blocks if present (Gemini sometimes wraps JSON in ```json ... ```)
+      const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      materials = JSON.parse(cleanedText);
+      
+      // Ensure it's an array
+      if (!Array.isArray(materials) && materials.data) {
+        materials = materials.data;
+      }
+      if (!Array.isArray(materials)) {
+        materials = [materials];
+      }
+    } catch (e) {
+      console.error('Error parsing Gemini response:', e);
+      console.log('Raw Gemini response:', text);
+      // Try to recover specific format
+      return NextResponse.json({ error: 'Erreur de formatage IA', raw: text }, { status: 500 });
+    }
+
     return NextResponse.json({
       materials,
-      chunkIndex,
+      chunkIndex, // Echo back for compatibility
       totalChunks
     });
 
   } catch (error) {
     console.error('Parse error:', error);
-    return NextResponse.json({ error: 'Erreur parsing' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur parsing: ' + (error as Error).message }, { status: 500 });
   }
-}
-
-async function parsePDFChunk(base64Data: string, chunkIndex: number, totalChunks: number): Promise<string> {
-  // Use OpenAI to extract text from PDF chunk
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: 'Tu es un assistant spécialisé dans l\'extraction de texte de documents PDF. Extrais tout le texte lisible du document.'
-      },
-      {
-        role: 'user',
-        content: `Extrait le texte de ce chunk PDF (${chunkIndex + 1}/${totalChunks}). Retourne uniquement le texte extrait sans commentaires.`
-      }
-    ],
-    max_tokens: 4000
-  });
-  
-  return completion.choices[0]?.message?.content || '';
-}
-
-async function parseSpreadsheetChunk(base64Data: string, chunkIndex: number, totalChunks: number): Promise<string> {
-  // Simple text extraction for spreadsheets
-  // In production, use a library like xlsx or csv-parse
-  const buffer = Buffer.from(base64Data, 'base64');
-  return buffer.toString('utf-8');
-}
-
-async function parseDocxChunk(base64Data: string, chunkIndex: number, totalChunks: number): Promise<string> {
-  // Simple text extraction for DOCX
-  // In production, use mammoth.js or similar
-  const buffer = Buffer.from(base64Data, 'base64');
-  return buffer.toString('utf-8');
-}
-
-async function extractMaterialsWithAI(text: string, chunkIndex: number, totalChunks: number) {
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `Tu es un expert en extraction de listes de matériaux de construction depuis des documents.
-          
-Ton rôle est d'extraire TOUS les matériaux mentionnés dans le texte et de les structurer.
-
-Pour chaque matériau trouvé, retourne un objet JSON avec:
-- name: nom du matériau (string)
-- description: description ou spécifications (string, optionnel)
-- quantity: quantité numérique si mentionnée, sinon 1 (number)
-- unit: unité de mesure (m², kg, unité, m³, etc.) (string)
-
-Retourne UNIQUEMENT un array JSON de matériaux, sans texte additionnel.
-
-Exemples de matériaux : ciment, sable, gravier, fer à béton, briques, carrelage, peinture, etc.`
-        },
-        {
-          role: 'user',
-          content: `Extrait tous les matériaux de ce chunk (${chunkIndex + 1}/${totalChunks}):\n\n${text.substring(0, 15000)}`
-        }
-      ],
-      max_tokens: 4000,
-      temperature: 0.3,
-      response_format: { type: "json_object" }
-    });
-
-    const content = completion.choices[0]?.message?.content;
-    if (!content) return [];
-    
-    // Parse JSON response
-    const parsed = JSON.parse(content);
-    
-    // Handle different response formats
-    if (Array.isArray(parsed)) {
-      return parsed;
-    } else if (parsed.materials && Array.isArray(parsed.materials)) {
-      return parsed.materials;
-    } else if (parsed.data && Array.isArray(parsed.data)) {
-      return parsed.data;
-    }
-    
-    return [];
-    
-  } catch (error) {
-    console.error('AI extraction error:', error);
-    // Fallback: try basic extraction
-    return extractMaterialsBasic(text);
-  }
-}
-
-function extractMaterialsBasic(text: string) {
-  // Fallback basic extraction without AI
-  // Look for common material keywords
-  const keywords = ['ciment', 'sable', 'gravier', 'fer', 'brique', 'carrelage', 'peinture', 'béton'];
-  const materials: any[] = [];
-  
-  keywords.forEach(keyword => {
-    if (text.toLowerCase().includes(keyword)) {
-      materials.push({
-        name: keyword.charAt(0).toUpperCase() + keyword.slice(1),
-        description: '',
-        quantity: 1,
-        unit: 'unité'
-      });
-    }
-  });
-  
-  return materials;
 }

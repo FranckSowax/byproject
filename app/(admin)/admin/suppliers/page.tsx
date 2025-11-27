@@ -103,39 +103,11 @@ export default function SuppliersPage() {
     try {
       setLoading(true);
 
-      // Load suppliers
-      const { data: suppliersData, error: suppliersError } = await supabase
-        .from('suppliers')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (suppliersError) throw suppliersError;
-
-      // Load materials count and keywords for each supplier
-      const suppliersWithMeta = await Promise.all(
-        (suppliersData || []).map(async (supplier: any) => {
-          // Get materials count
-          const { data: pricesData } = await supabase
-            .from('prices')
-            .select('material_id, materials(name)')
-            .eq('supplier_id', supplier.id);
-
-          // Extract unique material names as keywords
-          const materialNames = new Set<string>();
-          pricesData?.forEach((price: any) => {
-            if (price.materials?.name) {
-              materialNames.add(price.materials.name.toLowerCase());
-            }
-          });
-
-          return {
-            ...supplier,
-            materials_count: materialNames.size,
-            keywords: Array.from(materialNames),
-          };
-        })
-      );
-
+      // Load suppliers from Admin API
+      const response = await fetch('/api/admin/suppliers');
+      if (!response.ok) throw new Error('Failed to fetch suppliers');
+      
+      const suppliersWithMeta = await response.json();
       setSuppliers(suppliersWithMeta);
     } catch (error) {
       console.error('Error loading suppliers:', error);
