@@ -19,7 +19,15 @@ import {
   Users, 
   CheckCircle2, 
   Loader2,
-  Send
+  Send,
+  Globe,
+  Calendar,
+  Briefcase,
+  ChevronLeft,
+  ChevronRight,
+  Palette,
+  Shield,
+  Network
 } from 'lucide-react';
 
 interface Question {
@@ -28,19 +36,79 @@ interface Question {
   answer: string;
 }
 
+interface MissionDimensions {
+  country: string;
+  currency: string;
+  missionName: string;
+  missionObject: string;
+  startDate: string;
+  endDate: string;
+  teamSize: string;
+  organizationName: string;
+}
+
 export default function NewDelegationPage() {
   const router = useRouter();
   const supabase = createClient();
   
   // États du workflow
-  const [step, setStep] = useState<'pitch' | 'analysis' | 'questions' | 'proposal'>('pitch');
+  const [step, setStep] = useState<'dimensions' | 'pitch' | 'analysis' | 'questions' | 'proposal'>('dimensions');
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   
   // Données
+  const [missionDimensions, setMissionDimensions] = useState<MissionDimensions>({
+    country: '',
+    currency: '',
+    missionName: '',
+    missionObject: '',
+    startDate: '',
+    endDate: '',
+    teamSize: '',
+    organizationName: ''
+  });
   const [missionPitch, setMissionPitch] = useState('');
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  // Slides explicatifs
+  const slides = [
+    {
+      icon: Palette,
+      title: "Solution White-Label Personnalisée",
+      description: "Pour tous projets d'État ou d'envergure, nous mettons à votre disposition une plateforme complète en marque blanche avec votre logo et vos couleurs."
+    },
+    {
+      icon: Network,
+      title: "Collaboration Totale",
+      description: "De la direction aux techniciens sur le terrain, tous vos collaborateurs participent au bon déroulement de la mission sur une plateforme unifiée."
+    },
+    {
+      icon: Shield,
+      title: "Gestion Sécurisée",
+      description: "Suivi en temps réel, documentation centralisée, et coordination optimale pour garantir le succès de votre mission officielle."
+    }
+  ];
+
+  // Validation du formulaire de dimensionnement
+  const isDimensionsValid = () => {
+    return missionDimensions.country && 
+           missionDimensions.currency && 
+           missionDimensions.missionName && 
+           missionDimensions.missionObject && 
+           missionDimensions.startDate && 
+           missionDimensions.teamSize;
+  };
+
+  // Passer à l'étape pitch avec les données de dimensionnement
+  const handleStartImmersion = () => {
+    if (!isDimensionsValid()) {
+      toast.error("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+    setStep('pitch');
+  };
 
   // 1. Soumettre le pitch pour analyse IA
   const handleAnalyzePitch = async () => {
@@ -163,10 +231,13 @@ export default function NewDelegationPage() {
         .from('missions' as any)
         .insert({
           user_id: user.id,
-          title: missionPitch.length > 50 ? missionPitch.substring(0, 50) + '...' : missionPitch,
+          title: missionDimensions.missionName,
           description: missionPitch,
           status: 'analyzing',
-          ai_context_data: aiContextData
+          ai_context_data: {
+            ...aiContextData,
+            dimensions: missionDimensions
+          }
         })
         .select()
         .single();
@@ -194,6 +265,239 @@ export default function NewDelegationPage() {
       setLoading(false);
     }
   };
+
+  // Rendu de l'étape 0 : Dimensionnement de la mission
+  if (step === 'dimensions') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-12 px-4">
+        <div className="max-w-6xl mx-auto space-y-12">
+          {/* Header */}
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 mb-4 shadow-xl">
+              <Plane className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold text-slate-900">
+              Nouvelle Mission Officielle
+            </h1>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Délégations d'État & Grands Projets - Solution White-Label Complète
+            </p>
+          </div>
+
+          {/* Slider Explicatif */}
+          <Card className="bg-white/80 backdrop-blur-sm border-slate-200 shadow-xl">
+            <CardContent className="p-8">
+              <div className="relative">
+                {/* Slide Content */}
+                <div className="text-center space-y-6 py-8">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-100 to-purple-100 mb-4">
+                    {(() => {
+                      const Icon = slides[currentSlide].icon;
+                      return <Icon className="h-10 w-10 text-blue-600" />;
+                    })()}
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-900">
+                    {slides[currentSlide].title}
+                  </h3>
+                  <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                    {slides[currentSlide].description}
+                  </p>
+                </div>
+
+                {/* Navigation */}
+                <div className="flex items-center justify-between mt-8">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
+                    disabled={currentSlide === 0}
+                    className="text-slate-600"
+                  >
+                    <ChevronLeft className="h-5 w-5 mr-1" />
+                    Précédent
+                  </Button>
+
+                  {/* Dots */}
+                  <div className="flex gap-2">
+                    {slides.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentSlide(index)}
+                        className={`h-2 rounded-full transition-all ${
+                          index === currentSlide 
+                            ? 'w-8 bg-blue-600' 
+                            : 'w-2 bg-slate-300 hover:bg-slate-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentSlide(prev => Math.min(slides.length - 1, prev + 1))}
+                    disabled={currentSlide === slides.length - 1}
+                    className="text-slate-600"
+                  >
+                    Suivant
+                    <ChevronRight className="h-5 w-5 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Formulaire de Dimensionnement */}
+          <Card className="bg-white border-slate-200 shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-2xl">Dimensionnement de la Mission</CardTitle>
+              <CardDescription>
+                Renseignez les informations principales pour personnaliser votre solution
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Nom de l'organisation */}
+                <div className="space-y-2">
+                  <Label htmlFor="organizationName" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-blue-600" />
+                    Nom de l'Organisation *
+                  </Label>
+                  <Input
+                    id="organizationName"
+                    placeholder="Ex: Ministère des Infrastructures"
+                    value={missionDimensions.organizationName}
+                    onChange={(e) => setMissionDimensions(prev => ({ ...prev, organizationName: e.target.value }))}
+                    className="h-12"
+                  />
+                </div>
+
+                {/* Nom de la mission */}
+                <div className="space-y-2">
+                  <Label htmlFor="missionName" className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-blue-600" />
+                    Nom de la Mission *
+                  </Label>
+                  <Input
+                    id="missionName"
+                    placeholder="Ex: Validation Hôpital Régional"
+                    value={missionDimensions.missionName}
+                    onChange={(e) => setMissionDimensions(prev => ({ ...prev, missionName: e.target.value }))}
+                    className="h-12"
+                  />
+                </div>
+
+                {/* Pays */}
+                <div className="space-y-2">
+                  <Label htmlFor="country" className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-blue-600" />
+                    Pays de Destination *
+                  </Label>
+                  <Input
+                    id="country"
+                    placeholder="Ex: Chine, Cameroun, France..."
+                    value={missionDimensions.country}
+                    onChange={(e) => setMissionDimensions(prev => ({ ...prev, country: e.target.value }))}
+                    className="h-12"
+                  />
+                </div>
+
+                {/* Devise */}
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Devise de Référence *</Label>
+                  <select
+                    id="currency"
+                    value={missionDimensions.currency}
+                    onChange={(e) => setMissionDimensions(prev => ({ ...prev, currency: e.target.value }))}
+                    className="w-full h-12 px-3 rounded-md border border-slate-200 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Sélectionner une devise</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="USD">USD - Dollar US</option>
+                    <option value="CNY">CNY - Yuan Chinois</option>
+                    <option value="XAF">XAF - Franc CFA</option>
+                    <option value="GBP">GBP - Livre Sterling</option>
+                  </select>
+                </div>
+
+                {/* Date de début */}
+                <div className="space-y-2">
+                  <Label htmlFor="startDate" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    Date de Début *
+                  </Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={missionDimensions.startDate}
+                    onChange={(e) => setMissionDimensions(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="h-12"
+                  />
+                </div>
+
+                {/* Date de fin */}
+                <div className="space-y-2">
+                  <Label htmlFor="endDate" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    Date de Fin (optionnelle)
+                  </Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={missionDimensions.endDate}
+                    onChange={(e) => setMissionDimensions(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="h-12"
+                  />
+                </div>
+
+                {/* Taille de l'équipe */}
+                <div className="space-y-2">
+                  <Label htmlFor="teamSize" className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    Nombre de Participants *
+                  </Label>
+                  <Input
+                    id="teamSize"
+                    type="number"
+                    min="1"
+                    placeholder="Ex: 12"
+                    value={missionDimensions.teamSize}
+                    onChange={(e) => setMissionDimensions(prev => ({ ...prev, teamSize: e.target.value }))}
+                    className="h-12"
+                  />
+                </div>
+              </div>
+
+              {/* Objet de la mission */}
+              <div className="space-y-2">
+                <Label htmlFor="missionObject">Objet de la Mission *</Label>
+                <Textarea
+                  id="missionObject"
+                  placeholder="Décrivez brièvement l'objectif principal de cette mission officielle..."
+                  value={missionDimensions.missionObject}
+                  onChange={(e) => setMissionDimensions(prev => ({ ...prev, missionObject: e.target.value }))}
+                  className="min-h-[100px] resize-none"
+                />
+              </div>
+
+              {/* CTA */}
+              <div className="pt-4">
+                <Button 
+                  onClick={handleStartImmersion}
+                  disabled={!isDimensionsValid()}
+                  className="w-full h-14 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl hover:shadow-2xl transition-all group"
+                >
+                  <Sparkles className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
+                  Commencer l'Immersion IA
+                  <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Rendu de l'étape 1 : Le Pitch
   if (step === 'pitch') {
