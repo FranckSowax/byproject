@@ -128,24 +128,6 @@ export function TemplatesMarketplaceSection() {
           ))}
         </div>
 
-        {/* Simple Twinsk Teaser */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-sm font-medium mb-4">
-            <Building2 className="h-4 w-4" />
-            <span>Besoin d'accompagnement sur mesure ?</span>
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-4">Twinsk by Project</h3>
-          <p className="text-gray-600 max-w-2xl mx-auto mb-6">
-            Délégation, préparation de mission Chine, achat de contacts fournisseurs ou sourcing délégué. 
-            Découvrez nos services d'accompagnement premium.
-          </p>
-          <Link href="/services">
-            <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-              Découvrir les services Twinsk
-            </Button>
-          </Link>
-        </div>
-
       </div>
     </section>
   );
