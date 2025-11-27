@@ -54,11 +54,11 @@ export function TemplatesMarketplaceSection() {
         <div className="text-center max-w-3xl mx-auto mb-16 sm:mb-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-sm border border-blue-100 mb-6">
             <LayoutTemplate className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-gray-600">Marketplace de Projets</span>
+            <span className="text-sm font-medium text-gray-600">Marketplace de Projets Modèles</span>
           </div>
           
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A202C] mb-6">
-            Démarrez plus vite avec nos <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Modèles Certifiés</span>
+            Démarrez plus vite avec nos <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Projets Modèles Certifiés</span>
           </h2>
           
           <p className="text-lg text-gray-600 leading-relaxed">

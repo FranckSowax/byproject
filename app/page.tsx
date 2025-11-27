@@ -35,7 +35,7 @@ export default function Home() {
                 Services Twinsk
               </Link>
               <Link href="#templates" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
-                Modèles
+                Projets Modèles
               </Link>
               <Link href="#features" className="text-sm font-medium text-[#4A5568] hover:text-[#5B5FC7] transition-colors">
                 Fonctionnalités
