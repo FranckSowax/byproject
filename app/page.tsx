@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkles, Ship, Package, Home as HomeIcon, DollarSign, Briefcase, LogIn, UserPlus } from "lucide-react";
+import { ArrowRight, BarChart3, Zap, Globe, TrendingUp, FileText, Shield, Sparkles, Ship, Package, Home as HomeIcon, DollarSign, Briefcase, LogIn, UserPlus, CheckCircle2, Bot } from "lucide-react";
 import Image from "next/image";
 import { HowItWorksSlider } from "@/components/home/HowItWorksSlider";
 import { TemplatesMarketplaceSection } from "@/components/home/TemplatesMarketplaceSection";
@@ -173,6 +173,101 @@ export default function Home() {
                   <p className="text-[#718096] leading-relaxed">
                     Générez des liens de cotation publics. Vos fournisseurs remplissent leurs prix directement en ligne. Plus d'emails perdus.
                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section Délégations & Missions */}
+        <section className="py-16 sm:py-24 bg-slate-900 relative overflow-hidden">
+          {/* Background Effects */}
+          <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          
+          <div className="container mx-auto px-6 relative z-10">
+            <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
+              <div className="lg:w-1/2 space-y-8">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/30">
+                  <Globe className="h-4 w-4 text-blue-400" />
+                  <span className="text-sm font-medium text-blue-200">Solution Délégations & Grands Projets</span>
+                </div>
+                
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight">
+                  Organisez vos Missions Officielles <br />
+                  <span className="text-blue-400">En toute sérénité</span>
+                </h2>
+                
+                <p className="text-lg text-slate-300 leading-relaxed">
+                  Une solution clé en main pour les délégations d'État et missions d'entreprise.
+                  Planifiez vos visites d'usines, gérez la logistique VIP et structurez vos projets grâce à notre assistant IA.
+                </p>
+                
+                <ul className="space-y-4">
+                  <li className="flex items-center gap-3 text-slate-300">
+                    <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                      <CheckCircle2 className="h-3 w-3 text-blue-400" />
+                    </div>
+                    <span>Planification intelligente des visites d'usines (Factory Tour)</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-slate-300">
+                    <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                      <CheckCircle2 className="h-3 w-3 text-blue-400" />
+                    </div>
+                    <span>Gestion logistique complète (Hôtels, Transferts VIP)</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-slate-300">
+                    <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                      <CheckCircle2 className="h-3 w-3 text-blue-400" />
+                    </div>
+                    <span>Assistant IA pour la structuration du projet</span>
+                  </li>
+                </ul>
+                
+                <div className="pt-4">
+                  <Link href="/delegations/new">
+                    <Button size="lg" className="bg-blue-600 hover:bg-blue-500 text-white border-none shadow-lg shadow-blue-900/20">
+                      <Sparkles className="mr-2 h-5 w-5" />
+                      Configurer une Mission
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+              
+              <div className="lg:w-1/2 relative">
+                <div className="relative rounded-2xl overflow-hidden border border-slate-700 shadow-2xl bg-slate-800/50 backdrop-blur-sm p-1">
+                   {/* Abstract Representation of the Dashboard */}
+                   <div className="aspect-video bg-slate-900 rounded-xl p-6 flex flex-col gap-4 relative overflow-hidden">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex gap-2">
+                          <div className="w-3 h-3 rounded-full bg-red-500/20"></div>
+                          <div className="w-3 h-3 rounded-full bg-yellow-500/20"></div>
+                          <div className="w-3 h-3 rounded-full bg-green-500/20"></div>
+                        </div>
+                        <div className="h-2 w-20 bg-slate-800 rounded-full"></div>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="w-1/3 space-y-3">
+                           <div className="h-24 bg-blue-500/10 rounded-lg border border-blue-500/20 animate-pulse"></div>
+                           <div className="h-24 bg-slate-800 rounded-lg border border-slate-700"></div>
+                        </div>
+                        <div className="w-2/3 space-y-3">
+                           <div className="h-8 bg-slate-800 rounded-lg w-3/4"></div>
+                           <div className="h-32 bg-slate-800 rounded-lg border border-slate-700"></div>
+                           <div className="flex gap-3">
+                              <div className="h-10 w-10 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
+                                <Bot className="h-5 w-5 text-blue-400" />
+                              </div>
+                              <div className="flex-1 h-10 bg-slate-800 rounded-lg"></div>
+                           </div>
+                        </div>
+                      </div>
+                      {/* Overlay Badge */}
+                      <div className="absolute bottom-6 right-6 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium">
+                        <Sparkles className="h-4 w-4" />
+                        IA Active
+                      </div>
+                   </div>
                 </div>
               </div>
             </div>
