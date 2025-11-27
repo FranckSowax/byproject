@@ -150,19 +150,6 @@ export function PricingSection() {
             </div>
           ))}
         </div>
-
-        <div className="mt-16 text-center bg-gray-50 rounded-2xl p-8 border border-gray-100 max-w-3xl mx-auto">
-          <h3 className="text-lg font-semibold text-[#2D3748] mb-2">Besoin d'une solution Marque Blanche ?</h3>
-          <p className="text-[#718096] mb-6">
-            Pour les agences d'état, les délégations et les structures gérant de multiples grands projets.
-            Obtenez votre propre plateforme personnalisée.
-          </p>
-          <Link href="mailto:contact@byproject.com">
-            <Button variant="outline" className="border-[#5B5FC7] text-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white">
-              Demander un devis Marque Blanche
-            </Button>
-          </Link>
-        </div>
       </div>
     </section>
   );
