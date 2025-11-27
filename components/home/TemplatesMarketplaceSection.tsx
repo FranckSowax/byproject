@@ -21,12 +21,12 @@ const templates = [
   },
   {
     id: 2,
-    title: "Immeuble R+4 Mixte",
-    category: "Promotion",
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
-    materialsCount: 450,
-    estimatedPrice: "850,000 €",
-    features: ["Gros œuvre + Second œuvre", "Normes PMR", "Étude thermique"]
+    title: "Salon de Coiffure Moderne",
+    category: "Commercial",
+    image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80",
+    materialsCount: 65,
+    estimatedPrice: "45,000 €",
+    features: ["Postes de coiffure complets", "Éclairage LED technique", "Plomberie & Bacs"]
   },
   {
     id: 3,
