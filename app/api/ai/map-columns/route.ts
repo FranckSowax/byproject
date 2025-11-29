@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import Replicate from 'replicate';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
+});
+
+// Check if Gemini 3 Pro is available
+const useGemini = !!process.env.REPLICATE_API_TOKEN;
+
 export async function POST(request: NextRequest) {
   try {
-    const { headers, sampleData, targetFields } = await request.json();
+    const { headers, sampleData, targetFields, sectorName, customSectorName } = await request.json();
 
     if (!headers || !sampleData || !targetFields) {
       return NextResponse.json(
@@ -16,8 +24,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Appel à GPT-4o pour mapper les colonnes
-    const prompt = `Tu es un expert en analyse de fichiers de matériaux de construction et d'équipements.
+    // Determine sector context for AI
+    const sector = customSectorName || sectorName || 'construction et équipements';
+
+    // Appel à l'IA pour mapper les colonnes
+    const prompt = `Tu es un expert en analyse de fichiers pour le secteur "${sector}".
 
 **MISSION**: Mappe les colonnes du fichier aux champs cibles en analysant les en-têtes ET les données.
 
@@ -81,30 +92,59 @@ Alors: {"name": 0, "quantity": 2, "unit": null, ...}
 
 RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
 
-    console.log('🔍 Mapping columns with GPT-4o...', {
-      headersCount: headers.length,
-      targetFields,
-      sampleDataLength: sampleData.length
-    });
+    let responseText: string;
+    let modelUsed: string;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o', // Utiliser GPT-4o au lieu de GPT-4
-      messages: [
-        {
-          role: 'system',
-          content: 'Tu es un expert en analyse de fichiers de matériaux de construction. Tu DOIS identifier correctement les colonnes en analysant les en-têtes ET les données. Tu réponds UNIQUEMENT en JSON valide.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.2, // Plus bas pour plus de précision
-      max_tokens: 800, // Augmenté pour plus de détails
-      response_format: { type: "json_object" } // Forcer le format JSON
-    });
+    if (useGemini) {
+      // Use Gemini 3 Pro via Replicate
+      console.log('🔍 Mapping columns with Gemini 3 Pro...', {
+        headersCount: headers.length,
+        targetFields,
+        sector,
+        sampleDataLength: sampleData.length
+      });
 
-    const responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+      const geminiInput = {
+        prompt,
+        system_instruction: `Tu es un expert en analyse de fichiers pour le secteur "${sector}". Tu DOIS identifier correctement les colonnes en analysant les en-têtes ET les données. Tu réponds UNIQUEMENT en JSON valide, sans markdown ni explication.`,
+        thinking_level: "high" as const,
+        temperature: 0.2,
+        max_output_tokens: 2000,
+      };
+
+      const output = await replicate.run("google/gemini-3-pro", { input: geminiInput });
+      responseText = Array.isArray(output) ? output.join("") : String(output);
+      modelUsed = 'gemini-3-pro';
+      
+    } else {
+      // Fallback to OpenAI GPT-4o
+      console.log('🔍 Mapping columns with GPT-4o (fallback)...', {
+        headersCount: headers.length,
+        targetFields,
+        sector,
+        sampleDataLength: sampleData.length
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `Tu es un expert en analyse de fichiers pour le secteur "${sector}". Tu DOIS identifier correctement les colonnes en analysant les en-têtes ET les données. Tu réponds UNIQUEMENT en JSON valide.`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 800,
+        response_format: { type: "json_object" }
+      });
+
+      responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+      modelUsed = 'gpt-4o';
+    }
     
     console.log('📄 Raw AI Response:', responseText.substring(0, 500));
     
@@ -139,7 +179,8 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
       confidence: 'high',
       message: 'Colonnes mappées avec succès par l\'IA',
       details: {
-        model: 'gpt-4o',
+        model: modelUsed,
+        sector,
         mappedFields: Object.keys(mapping).filter(k => mapping[k] !== null).length,
         totalFields: Object.keys(mapping).length
       }
