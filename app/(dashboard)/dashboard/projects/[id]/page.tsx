@@ -555,13 +555,18 @@ export default function ProjectPage() {
       const itemsCount = extractResult.statistics?.totalItems || 0;
       const categoriesCount = extractResult.statistics?.categoriesCount || 0;
       const suggestionsCount = extractResult.statistics?.suggestionsCount || 0;
+      const chunksProcessed = extractResult.statistics?.chunksProcessed || 1;
+      const totalChunks = extractResult.statistics?.totalChunks || 1;
 
       setTimeout(() => {
-        toast.success(
-          `${itemsCount} éléments importés dans ${categoriesCount} catégories` +
-          (suggestionsCount > 0 ? ` • ${suggestionsCount} suggestions d'oublis` : ''),
-          { duration: 5000 }
-        );
+        let message = `${itemsCount} éléments importés dans ${categoriesCount} catégories`;
+        if (totalChunks > 1) {
+          message += ` (${chunksProcessed}/${totalChunks} parties traitées)`;
+        }
+        if (suggestionsCount > 0) {
+          message += ` • ${suggestionsCount} suggestions d'oublis`;
+        }
+        toast.success(message, { duration: 5000 });
         setIsImportDialogOpen(false);
         setIsImporting(false);
         setImportFile(null);
