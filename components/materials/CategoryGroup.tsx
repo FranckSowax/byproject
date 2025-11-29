@@ -86,35 +86,35 @@ export function CategoryGroup({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+    <div className="rounded-lg sm:rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
       {/* Category Header */}
       <div 
         className={cn(
-          "flex items-center gap-3 p-3 cursor-pointer transition-colors",
+          "flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 cursor-pointer transition-all duration-200 active:bg-slate-100",
           isExpanded ? colors.light : "hover:bg-slate-50"
         )}
         onClick={() => !isEditing && onToggle()}
       >
         {/* Expand/Collapse icon */}
         <div className={cn(
-          "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+          "w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center transition-all flex-shrink-0",
           colors.bg
         )}>
           {isExpanded ? (
-            <ChevronDown className="h-5 w-5 text-white" />
+            <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
           ) : (
-            <ChevronRight className="h-5 w-5 text-white" />
+            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
           )}
         </div>
 
         {/* Category name */}
         <div className="flex-1 min-w-0">
           {isEditing ? (
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5 sm:gap-2" onClick={(e) => e.stopPropagation()}>
               <Input
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
-                className="h-8 text-sm font-semibold"
+                className="h-7 sm:h-8 text-sm font-semibold"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSaveCategory();
@@ -124,71 +124,75 @@ export function CategoryGroup({
               <Button 
                 size="icon" 
                 variant="ghost" 
-                className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                 onClick={handleSaveCategory}
                 disabled={isSaving}
               >
-                <Check className="h-4 w-4" />
+                <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
               <Button 
                 size="icon" 
                 variant="ghost" 
-                className="h-8 w-8 text-slate-400 hover:text-slate-600"
+                className="h-7 w-7 sm:h-8 sm:w-8 text-slate-400 hover:text-slate-600"
                 onClick={handleCancelEdit}
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <h3 className={cn("font-semibold text-base", colors.text)}>
+            <div className="flex items-center gap-1.5 sm:gap-2 group/edit">
+              <h3 className={cn("font-semibold text-sm sm:text-base truncate", colors.text)}>
                 {category}
               </h3>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100 text-slate-400 hover:text-slate-600"
+                className="h-5 w-5 sm:h-6 sm:w-6 opacity-0 group-hover/edit:opacity-100 hover:opacity-100 text-slate-400 hover:text-slate-600 flex-shrink-0"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsEditing(true);
                 }}
               >
-                <Edit2 className="h-3 w-3" />
+                <Edit2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
               </Button>
             </div>
           )}
         </div>
 
-        {/* Stats */}
-        <div className="flex items-center gap-2">
-          {/* Items count */}
+        {/* Stats - responsive layout */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          {/* Items count - always visible */}
           <Badge 
             variant="secondary" 
-            className={cn("font-semibold", colors.light, colors.text)}
+            className={cn("font-semibold text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5", colors.light, colors.text)}
           >
-            {materials.length} élément{materials.length > 1 ? 's' : ''}
+            <span className="sm:hidden">{materials.length}</span>
+            <span className="hidden sm:inline">{materials.length} élément{materials.length > 1 ? 's' : ''}</span>
           </Badge>
 
-          {/* Total quantity */}
+          {/* Total quantity - hidden on very small screens */}
           {totalQuantity > 0 && (
-            <Badge variant="outline" className="text-orange-600 border-orange-200">
-              <Package className="h-3 w-3 mr-1" />
+            <Badge variant="outline" className="text-orange-600 border-orange-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 hidden xs:flex">
+              <Package className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
               {totalQuantity}
             </Badge>
           )}
 
-          {/* Prices indicator */}
+          {/* Prices indicator - hidden on mobile */}
           {totalPrices > 0 && (
-            <div className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+            <div className="hidden sm:flex items-center gap-1 text-[10px] sm:text-xs text-emerald-600 bg-emerald-50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">
               <span className="font-medium">{totalPrices} prix</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Materials list */}
-      {isExpanded && (
-        <div className="border-t border-slate-100 p-3 space-y-2 bg-slate-50/50">
+      {/* Materials list - with animation */}
+      <div className={cn(
+        "overflow-hidden transition-all duration-300 ease-out",
+        isExpanded ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
+      )}>
+        <div className="border-t border-slate-100 p-2 sm:p-3 space-y-1.5 sm:space-y-2 bg-slate-50/50">
           {materials.map((material) => (
             <MaterialCard
               key={material.id}
@@ -199,7 +203,7 @@ export function CategoryGroup({
             />
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
