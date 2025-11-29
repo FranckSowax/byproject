@@ -225,27 +225,33 @@ export function MaterialDetailModal({
 
   return (
     <>
-      {/* Overlay */}
+      {/* Overlay with gradient */}
       <div 
         className={cn(
-          "fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300",
+          "fixed inset-0 z-40 transition-all duration-300",
+          "bg-gradient-to-b from-black/70 via-black/50 to-black/70 backdrop-blur-md",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={onClose}
       />
 
-      {/* Modal - centered on desktop, slide-up on mobile */}
+      {/* Modal - fixed at top of viewport on desktop, slide-up on mobile */}
       <div 
         className={cn(
-          "fixed z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-out",
+          "fixed z-50 flex flex-col transition-all duration-300 ease-out",
           // Mobile: full screen slide-up
           "inset-0 sm:inset-auto",
-          // Desktop: centered modal
-          "sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2",
-          "sm:w-[90vw] sm:max-w-[900px] sm:h-[85vh] sm:max-h-[800px] sm:rounded-2xl",
+          // Desktop: fixed at top center with margin
+          "sm:left-1/2 sm:-translate-x-1/2 sm:top-8",
+          "sm:w-[95vw] sm:max-w-[1000px] sm:max-h-[calc(100vh-4rem)]",
+          // Modern styling
+          "bg-white sm:bg-gradient-to-br sm:from-white sm:to-slate-50",
+          "sm:rounded-3xl sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)]",
+          "sm:border sm:border-slate-200/50",
+          "overflow-hidden",
           isOpen 
-            ? "translate-y-0 sm:scale-100 opacity-100" 
-            : "translate-y-full sm:translate-y-0 sm:scale-95 opacity-0 pointer-events-none"
+            ? "translate-y-0 sm:translate-y-0 opacity-100" 
+            : "translate-y-full sm:-translate-y-8 opacity-0 pointer-events-none"
         )}
       >
         {/* Mobile drag handle */}
@@ -253,31 +259,34 @@ export function MaterialDetailModal({
           <div className="w-10 h-1 bg-slate-300 rounded-full" />
         </div>
 
+        {/* Desktop decorative header bar */}
+        <div className="hidden sm:block h-1.5 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500" />
+
         {/* Header */}
-        <div className="flex-shrink-0 border-b border-slate-200 px-4 sm:px-6 pb-4 pt-2 sm:pt-4">
-          <div className="flex items-start justify-between gap-3">
+        <div className="flex-shrink-0 px-4 sm:px-8 pb-4 pt-2 sm:pt-6 bg-gradient-to-b from-slate-50/80 to-transparent">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               {isEditing ? (
                 <Input
                   value={editData.name || ''}
                   onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                  className="text-lg sm:text-xl font-bold h-auto py-1 px-2 -ml-2"
+                  className="text-lg sm:text-2xl font-bold h-auto py-2 px-3 -ml-3 bg-white border-2 border-violet-200 focus:border-violet-500 rounded-xl"
                   placeholder="Nom du matériau"
                 />
               ) : (
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 line-clamp-2">{material.name}</h2>
+                <h2 className="text-lg sm:text-2xl font-bold text-slate-900 line-clamp-2 sm:line-clamp-1">{material.name}</h2>
               )}
               
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="flex flex-wrap gap-2 mt-3">
                 {isEditing ? (
                   <Input
                     value={editData.category || ''}
                     onChange={(e) => setEditData({ ...editData, category: e.target.value })}
-                    className="h-7 text-xs w-32"
+                    className="h-8 text-sm w-40 rounded-lg"
                     placeholder="Catégorie"
                   />
                 ) : material.category ? (
-                  <Badge className="bg-violet-100 text-violet-700 border-0 text-xs">{material.category}</Badge>
+                  <Badge className="bg-gradient-to-r from-violet-500 to-purple-500 text-white border-0 text-xs px-3 py-1 rounded-full shadow-sm">{material.category}</Badge>
                 ) : null}
                 
                 {isEditing ? (
@@ -300,16 +309,16 @@ export function MaterialDetailModal({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {isEditing ? (
                 <>
                   <Button 
                     size="sm" 
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="bg-emerald-600 hover:bg-emerald-700 h-8 sm:h-9"
+                    className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white h-9 sm:h-10 px-4 sm:px-6 rounded-xl shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40"
                   >
-                    <Save className="h-4 w-4 mr-1" />
+                    <Save className="h-4 w-4 mr-1.5" />
                     <span className="hidden sm:inline">{isSaving ? 'Enregistrement...' : 'Enregistrer'}</span>
                   </Button>
                   <Button 
@@ -327,46 +336,45 @@ export function MaterialDetailModal({
                       });
                       setIsEditing(false);
                     }}
-                    className="h-8 sm:h-9"
+                    className="h-9 sm:h-10 w-9 sm:w-10 rounded-xl hover:bg-slate-100"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                   </Button>
                 </>
               ) : (
                 <>
                   <Button 
                     size="sm" 
-                    variant="outline"
                     onClick={() => setIsEditing(true)}
-                    className="h-8 sm:h-9"
+                    className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white h-9 sm:h-10 px-4 sm:px-6 rounded-xl shadow-lg shadow-violet-500/25 transition-all hover:shadow-violet-500/40"
                   >
-                    <Edit2 className="h-4 w-4 sm:mr-1" />
+                    <Edit2 className="h-4 w-4 sm:mr-1.5" />
                     <span className="hidden sm:inline">Modifier</span>
                   </Button>
                   <Button 
                     size="icon" 
                     variant="ghost" 
                     onClick={onClose}
-                    className="h-8 w-8 sm:h-9 sm:w-9"
+                    className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl hover:bg-slate-100 border border-slate-200"
                   >
-                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <X className="h-5 w-5" />
                   </Button>
                 </>
               )}
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 mt-4 bg-slate-100 p-1 rounded-lg overflow-x-auto scrollbar-hide">
+          {/* Tabs - Modern pill style */}
+          <div className="flex gap-1 sm:gap-2 mt-5 sm:mt-6 bg-slate-100/80 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 py-2 px-2 sm:px-3 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap",
+                  "flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap",
                   activeTab === tab.id
-                    ? "bg-white text-violet-700 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900 active:bg-white/50"
+                    ? "bg-white text-violet-700 shadow-md shadow-slate-200/50"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-white/50 active:bg-white/80"
                 )}
               >
                 <span className="flex-shrink-0">{tab.icon}</span>
@@ -385,22 +393,25 @@ export function MaterialDetailModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 overscroll-contain">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 overscroll-contain bg-gradient-to-b from-transparent to-slate-50/50">
           {/* Details Tab */}
           {activeTab === 'details' && (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-5 sm:space-y-8">
               {/* Description */}
-              <div>
-                <Label className="text-sm font-medium text-slate-700 mb-2 block">Description</Label>
+              <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+                <Label className="text-sm font-semibold text-slate-800 mb-3 block flex items-center gap-2">
+                  <div className="w-1 h-4 bg-gradient-to-b from-violet-500 to-purple-500 rounded-full" />
+                  Description
+                </Label>
                 {isEditing ? (
                   <Textarea
                     value={editData.description || ''}
                     onChange={(e) => setEditData({ ...editData, description: e.target.value || null })}
                     placeholder="Spécifications, caractéristiques, notes..."
-                    className="min-h-[100px] resize-none"
+                    className="min-h-[120px] resize-none rounded-xl border-slate-200 focus:border-violet-400 focus:ring-violet-400/20"
                   />
                 ) : (
-                  <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 min-h-[60px]">
+                  <p className="text-sm text-slate-600 leading-relaxed">
                     {material.description || <span className="text-slate-400 italic">Aucune description</span>}
                   </p>
                 )}
@@ -408,8 +419,8 @@ export function MaterialDetailModal({
 
               {/* Dimensions grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Quantité</Label>
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">
+                  <Label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Quantité</Label>
                   {isEditing ? (
                     <Input
                       type="number"
@@ -422,65 +433,73 @@ export function MaterialDetailModal({
                     <p className="text-lg font-semibold text-slate-900">{material.quantity || '-'}</p>
                   )}
                 </div>
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Surface (m²)</Label>
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">
+                  <Label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Surface</Label>
                   {isEditing ? (
                     <Input
                       type="number"
                       value={editData.surface || ''}
                       onChange={(e) => setEditData({ ...editData, surface: parseFloat(e.target.value) || null })}
                       placeholder="0"
-                      className="h-9"
+                      className="h-9 text-center"
                     />
                   ) : (
-                    <p className="text-lg font-semibold text-slate-900">{material.surface || '-'}</p>
+                    <p className="text-xl font-bold text-slate-900">{material.surface ? `${material.surface} m²` : '-'}</p>
                   )}
                 </div>
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Poids (kg)</Label>
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">
+                  <Label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Poids</Label>
                   {isEditing ? (
                     <Input
                       type="number"
                       value={editData.weight || ''}
                       onChange={(e) => setEditData({ ...editData, weight: parseFloat(e.target.value) || null })}
                       placeholder="0"
-                      className="h-9"
+                      className="h-9 text-center"
                     />
                   ) : (
-                    <p className="text-lg font-semibold text-slate-900">{material.weight || '-'}</p>
+                    <p className="text-xl font-bold text-slate-900">{material.weight ? `${material.weight} kg` : '-'}</p>
                   )}
                 </div>
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Volume (m³)</Label>
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">
+                  <Label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Volume</Label>
                   {isEditing ? (
                     <Input
                       type="number"
                       value={editData.volume || ''}
                       onChange={(e) => setEditData({ ...editData, volume: parseFloat(e.target.value) || null })}
                       placeholder="0"
-                      className="h-9"
+                      className="h-9 text-center"
                     />
                   ) : (
-                    <p className="text-lg font-semibold text-slate-900">{material.volume || '-'}</p>
+                    <p className="text-xl font-bold text-slate-900">{material.volume ? `${material.volume} m³` : '-'}</p>
                   )}
                 </div>
               </div>
 
               {/* Image preview */}
               {material.images && material.images.length > 0 && (
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-2 block">Aperçu</Label>
+                <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+                  <Label className="text-sm font-semibold text-slate-800 mb-4 block flex items-center gap-2">
+                    <div className="w-1 h-4 bg-gradient-to-b from-violet-500 to-purple-500 rounded-full" />
+                    Aperçu
+                  </Label>
                   <div 
-                    className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 cursor-pointer group max-w-md"
-                    onClick={() => setShowLightbox(true)}
+                    className="relative aspect-video rounded-2xl overflow-hidden bg-slate-100 cursor-pointer group"
+                    onClick={() => {
+                      setLightboxImages(material.images || []);
+                      setSelectedImageIndex(0);
+                      setShowLightbox(true);
+                    }}
                   >
                     <img 
                       src={material.images[0]} 
                       alt={material.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     {material.images.length > 1 && (
-                      <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                      <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm text-slate-700 text-xs font-medium px-3 py-1.5 rounded-full shadow-lg">
                         +{material.images.length - 1} photos
                       </div>
                     )}
@@ -489,21 +508,25 @@ export function MaterialDetailModal({
               )}
 
               {/* Quick stats */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div 
-                  className="bg-emerald-50 rounded-xl p-4 text-center cursor-pointer hover:bg-emerald-100 transition-colors"
+                  className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-5 text-center cursor-pointer hover:shadow-lg hover:shadow-emerald-100 transition-all border border-emerald-100"
                   onClick={() => setActiveTab('prices')}
                 >
-                  <DollarSign className="h-6 w-6 text-emerald-600 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-emerald-700">{prices.length}</p>
+                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/30">
+                    <DollarSign className="h-6 w-6 text-white" />
+                  </div>
+                  <p className="text-3xl font-bold text-emerald-700">{prices.length}</p>
                   <p className="text-xs text-emerald-600">Prix collectés</p>
                 </div>
                 <div 
-                  className="bg-blue-50 rounded-xl p-4 text-center cursor-pointer hover:bg-blue-100 transition-colors"
+                  className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 text-center cursor-pointer hover:shadow-lg hover:shadow-blue-100 transition-all border border-blue-100"
                   onClick={() => setActiveTab('comments')}
                 >
-                  <MessageSquare className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-blue-700">{comments.length}</p>
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-500/30">
+                    <MessageSquare className="h-6 w-6 text-white" />
+                  </div>
+                  <p className="text-3xl font-bold text-blue-700">{comments.length}</p>
                   <p className="text-xs text-blue-600">Notes</p>
                 </div>
               </div>
@@ -955,17 +978,20 @@ export function MaterialDetailModal({
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 border-t border-slate-200 p-4 bg-slate-50">
-          <div className="flex gap-2 justify-between">
+        <div className="flex-shrink-0 border-t border-slate-200/50 p-4 sm:p-6 bg-gradient-to-r from-slate-50 to-slate-100/50">
+          <div className="flex gap-3 justify-between items-center">
             <Button 
               variant="outline" 
               onClick={onDelete}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="text-red-500 hover:text-white hover:bg-gradient-to-r hover:from-red-500 hover:to-rose-500 border-red-200 hover:border-transparent h-10 sm:h-11 px-4 sm:px-6 rounded-xl transition-all hover:shadow-lg hover:shadow-red-500/25"
             >
               <Trash2 className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Supprimer</span>
             </Button>
-            <Button variant="outline" onClick={onClose}>
+            <Button 
+              onClick={onClose}
+              className="bg-slate-800 hover:bg-slate-900 text-white h-10 sm:h-11 px-6 sm:px-8 rounded-xl shadow-lg shadow-slate-800/25 transition-all hover:shadow-slate-800/40"
+            >
               Fermer
             </Button>
           </div>
