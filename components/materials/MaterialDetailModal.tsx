@@ -76,18 +76,44 @@ interface MaterialDetailModalProps {
 type Tab = 'details' | 'prices' | 'comments' | 'photos';
 
 const COUNTRIES = [
-  { value: 'Cameroun', label: '🇨🇲 Cameroun', currency: 'FCFA' },
-  { value: 'Chine', label: '🇨🇳 Chine', currency: 'CNY' },
-  { value: 'Turquie', label: '🇹🇷 Turquie', currency: 'TRY' },
-  { value: 'Dubai', label: '🇦🇪 Dubai', currency: 'AED' },
-  { value: 'France', label: '🇫🇷 France', currency: 'EUR' },
-  { value: 'Allemagne', label: '🇩🇪 Allemagne', currency: 'EUR' },
-  { value: 'Italie', label: '🇮🇹 Italie', currency: 'EUR' },
-  { value: 'Espagne', label: '🇪🇸 Espagne', currency: 'EUR' },
-  { value: 'USA', label: '🇺🇸 USA', currency: 'USD' },
-  { value: 'Inde', label: '🇮🇳 Inde', currency: 'INR' },
-  { value: 'Sénégal', label: '🇸🇳 Sénégal', currency: 'FCFA' },
-  { value: 'Côte d\'Ivoire', label: '🇨🇮 Côte d\'Ivoire', currency: 'FCFA' },
+  // Pays prioritaires pour l'import
+  { value: 'Chine', label: '🇨🇳 Chine', currency: 'CNY', group: 'Import' },
+  { value: 'Dubai', label: '🇦🇪 Dubai / EAU', currency: 'AED', group: 'Import' },
+  { value: 'Turquie', label: '🇹🇷 Turquie', currency: 'TRY', group: 'Import' },
+  { value: 'Inde', label: '🇮🇳 Inde', currency: 'INR', group: 'Import' },
+  // Afrique de l'Ouest (FCFA)
+  { value: 'Cameroun', label: '🇨🇲 Cameroun', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Sénégal', label: '🇸🇳 Sénégal', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Côte d\'Ivoire', label: '🇨🇮 Côte d\'Ivoire', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Mali', label: '🇲🇱 Mali', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Burkina Faso', label: '🇧🇫 Burkina Faso', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Niger', label: '🇳🇪 Niger', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Togo', label: '🇹🇬 Togo', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Bénin', label: '🇧🇯 Bénin', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Guinée', label: '🇬🇳 Guinée', currency: 'GNF', group: 'Afrique' },
+  { value: 'Guinée-Bissau', label: '🇬🇼 Guinée-Bissau', currency: 'FCFA', group: 'Afrique' },
+  // Afrique Centrale (FCFA)
+  { value: 'Gabon', label: '🇬🇦 Gabon', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Congo', label: '🇨🇬 Congo', currency: 'FCFA', group: 'Afrique' },
+  { value: 'RDC', label: '🇨🇩 RD Congo', currency: 'CDF', group: 'Afrique' },
+  { value: 'Centrafrique', label: '🇨🇫 Centrafrique', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Tchad', label: '🇹🇩 Tchad', currency: 'FCFA', group: 'Afrique' },
+  { value: 'Guinée équatoriale', label: '🇬🇶 Guinée équatoriale', currency: 'FCFA', group: 'Afrique' },
+  // Autres pays africains
+  { value: 'Nigeria', label: '🇳🇬 Nigeria', currency: 'NGN', group: 'Afrique' },
+  { value: 'Ghana', label: '🇬🇭 Ghana', currency: 'GHS', group: 'Afrique' },
+  { value: 'Kenya', label: '🇰🇪 Kenya', currency: 'KES', group: 'Afrique' },
+  { value: 'Afrique du Sud', label: '🇿🇦 Afrique du Sud', currency: 'ZAR', group: 'Afrique' },
+  { value: 'Maroc', label: '🇲🇦 Maroc', currency: 'MAD', group: 'Afrique' },
+  { value: 'Algérie', label: '🇩🇿 Algérie', currency: 'DZD', group: 'Afrique' },
+  { value: 'Tunisie', label: '🇹🇳 Tunisie', currency: 'TND', group: 'Afrique' },
+  { value: 'Égypte', label: '🇪🇬 Égypte', currency: 'EGP', group: 'Afrique' },
+  // Europe (optionnel)
+  { value: 'France', label: '🇫🇷 France', currency: 'EUR', group: 'Europe' },
+  { value: 'Belgique', label: '🇧🇪 Belgique', currency: 'EUR', group: 'Europe' },
+  { value: 'Allemagne', label: '🇩🇪 Allemagne', currency: 'EUR', group: 'Europe' },
+  { value: 'Italie', label: '🇮🇹 Italie', currency: 'EUR', group: 'Europe' },
+  { value: 'Espagne', label: '🇪🇸 Espagne', currency: 'EUR', group: 'Europe' },
 ];
 
 const CURRENCIES = ['FCFA', 'EUR', 'USD', 'CNY', 'TRY', 'AED', 'INR', 'GBP'];
@@ -121,11 +147,11 @@ export function MaterialDetailModal({
   // Editable fields
   const [editData, setEditData] = useState<Partial<Material>>({});
   
-  // New price form
+  // New price form - default to China as most common import source
   const [newPrice, setNewPrice] = useState({
     amount: '',
-    currency: 'FCFA',
-    country: 'Cameroun',
+    currency: 'CNY',
+    country: 'Chine',
     supplier_name: '',
     contact_name: '',
     phone: '',
@@ -173,8 +199,8 @@ export function MaterialDetailModal({
       });
       setNewPrice({
         amount: '',
-        currency: 'FCFA',
-        country: 'Cameroun',
+        currency: 'CNY',
+        country: 'Chine',
         supplier_name: '',
         contact_name: '',
         phone: '',
@@ -553,25 +579,51 @@ export function MaterialDetailModal({
                   </h3>
                   
                   {/* Country & Currency */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs">Pays *</Label>
+                      <Label className="text-xs font-medium text-emerald-700 mb-1.5 block">Pays *</Label>
                       <select
                         value={newPrice.country}
                         onChange={(e) => handleCountryChange(e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        className="w-full h-12 sm:h-10 rounded-xl border-2 border-emerald-200 bg-white px-4 text-base sm:text-sm font-medium focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all appearance-none cursor-pointer touch-manipulation"
+                        style={{ 
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2310b981'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 12px center',
+                          backgroundSize: '20px',
+                          paddingRight: '44px'
+                        }}
                       >
-                        {COUNTRIES.map(c => (
-                          <option key={c.value} value={c.value}>{c.label}</option>
-                        ))}
+                        <optgroup label="🌏 Import (Chine, Dubai, Turquie)">
+                          {COUNTRIES.filter(c => c.group === 'Import').map(c => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="🌍 Afrique">
+                          {COUNTRIES.filter(c => c.group === 'Afrique').map(c => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="🌍 Europe">
+                          {COUNTRIES.filter(c => c.group === 'Europe').map(c => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
+                        </optgroup>
                       </select>
                     </div>
                     <div>
-                      <Label className="text-xs">Devise</Label>
+                      <Label className="text-xs font-medium text-emerald-700 mb-1.5 block">Devise</Label>
                       <select
                         value={newPrice.currency}
                         onChange={(e) => setNewPrice({ ...newPrice, currency: e.target.value })}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        className="w-full h-12 sm:h-10 rounded-xl border-2 border-emerald-200 bg-white px-4 text-base sm:text-sm font-medium focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all appearance-none cursor-pointer touch-manipulation"
+                        style={{ 
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2310b981'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 12px center',
+                          backgroundSize: '20px',
+                          paddingRight: '44px'
+                        }}
                       >
                         {CURRENCIES.map(c => (
                           <option key={c} value={c}>{c}</option>
