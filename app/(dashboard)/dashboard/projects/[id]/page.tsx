@@ -16,6 +16,7 @@ import { MaterialComments } from "@/components/collaboration/MaterialComments";
 import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
 import { ImageUpload } from "@/components/project/ImageUpload";
 import { MaterialsFilter } from "@/components/materials/MaterialsFilter";
+import { AISuggestions } from "@/components/project/AISuggestions";
 import {
   Dialog,
   DialogContent,
@@ -138,6 +139,13 @@ export default function ProjectPage() {
 
   // État pour la demande de cotation
   const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
+
+  // États pour les suggestions IA
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{
+    category: string;
+    missingItems: Array<{ name: string; reason: string }>;
+  }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(true);
 
   // États pour l'édition du projet
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
@@ -433,13 +441,12 @@ export default function ProjectPage() {
       setImportProgress(10);
       setImportStatus('Lecture du fichier...');
 
-      const fileName = importFile.name.toLowerCase();
-      const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
-      const isCsv = fileName.endsWith('.csv');
+      const fileName = importFile.name;
+      const fileNameLower = fileName.toLowerCase();
+      const isExcel = fileNameLower.endsWith('.xlsx') || fileNameLower.endsWith('.xls');
+      const isCsv = fileNameLower.endsWith('.csv');
 
-      let headers: string[] = [];
-      let lines: string[] = [];
-      let sampleData = '';
+      let fileContent = '';
 
       if (isExcel) {
         // Parser Excel avec XLSX
@@ -450,137 +457,111 @@ export default function ProjectPage() {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Convertir en CSV pour le traitement
-        const csvText = XLSX.utils.sheet_to_csv(worksheet);
-        lines = csvText.split('\n').filter(line => line.trim());
-        
-        if (lines.length < 2) {
-          throw new Error('Fichier Excel vide ou invalide');
-        }
-        
-        headers = lines[0].split(',').map(h => h.trim());
-        
-        // Préparer échantillon pour l'IA
-        const sampleLines = lines.slice(0, Math.min(6, lines.length));
-        sampleData = sampleLines.join('\n');
+        // Convertir en CSV pour l'IA
+        fileContent = XLSX.utils.sheet_to_csv(worksheet);
         
         console.log('✅ Excel parsed:', {
           sheet: firstSheetName,
-          rows: lines.length,
-          columns: headers.length,
-          headers
+          contentLength: fileContent.length
         });
       } else if (isCsv) {
         // Parser CSV
         console.log('📄 Parsing CSV file...');
-        const fileText = await importFile.text();
-        lines = fileText.split('\n').filter(line => line.trim());
-        
-        if (lines.length < 2) {
-          throw new Error('Fichier CSV vide ou invalide');
-        }
-        
-        headers = lines[0].split(',').map(h => h.trim());
-        
-        // Préparer échantillon pour l'IA
-        const sampleLines = lines.slice(0, Math.min(6, lines.length));
-        sampleData = sampleLines.join('\n');
+        fileContent = await importFile.text();
         
         console.log('✅ CSV parsed:', {
-          rows: lines.length,
-          columns: headers.length,
-          headers
+          contentLength: fileContent.length
         });
       } else {
         throw new Error('Format de fichier non supporté. Utilisez .xlsx, .xls ou .csv');
       }
 
+      if (!fileContent.trim()) {
+        throw new Error('Fichier vide ou invalide');
+      }
+
       setImportProgress(20);
-      setImportStatus('Analyse avec l\'IA...');
+      setImportStatus('🤖 Gemini 3 Pro analyse le fichier...');
 
-      // Appel à l'IA pour mapper les colonnes
-      setImportProgress(30);
-      setImportStatus('🤖 L\'IA analyse les colonnes...');
+      // Récupérer les infos du secteur depuis le projet
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('sector_id, custom_sector_name')
+        .eq('id', params.id)
+        .single();
 
-      console.log('📤 Sending to AI map-columns:', {
-        headers,
-        sampleDataPreview: sampleData.substring(0, 200),
-        sampleDataLength: sampleData.length,
-        targetFields: ['name', 'category', 'quantity', 'unit', 'weight', 'volume', 'specs']
+      let sectorName = 'général';
+      let customSectorName = null;
+
+      if (projectData?.sector_id) {
+        const { data: sectorData } = await (supabase as any)
+          .from('sectors')
+          .select('name')
+          .eq('id', projectData.sector_id)
+          .single();
+        
+        if (sectorData) {
+          sectorName = sectorData.name;
+        }
+        customSectorName = projectData.custom_sector_name;
+      }
+
+      console.log('📤 Sending to AI extract-items:', {
+        projectId: params.id,
+        fileName,
+        sectorName,
+        customSectorName,
+        contentLength: fileContent.length
       });
 
-      const mappingResponse = await fetch('/api/ai/map-columns', {
+      setImportProgress(40);
+      setImportStatus('🧠 Extraction intelligente en cours...');
+
+      // Appel à la nouvelle API d'extraction avec Gemini 3 Pro
+      const extractResponse = await fetch('/api/ai/extract-items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          headers,
-          sampleData,
-          targetFields: ['name', 'category', 'quantity', 'unit', 'weight', 'volume', 'specs']
+          projectId: params.id,
+          fileContent,
+          fileName,
+          sectorName,
+          customSectorName
         }),
       });
 
-      if (!mappingResponse.ok) {
-        const errorText = await mappingResponse.text();
-        console.error('❌ Mapping API error:', errorText);
-        throw new Error('Erreur lors du mapping IA');
+      if (!extractResponse.ok) {
+        const errorText = await extractResponse.text();
+        console.error('❌ Extract API error:', errorText);
+        throw new Error('Erreur lors de l\'extraction IA');
       }
 
-      const mappingResult = await mappingResponse.json();
-      const { mapping } = mappingResult;
+      const extractResult = await extractResponse.json();
       
-      console.log('📥 AI Mapping Response:', mappingResult);
-      console.log('🗺️ Mapping IA:', mapping);
+      console.log('📥 AI Extract Response:', extractResult);
 
-      setImportProgress(50);
-      setImportStatus('Création des matériaux...');
+      setImportProgress(80);
+      setImportStatus('📦 Finalisation...');
 
-      let imported = 0;
-      const totalLines = lines.length - 1;
-
-      // Importer les matériaux avec le mapping IA
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        
-        // Utiliser le mapping IA pour extraire les données
-        const nameValue = mapping.name !== null && mapping.name < values.length ? values[mapping.name] : null;
-        
-        if (!nameValue) continue;
-
-        const materialData = {
-          project_id: params.id,
-          name: nameValue,
-          category: mapping.category !== null && mapping.category < values.length ? values[mapping.category] : null,
-          quantity: mapping.quantity !== null && mapping.quantity < values.length && values[mapping.quantity] 
-            ? parseFloat(values[mapping.quantity]) 
-            : null,
-          weight: mapping.weight !== null && mapping.weight < values.length && values[mapping.weight]
-            ? parseFloat(values[mapping.weight])
-            : null,
-          volume: mapping.volume !== null && mapping.volume < values.length && values[mapping.volume]
-            ? parseFloat(values[mapping.volume])
-            : null,
-          specs: {},
-        };
-
-        const { error } = await supabase
-          .from('materials')
-          .insert([materialData]);
-
-        if (error) {
-          console.error('Error inserting material:', error);
-          continue;
-        }
-
-        imported++;
-        setImportedCount(imported);
-        setImportProgress(50 + Math.floor((imported / totalLines) * 50));
+      // Stocker les suggestions d'IA
+      if (extractResult.suggestions && extractResult.suggestions.length > 0) {
+        setAiSuggestions(extractResult.suggestions);
+        setShowSuggestions(true);
       }
 
       setImportProgress(100);
       setImportStatus('✅ Import terminé !');
       
+      const itemsCount = extractResult.statistics?.totalItems || 0;
+      const categoriesCount = extractResult.statistics?.categoriesCount || 0;
+      const suggestionsCount = extractResult.statistics?.suggestionsCount || 0;
+
       setTimeout(() => {
-        toast.success(`${imported} matériaux importés avec succès grâce à l'IA`);
+        toast.success(
+          `${itemsCount} éléments importés dans ${categoriesCount} catégories` +
+          (suggestionsCount > 0 ? ` • ${suggestionsCount} suggestions d'oublis` : ''),
+          { duration: 5000 }
+        );
         setIsImportDialogOpen(false);
         setIsImporting(false);
         setImportFile(null);
@@ -1495,6 +1476,49 @@ export default function ProjectPage() {
                 onFilteredChange={setFilteredMaterials}
                 showPriceSort={true}
               />
+
+              {/* Suggestions IA d'oublis potentiels */}
+              {showSuggestions && aiSuggestions.length > 0 && (
+                <AISuggestions
+                  suggestions={aiSuggestions}
+                  onAcceptSuggestion={async (item, category) => {
+                    // Ajouter l'élément suggéré comme nouveau matériau
+                    try {
+                      const { error } = await supabase
+                        .from('materials')
+                        .insert({
+                          project_id: params.id,
+                          name: item.name,
+                          category: category,
+                          description: item.reason,
+                          quantity: null,
+                          specs: { suggested_by_ai: true },
+                        });
+                      
+                      if (error) throw error;
+                      toast.success(`"${item.name}" ajouté à la liste`);
+                      loadMaterials();
+                    } catch (error) {
+                      console.error('Error adding suggested item:', error);
+                      toast.error("Erreur lors de l'ajout");
+                    }
+                  }}
+                  onDismissSuggestion={(item, category) => {
+                    // Retirer la suggestion de la liste
+                    setAiSuggestions(prev => 
+                      prev.map(s => 
+                        s.category === category
+                          ? { ...s, missingItems: s.missingItems.filter(i => i.name !== item.name) }
+                          : s
+                      ).filter(s => s.missingItems.length > 0)
+                    );
+                  }}
+                  onDismissAll={() => {
+                    setAiSuggestions([]);
+                    setShowSuggestions(false);
+                  }}
+                />
+              )}
               
               <div className="space-y-3">
                 {filteredMaterials.map((material) => (
