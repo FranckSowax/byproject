@@ -17,6 +17,9 @@ import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
 import { ImageUpload } from "@/components/project/ImageUpload";
 import { MaterialsFilter } from "@/components/materials/MaterialsFilter";
 import { AISuggestions } from "@/components/project/AISuggestions";
+import { CategoryGroup } from "@/components/materials/CategoryGroup";
+import { MaterialDrawer } from "@/components/materials/MaterialDrawer";
+import { MaterialCard } from "@/components/materials/MaterialCard";
 import {
   Dialog,
   DialogContent,
@@ -146,6 +149,15 @@ export default function ProjectPage() {
     missingItems: Array<{ name: string; reason: string }>;
   }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(true);
+
+  // États pour le drawer et les catégories
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedDrawerMaterial, setSelectedDrawerMaterial] = useState<Material | null>(null);
+  const [drawerPrices, setDrawerPrices] = useState<any[]>([]);
+  const [drawerComments, setDrawerComments] = useState<any[]>([]);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'categories' | 'list'>('categories');
+  const [commentsByMaterial, setCommentsByMaterial] = useState<Record<string, any[]>>({});
 
   // États pour l'édition du projet
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
@@ -432,6 +444,166 @@ export default function ProjectPage() {
       toast.error("Erreur lors de la suppression");
     }
   };
+
+  // Ouvrir le drawer avec un matériau
+  const handleOpenDrawer = async (material: Material) => {
+    setSelectedDrawerMaterial(material);
+    setIsDrawerOpen(true);
+    
+    // Charger les prix et commentaires
+    await Promise.all([
+      loadDrawerPrices(material.id),
+      loadDrawerComments(material.id),
+    ]);
+  };
+
+  const loadDrawerPrices = async (materialId: string) => {
+    try {
+      const { data } = await supabase
+        .from('prices')
+        .select('*, supplier:suppliers(*)')
+        .eq('material_id', materialId)
+        .order('created_at', { ascending: false });
+      setDrawerPrices(data || []);
+    } catch (error) {
+      console.error('Error loading prices:', error);
+    }
+  };
+
+  const loadDrawerComments = async (materialId: string) => {
+    try {
+      const { data } = await (supabase as any)
+        .from('material_comments')
+        .select('*')
+        .eq('material_id', materialId)
+        .order('created_at', { ascending: false });
+      setDrawerComments(data || []);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    }
+  };
+
+  // Ajouter un prix depuis le drawer
+  const handleAddPriceFromDrawer = async (priceData: any) => {
+    if (!selectedDrawerMaterial) return;
+    
+    try {
+      let supplierId = null;
+      
+      if (priceData.supplier_name) {
+        const { data: supplierData } = await supabase
+          .from('suppliers')
+          .insert({
+            name: priceData.supplier_name,
+            country: priceData.country,
+          })
+          .select()
+          .single();
+        supplierId = supplierData?.id;
+      }
+
+      await supabase
+        .from('prices')
+        .insert({
+          material_id: selectedDrawerMaterial.id,
+          supplier_id: supplierId,
+          amount: parseFloat(priceData.amount),
+          currency: priceData.currency,
+          country: priceData.country,
+          notes: priceData.notes,
+        });
+
+      toast.success('Prix ajouté');
+      await loadDrawerPrices(selectedDrawerMaterial.id);
+      await loadAllPrices();
+    } catch (error) {
+      console.error('Error adding price:', error);
+      toast.error("Erreur lors de l'ajout du prix");
+    }
+  };
+
+  // Ajouter un commentaire depuis le drawer
+  const handleAddCommentFromDrawer = async (content: string) => {
+    if (!selectedDrawerMaterial) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      await (supabase as any)
+        .from('material_comments')
+        .insert({
+          material_id: selectedDrawerMaterial.id,
+          user_id: user?.id,
+          content,
+          user_name: user?.email?.split('@')[0] || 'Utilisateur',
+        });
+
+      toast.success('Note ajoutée');
+      await loadDrawerComments(selectedDrawerMaterial.id);
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error("Erreur lors de l'ajout de la note");
+    }
+  };
+
+  // Renommer une catégorie
+  const handleCategoryRename = async (oldName: string, newName: string) => {
+    try {
+      const { error } = await supabase
+        .from('materials')
+        .update({ category: newName })
+        .eq('project_id', params.id)
+        .eq('category', oldName);
+
+      if (error) throw error;
+      
+      toast.success(`Catégorie renommée en "${newName}"`);
+      loadMaterials();
+    } catch (error) {
+      console.error('Error renaming category:', error);
+      toast.error('Erreur lors du renommage');
+    }
+  };
+
+  // Toggle une catégorie
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
+
+  // Expand/Collapse toutes les catégories
+  const expandAllCategories = () => {
+    const allCategories = [...new Set(filteredMaterials.map(m => m.category || 'Sans catégorie'))];
+    setExpandedCategories(new Set(allCategories));
+  };
+
+  const collapseAllCategories = () => {
+    setExpandedCategories(new Set());
+  };
+
+  // Grouper les matériaux par catégorie
+  const materialsByCategory = filteredMaterials.reduce((acc, material) => {
+    const category = material.category || 'Sans catégorie';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(material);
+    return acc;
+  }, {} as Record<string, Material[]>);
+
+  // Trier les catégories par nombre d'éléments
+  const sortedCategories = Object.keys(materialsByCategory).sort((a, b) => {
+    if (a === 'Sans catégorie') return 1;
+    if (b === 'Sans catégorie') return -1;
+    return materialsByCategory[b].length - materialsByCategory[a].length;
+  });
 
   const handleFileImport = async () => {
     if (!importFile) return;
@@ -1525,263 +1697,99 @@ export default function ProjectPage() {
                 />
               )}
               
-              <div className="space-y-3">
-                {filteredMaterials.map((material) => (
-                  <div 
-                    key={material.id} 
-                    className="group relative bg-gradient-to-br from-white to-[#F8F9FF] border-2 border-[#E0E4FF] hover:border-[#5B5FC7] rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-[1.01]
-                               md:rounded-2xl md:overflow-hidden md:border md:hover:scale-100"
+              {/* Toggle vue catégories / liste */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={viewMode === 'categories' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('categories')}
+                    className={viewMode === 'categories' ? 'bg-violet-600 hover:bg-violet-700' : ''}
                   >
-                    {/* Barre de couleur en haut - Mobile only */}
-                    <div className="h-1 bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B] md:hidden" />
-                    
-                    {/* Indicateur coloré - Desktop only */}
-                    <div className="hidden md:block absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#5B5FC7] to-[#FF9B7B] rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                    
-                    {/* Contenu - Mobile */}
-                    <div className="p-4 space-y-3 md:hidden">
-                      <div 
-                        className="cursor-pointer"
-                        onClick={() => handleOpenDetailView(material)}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Image preview or icon */}
-                          {material.images && material.images.length > 0 ? (
-                            <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border-2 border-[#5B5FC7]/20">
-                              <img 
-                                src={material.images[0]} 
-                                alt={material.name}
-                                className="w-full h-full object-cover"
-                              />
-                              {material.images.length > 1 && (
-                                <div className="absolute bottom-0 right-0 bg-[#5B5FC7] text-white text-[10px] px-1 rounded-tl">
-                                  +{material.images.length - 1}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#5B5FC7]/10 to-[#FF9B7B]/10 flex items-center justify-center flex-shrink-0">
-                              <ImageIcon className="h-6 w-6 text-[#5B5FC7]/40" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-base text-[#2D3748] group-hover:text-[#5B5FC7] transition-colors leading-tight">
-                              {material.name}
-                            </h4>
-                          </div>
-                        </div>
-                        {material.description && (
-                          <p className="text-xs text-gray-500 italic mt-1.5 leading-relaxed">
-                            {material.description}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5">
-                        {material.category && (
-                          <Badge className="bg-[#5B5FC7]/10 text-[#5B5FC7] border-0 text-xs font-medium px-2 py-0.5">
-                            {material.category}
-                          </Badge>
-                        )}
-                        {material.quantity && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-[#FF9B7B]/10 text-[#FF9B7B] rounded-md text-xs font-medium">
-                            <Package className="h-3 w-3" />
-                            {material.quantity}
-                          </div>
-                        )}
-                        {material.surface && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-xs font-medium">
-                            <span className="text-[10px]">📐</span>
-                            {material.surface} m²
-                          </div>
-                        )}
-                        {material.weight && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md text-xs font-medium">
-                            <span className="text-[10px]">⚖️</span>
-                            {material.weight} kg
-                          </div>
-                        )}
-                        {material.volume && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-600 rounded-md text-xs font-medium">
-                            <span className="text-[10px]">📦</span>
-                            {material.volume} m³
-                          </div>
-                        )}
-                        {material.specs && Object.keys(material.specs).length > 0 && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-600 rounded-md text-xs">
-                            <FileText className="h-3 w-3" />
-                            {Object.keys(material.specs).length}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-2 pt-2 border-t border-gray-100">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setCommentsMaterialId(material.id);
-                            setCommentsMaterialName(material.name);
-                            setShowComments(true);
-                          }}
-                          className="h-10 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-600 transition-colors p-0"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleOpenPriceDialog(material)}
-                          className="h-10 rounded-xl bg-green-50 hover:bg-green-100 text-green-600 transition-colors p-0"
-                        >
-                          <DollarSign className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleEditMaterial(material)}
-                          className="h-10 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleDeleteMaterial(material.id, material.name)}
-                          className="h-10 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors p-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Contenu - Desktop */}
-                    <div className="hidden md:flex items-start justify-between gap-4 p-4">
-                      <div className="flex items-start gap-4 flex-1 min-w-0">
-                        {/* Image preview or icon */}
-                        {material.images && material.images.length > 0 ? (
-                          <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 border-[#5B5FC7]/20 shadow-sm">
-                            <img 
-                              src={material.images[0]} 
-                              alt={material.name}
-                              className="w-full h-full object-cover"
-                            />
-                            {material.images.length > 1 && (
-                              <div className="absolute bottom-0 right-0 bg-[#5B5FC7] text-white text-xs px-1.5 py-0.5 rounded-tl font-medium">
-                                +{material.images.length - 1}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-[#5B5FC7]/10 to-[#FF9B7B]/10 flex items-center justify-center flex-shrink-0 shadow-sm">
-                            <ImageIcon className="h-8 w-8 text-[#5B5FC7]/40" />
-                          </div>
-                        )}
-                        
-                        <div className="flex-1 min-w-0">
-                          <h4 
-                            className="font-bold text-lg text-[#4A5568] group-hover:text-[#5B5FC7] cursor-pointer transition-colors truncate"
-                            onClick={() => handleOpenDetailView(material)}
-                            title="Voir les prix et fournisseurs"
-                          >
-                            {material.name}
-                          </h4>
-                        {material.description && (
-                          <p className="text-sm text-gray-600 italic mt-1 line-clamp-2">
-                            {material.description}
-                          </p>
-                        )}
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {material.category && (
-                            <Badge className="bg-gradient-to-r from-[#5B5FC7]/10 to-[#7B7FE8]/10 text-[#5B5FC7] border-[#5B5FC7]/20 hover:bg-[#5B5FC7]/20 font-semibold">
-                              {material.category}
-                            </Badge>
-                          )}
-                          {material.quantity && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-[#FF9B7B]/10 text-[#FF9B7B] rounded-lg text-sm font-semibold">
-                              <Package className="h-3 w-3" />
-                              {material.quantity}
-                            </div>
-                          )}
-                          {material.surface && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-sm font-semibold">
-                              <span className="text-xs">📐</span>
-                              {material.surface} m²
-                            </div>
-                          )}
-                          {material.weight && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-semibold">
-                              <span className="text-xs">⚖️</span>
-                              {material.weight} kg
-                            </div>
-                          )}
-                          {material.volume && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-purple-500/10 text-purple-600 rounded-lg text-sm font-semibold">
-                              <span className="text-xs">📦</span>
-                              {material.volume} m³
-                            </div>
-                          )}
-                          {material.specs && Object.keys(material.specs).length > 0 && (
-                            <div className="flex items-center gap-1 px-3 py-1 bg-[#718096]/10 text-[#718096] rounded-lg text-sm">
-                              <FileText className="h-3 w-3" />
-                              {Object.keys(material.specs).length} spec{Object.keys(material.specs).length > 1 ? 's' : ''}
-                            </div>
-                          )}
-                        </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setCommentsMaterialId(material.id);
-                            setCommentsMaterialName(material.name);
-                            setShowComments(true);
-                          }}
-                          title="Commentaires"
-                          className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500 text-purple-500 hover:text-white transition-all p-0"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                        </Button>
-                        {permissions.canEdit && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleOpenPriceDialog(material)}
-                            title="Gérer les prix"
-                            className="h-8 w-8 rounded-lg bg-[#48BB78]/10 hover:bg-[#48BB78] text-[#48BB78] hover:text-white transition-all p-0"
-                          >
-                            <DollarSign className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {permissions.canEdit && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditMaterial(material)}
-                            title="Éditer"
-                            className="h-8 w-8 rounded-lg bg-[#5B5FC7]/10 hover:bg-[#5B5FC7] text-[#5B5FC7] hover:text-white transition-all p-0"
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {permissions.canEdit && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleDeleteMaterial(material.id, material.name)}
-                            title="Supprimer"
-                            className="h-8 w-8 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all p-0"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                    Par catégorie
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className={viewMode === 'list' ? 'bg-violet-600 hover:bg-violet-700' : ''}
+                  >
+                    Liste
+                  </Button>
+                </div>
+                {viewMode === 'categories' && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={expandAllCategories}>
+                      Tout ouvrir
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={collapseAllCategories}>
+                      Tout fermer
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
+
+              {/* Vue par catégories */}
+              {viewMode === 'categories' ? (
+                <div className="space-y-3">
+                  {sortedCategories.map((category) => (
+                    <CategoryGroup
+                      key={category}
+                      category={category}
+                      materials={materialsByCategory[category]}
+                      pricesByMaterial={pricesByMaterial}
+                      commentsByMaterial={commentsByMaterial}
+                      isExpanded={expandedCategories.has(category)}
+                      onToggle={() => toggleCategory(category)}
+                      onMaterialClick={handleOpenDrawer}
+                      onCategoryRename={handleCategoryRename}
+                    />
+                  ))}
+                </div>
+              ) : (
+                /* Vue liste simple */
+                <div className="space-y-2">
+                  {filteredMaterials.map((material) => (
+                    <MaterialCard
+                      key={material.id}
+                      material={material}
+                      pricesCount={pricesByMaterial[material.id]?.length || 0}
+                      commentsCount={commentsByMaterial[material.id]?.length || 0}
+                      onClick={() => handleOpenDrawer(material)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Material Drawer */}
+              <MaterialDrawer
+                material={selectedDrawerMaterial}
+                isOpen={isDrawerOpen}
+                onClose={() => {
+                  setIsDrawerOpen(false);
+                  setSelectedDrawerMaterial(null);
+                }}
+                prices={drawerPrices}
+                comments={drawerComments}
+                onAddPrice={handleAddPriceFromDrawer}
+                onAddComment={handleAddCommentFromDrawer}
+                onEdit={() => {
+                  if (selectedDrawerMaterial) {
+                    handleEditMaterial(selectedDrawerMaterial);
+                    setIsDrawerOpen(false);
+                  }
+                }}
+                onDelete={() => {
+                  if (selectedDrawerMaterial) {
+                    handleDeleteMaterial(selectedDrawerMaterial.id, selectedDrawerMaterial.name);
+                    setIsDrawerOpen(false);
+                  }
+                }}
+                onUploadImage={async (file) => {
+                  // TODO: Implement image upload
+                  toast.info('Upload photo à implémenter');
+                }}
+              />
             </div>
           ) : (
             <div className="text-center py-16">
