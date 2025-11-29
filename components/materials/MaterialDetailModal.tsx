@@ -22,6 +22,12 @@ interface Material {
   images?: string[];
 }
 
+interface PricePhoto {
+  id: string;
+  url: string;
+  created_at?: string;
+}
+
 interface Price {
   id: number;
   amount: number;
@@ -40,6 +46,7 @@ interface Price {
   notes?: string;
   created_at: string;
   converted_amount?: number;
+  photos?: PricePhoto[];
 }
 
 interface Comment {
@@ -62,6 +69,8 @@ interface MaterialDetailModalProps {
   onAddComment: (content: string) => Promise<void>;
   onUploadImage: (file: File) => Promise<string | null>;
   onDeleteImage?: (imageUrl: string) => Promise<void>;
+  onUploadPricePhoto?: (priceId: number, file: File) => Promise<string | null>;
+  onDeletePricePhoto?: (priceId: number, photoUrl: string) => Promise<void>;
 }
 
 type Tab = 'details' | 'prices' | 'comments' | 'photos';
@@ -96,6 +105,8 @@ export function MaterialDetailModal({
   onAddComment,
   onUploadImage,
   onDeleteImage,
+  onUploadPricePhoto,
+  onDeletePricePhoto,
 }: MaterialDetailModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [isEditing, setIsEditing] = useState(false);
@@ -104,6 +115,8 @@ export function MaterialDetailModal({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
   const [showAddPrice, setShowAddPrice] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [expandedPriceId, setExpandedPriceId] = useState<number | null>(null);
 
   // Editable fields
   const [editData, setEditData] = useState<Partial<Material>>({});
@@ -669,66 +682,157 @@ export function MaterialDetailModal({
                       {countryPrices.map((price) => (
                         <div 
                           key={price.id} 
-                          className="bg-white border border-slate-200 rounded-xl p-4 hover:border-emerald-300 transition-colors"
+                          className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-emerald-300 transition-colors"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xl font-bold text-slate-900">
-                                {price.amount.toLocaleString()} {price.currency}
-                              </p>
-                              {price.converted_amount && price.currency !== 'FCFA' && (
-                                <p className="text-sm text-slate-500">
-                                  ≈ {Math.round(price.converted_amount).toLocaleString()} FCFA
-                                </p>
-                              )}
-                              
-                              {price.supplier && (
-                                <div className="mt-2 space-y-1">
-                                  <p className="font-medium text-sm text-slate-700">{price.supplier.name}</p>
-                                  {price.supplier.contact_name && (
-                                    <p className="text-xs text-slate-500 flex items-center gap-1">
-                                      <User className="h-3 w-3" /> {price.supplier.contact_name}
-                                    </p>
+                          {/* Price header - clickable to expand */}
+                          <div 
+                            className="p-4 cursor-pointer"
+                            onClick={() => setExpandedPriceId(expandedPriceId === price.id ? null : price.id)}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xl font-bold text-slate-900">
+                                    {price.amount.toLocaleString()} {price.currency}
+                                  </p>
+                                  {price.photos && price.photos.length > 0 && (
+                                    <Badge className="bg-violet-100 text-violet-700 border-0 text-xs">
+                                      <ImageIcon className="h-3 w-3 mr-1" />
+                                      {price.photos.length}
+                                    </Badge>
                                   )}
-                                  <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-                                    {price.supplier.phone && (
-                                      <span className="flex items-center gap-1">
-                                        <Phone className="h-3 w-3" /> {price.supplier.phone}
-                                      </span>
+                                </div>
+                                {price.converted_amount && price.currency !== 'FCFA' && (
+                                  <p className="text-sm text-slate-500">
+                                    ≈ {Math.round(price.converted_amount).toLocaleString()} FCFA
+                                  </p>
+                                )}
+                                
+                                {price.supplier && (
+                                  <div className="mt-2 space-y-1">
+                                    <p className="font-medium text-sm text-slate-700">{price.supplier.name}</p>
+                                    {price.supplier.contact_name && (
+                                      <p className="text-xs text-slate-500 flex items-center gap-1">
+                                        <User className="h-3 w-3" /> {price.supplier.contact_name}
+                                      </p>
                                     )}
-                                    {price.supplier.whatsapp && (
-                                      <span>💬 {price.supplier.whatsapp}</span>
-                                    )}
-                                    {price.supplier.wechat && (
-                                      <span>WeChat: {price.supplier.wechat}</span>
-                                    )}
+                                    <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+                                      {price.supplier.phone && (
+                                        <span className="flex items-center gap-1">
+                                          <Phone className="h-3 w-3" /> {price.supplier.phone}
+                                        </span>
+                                      )}
+                                      {price.supplier.whatsapp && (
+                                        <span>💬 {price.supplier.whatsapp}</span>
+                                      )}
+                                      {price.supplier.wechat && (
+                                        <span>WeChat: {price.supplier.wechat}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {price.notes && (
+                                  <p className="text-sm text-slate-500 mt-2 italic bg-slate-50 p-2 rounded">
+                                    {price.notes}
+                                  </p>
+                                )}
+                              </div>
+                              
+                              <div className="flex flex-col items-end gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {new Date(price.created_at).toLocaleDateString('fr-FR')}
+                                </Badge>
+                                <div className="flex items-center gap-1">
+                                  {onDeletePrice && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeletePrice(price.id);
+                                      }}
+                                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <ChevronRight className={cn(
+                                    "h-5 w-5 text-slate-400 transition-transform",
+                                    expandedPriceId === price.id && "rotate-90"
+                                  )} />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded section with photos */}
+                          {expandedPriceId === price.id && (
+                            <div className="border-t border-slate-100 p-4 bg-slate-50 space-y-3">
+                              {/* Photos grid */}
+                              {price.photos && price.photos.length > 0 && (
+                                <div>
+                                  <Label className="text-xs text-slate-500 mb-2 block">Photos du fournisseur</Label>
+                                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                    {price.photos.map((photo, index) => (
+                                      <div 
+                                        key={photo.id || index}
+                                        className="relative aspect-square rounded-lg overflow-hidden bg-slate-200 cursor-pointer group"
+                                        onClick={() => {
+                                          setLightboxImages(price.photos!.map(p => p.url));
+                                          setSelectedImageIndex(index);
+                                          setShowLightbox(true);
+                                        }}
+                                      >
+                                        <img 
+                                          src={photo.url} 
+                                          alt={`Photo ${index + 1}`}
+                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                        />
+                                        {onDeletePricePhoto && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onDeletePricePhoto(price.id, photo.url);
+                                            }}
+                                            className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
                               )}
-                              
-                              {price.notes && (
-                                <p className="text-sm text-slate-500 mt-2 italic bg-slate-50 p-2 rounded">
-                                  {price.notes}
+
+                              {/* Upload photo button */}
+                              {onUploadPricePhoto && (
+                                <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-colors">
+                                  <Camera className="h-4 w-4 text-slate-400" />
+                                  <span className="text-xs text-slate-600">Ajouter une photo</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      if (e.target.files?.[0]) {
+                                        await onUploadPricePhoto(price.id, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              )}
+
+                              {/* No photos message */}
+                              {(!price.photos || price.photos.length === 0) && !onUploadPricePhoto && (
+                                <p className="text-xs text-slate-400 text-center py-2">
+                                  Aucune photo pour ce prix
                                 </p>
                               )}
                             </div>
-                            
-                            <div className="flex flex-col items-end gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {new Date(price.created_at).toLocaleDateString('fr-FR')}
-                              </Badge>
-                              {onDeletePrice && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => onDeletePrice(price.id)}
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -816,6 +920,7 @@ export function MaterialDetailModal({
                       key={index}
                       className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 cursor-pointer group"
                       onClick={() => {
+                        setLightboxImages(material.images || []);
                         setSelectedImageIndex(index);
                         setShowLightbox(true);
                       }}
@@ -867,100 +972,116 @@ export function MaterialDetailModal({
         </div>
       </div>
 
-      {/* Lightbox */}
-      {showLightbox && material.images && material.images.length > 0 && (
+      {/* Lightbox - supports both material images and price photos */}
+      {showLightbox && (lightboxImages.length > 0 || (material.images && material.images.length > 0)) && (
         <div 
           className="fixed inset-0 bg-black z-[60] flex items-center justify-center touch-none"
-          onClick={() => setShowLightbox(false)}
+          onClick={() => {
+            setShowLightbox(false);
+            setLightboxImages([]);
+          }}
         >
           <Button 
             variant="ghost" 
             size="icon"
             className="absolute top-2 right-2 sm:top-4 sm:right-4 text-white hover:bg-white/20 h-10 w-10 z-10"
-            onClick={() => setShowLightbox(false)}
+            onClick={() => {
+              setShowLightbox(false);
+              setLightboxImages([]);
+            }}
           >
             <X className="h-5 w-5" />
           </Button>
 
-          {material.images.length > 1 && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 text-white/80 text-sm bg-black/50 px-3 py-1 rounded-full">
-              {selectedImageIndex + 1} / {material.images.length}
-            </div>
-          )}
+          {(() => {
+            const images = lightboxImages.length > 0 ? lightboxImages : (material.images || []);
+            return images.length > 1 && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 text-white/80 text-sm bg-black/50 px-3 py-1 rounded-full">
+                {selectedImageIndex + 1} / {images.length}
+              </div>
+            );
+          })()}
 
-          <div className="relative w-full h-full flex items-center justify-center p-4">
-            {material.images.length > 1 && (
+          {(() => {
+            const images = lightboxImages.length > 0 ? lightboxImages : (material.images || []);
+            return (
               <>
-                <div 
-                  className="absolute left-0 top-0 bottom-0 w-1/4 sm:hidden z-10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImageIndex((prev) => (prev - 1 + material.images!.length) % material.images!.length);
-                  }}
-                />
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="absolute left-4 text-white hover:bg-white/20 hidden sm:flex"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImageIndex((prev) => (prev - 1 + material.images!.length) % material.images!.length);
-                  }}
-                >
-                  <ChevronLeft className="h-8 w-8" />
-                </Button>
-              </>
-            )}
-            
-            <img 
-              src={material.images[selectedImageIndex]} 
-              alt={material.name}
-              className="max-w-full max-h-full object-contain select-none"
-              onClick={(e) => e.stopPropagation()}
-              draggable={false}
-            />
-
-            {material.images.length > 1 && (
-              <>
-                <div 
-                  className="absolute right-0 top-0 bottom-0 w-1/4 sm:hidden z-10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImageIndex((prev) => (prev + 1) % material.images!.length);
-                  }}
-                />
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="absolute right-4 text-white hover:bg-white/20 hidden sm:flex"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImageIndex((prev) => (prev + 1) % material.images!.length);
-                  }}
-                >
-                  <ChevronRight className="h-8 w-8" />
-                </Button>
-              </>
-            )}
-          </div>
-
-          {material.images.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              {material.images.map((_, index) => (
-                <button
-                  key={index}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all",
-                    index === selectedImageIndex ? "bg-white scale-110" : "bg-white/40"
+                <div className="relative w-full h-full flex items-center justify-center p-4">
+                  {images.length > 1 && (
+                    <>
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 w-1/4 sm:hidden z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
+                        }}
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="absolute left-4 text-white hover:bg-white/20 hidden sm:flex"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
+                        }}
+                      >
+                        <ChevronLeft className="h-8 w-8" />
+                      </Button>
+                    </>
                   )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImageIndex(index);
-                  }}
-                />
-              ))}
-            </div>
-          )}
+                  
+                  <img 
+                    src={images[selectedImageIndex]} 
+                    alt={material.name}
+                    className="max-w-full max-h-full object-contain select-none"
+                    onClick={(e) => e.stopPropagation()}
+                    draggable={false}
+                  />
+
+                  {images.length > 1 && (
+                    <>
+                      <div 
+                        className="absolute right-0 top-0 bottom-0 w-1/4 sm:hidden z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedImageIndex((prev) => (prev + 1) % images.length);
+                        }}
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="absolute right-4 text-white hover:bg-white/20 hidden sm:flex"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedImageIndex((prev) => (prev + 1) % images.length);
+                        }}
+                      >
+                        <ChevronRight className="h-8 w-8" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {images.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    {images.map((_, index) => (
+                      <button
+                        key={index}
+                        className={cn(
+                          "w-2 h-2 rounded-full transition-all",
+                          index === selectedImageIndex ? "bg-white scale-110" : "bg-white/40"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedImageIndex(index);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
     </>
