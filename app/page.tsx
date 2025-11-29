@@ -21,7 +21,13 @@ import {
   UtensilsCrossed,
   Store,
   HeartPulse,
-  Package
+  Package,
+  Factory,
+  Truck,
+  MessageCircle,
+  BadgeCheck,
+  Handshake,
+  MapPin
 } from "lucide-react";
 import Image from "next/image";
 import { HowItWorksSimple } from "@/components/home/HowItWorksSimple";
@@ -84,53 +90,93 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-blue-50 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-red-50 via-white to-amber-50 pointer-events-none" />
           
-          <div className="container mx-auto px-4 sm:px-6 py-20 sm:py-28 relative">
-            <div className="max-w-4xl mx-auto text-center space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-100 text-violet-700 text-sm font-medium">
-                <Sparkles className="h-4 w-4" />
-                Plateforme de Sourcing B2B depuis la Chine
+          {/* Decorative elements */}
+          <div className="absolute top-20 left-10 w-72 h-72 bg-red-200/30 rounded-full blur-3xl" />
+          <div className="absolute bottom-10 right-10 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
+          
+          <div className="container mx-auto px-4 sm:px-6 py-16 sm:py-24 relative">
+            <div className="max-w-5xl mx-auto text-center space-y-8">
+              {/* Twinsk Badge */}
+              <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-red-500 to-amber-500 text-white text-sm font-semibold shadow-lg shadow-red-500/25">
+                <span className="flex items-center gap-1.5">
+                  <Globe className="h-4 w-4" />
+                  Powered by Twinsk
+                </span>
+                <span className="w-px h-4 bg-white/30" />
+                <span>Réseau de fournisseurs chinois</span>
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 leading-tight">
-                Importez, comparez, sourcez
-                <span className="block bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                  en toute simplicité
+                Vos devis envoyés,
+                <span className="block bg-gradient-to-r from-red-600 to-amber-500 bg-clip-text text-transparent">
+                  la Chine vous répond
                 </span>
               </h1>
               
-              <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-                La plateforme qui centralise vos besoins, collecte les prix de fournisseurs chinois et vous aide à prendre les meilleures décisions d'achat.
+              <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                Créez vos demandes de cotation, <strong className="text-slate-800">Twinsk</strong> les transmet à son réseau de fournisseurs vérifiés en Chine et vous recevez des offres compétitives directement sur la plateforme.
               </p>
 
+              {/* Trust indicators */}
+              <div className="flex flex-wrap justify-center gap-4 sm:gap-8 pt-2">
+                <div className="flex items-center gap-2 text-slate-600">
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                    <Factory className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-slate-900">500+</p>
+                    <p className="text-xs">Usines partenaires</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <BadgeCheck className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-slate-900">100%</p>
+                    <p className="text-xs">Fournisseurs vérifiés</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <MapPin className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-slate-900">Guangzhou</p>
+                    <p className="text-xs">Bureau sur place</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Secteurs supportés */}
-              <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <div className="flex flex-wrap justify-center gap-2 pt-4">
                 {[
                   { icon: Building2, label: 'BTP' },
                   { icon: Hotel, label: 'Hôtellerie' },
                   { icon: UtensilsCrossed, label: 'Restauration' },
                   { icon: Store, label: 'Retail' },
                   { icon: HeartPulse, label: 'Médical' },
-                  { icon: Package, label: 'Et plus...' },
+                  { icon: Package, label: 'Tous secteurs' },
                 ].map(({ icon: Icon, label }) => (
-                  <span key={label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-sm">
+                  <span key={label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur border border-slate-200 text-slate-600 text-sm shadow-sm">
                     <Icon className="h-3.5 w-3.5" />
                     {label}
                   </span>
                 ))}
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
                 <Link href="/signup">
-                  <Button size="lg" className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white px-8 h-12 text-base">
-                    Démarrer gratuitement
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                  <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-700 hover:to-amber-600 text-white px-8 h-14 text-base font-semibold shadow-lg shadow-red-500/25 transition-all hover:shadow-red-500/40">
+                    <Send className="mr-2 h-5 w-5" />
+                    Envoyer ma première cotation
                   </Button>
                 </Link>
                 <Link href="#how-it-works">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto border-slate-300 text-slate-700 hover:bg-slate-50 h-12 text-base">
-                    Découvrir la plateforme
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto border-slate-300 text-slate-700 hover:bg-white h-14 text-base">
+                    Comment ça marche ?
                   </Button>
                 </Link>
               </div>
@@ -138,46 +184,68 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Section: Problème / Solution */}
-        <section className="py-20 bg-slate-50">
-          <div className="container mx-auto px-4 sm:px-6">
+        {/* Section: Comment Twinsk vous aide */}
+        <section className="py-20 bg-slate-900 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-red-600/20 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-amber-600/10 via-transparent to-transparent" />
+          
+          <div className="container mx-auto px-4 sm:px-6 relative">
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-16">
-                <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-                  Le sourcing international, simplifié
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 text-red-300 text-sm font-medium mb-6">
+                  <Handshake className="h-4 w-4" />
+                  Le réseau Twinsk à votre service
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                  Votre bureau d'achat en Chine
                 </h2>
-                <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                  Fini les emails perdus, les fichiers Excel éparpillés et les comparaisons manuelles interminables.
+                <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+                  Twinsk dispose d'une équipe sur place à Guangzhou qui gère vos demandes et négocie avec les meilleurs fournisseurs.
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-8">
+              <div className="grid md:grid-cols-3 gap-6">
                 {[
                   {
-                    icon: Clock,
-                    title: "Gain de temps",
-                    description: "Centralisez tous vos besoins et fournisseurs en un seul endroit. Plus de va-et-vient entre emails et tableurs.",
-                    color: "violet"
+                    icon: Send,
+                    title: "1. Vous envoyez",
+                    description: "Créez votre demande de cotation avec vos spécifications. Uploadez vos fichiers, photos, plans.",
+                    color: "red"
                   },
                   {
-                    icon: TrendingDown,
-                    title: "Réduction des coûts",
-                    description: "Comparez instantanément les prix locaux vs import Chine. Identifiez les meilleures opportunités.",
+                    icon: Factory,
+                    title: "2. Twinsk source",
+                    description: "Notre équipe en Chine contacte les usines partenaires et collecte les meilleures offres pour vous.",
+                    color: "amber"
+                  },
+                  {
+                    icon: BarChart3,
+                    title: "3. Vous comparez",
+                    description: "Recevez les prix directement sur la plateforme. Comparez, négociez et passez commande.",
                     color: "emerald"
-                  },
-                  {
-                    icon: Shield,
-                    title: "Sécurité",
-                    description: "Vos données sont protégées. Historique complet des échanges et traçabilité des prix.",
-                    color: "blue"
                   }
                 ].map((item) => (
-                  <div key={item.title} className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-                    <div className={`w-12 h-12 rounded-xl bg-${item.color}-100 flex items-center justify-center mb-5`}>
-                      <item.icon className={`h-6 w-6 text-${item.color}-600`} />
+                  <div key={item.title} className="bg-slate-800/50 backdrop-blur rounded-2xl p-8 border border-slate-700 hover:border-slate-600 transition-all group">
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 flex items-center justify-center mb-6 shadow-lg shadow-${item.color}-500/30 group-hover:scale-110 transition-transform`}>
+                      <item.icon className="h-7 w-7 text-white" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-900 mb-3">{item.title}</h3>
-                    <p className="text-slate-600 leading-relaxed">{item.description}</p>
+                    <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
+                    <p className="text-slate-400 leading-relaxed">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Stats */}
+              <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6">
+                {[
+                  { value: '48h', label: 'Délai moyen de réponse' },
+                  { value: '30%', label: 'Économies moyennes' },
+                  { value: '15+', label: 'Catégories de produits' },
+                  { value: '24/7', label: 'Support disponible' },
+                ].map((stat) => (
+                  <div key={stat.label} className="text-center">
+                    <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-red-400 to-amber-400 bg-clip-text text-transparent">{stat.value}</p>
+                    <p className="text-sm text-slate-400 mt-1">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -186,90 +254,90 @@ export default function Home() {
         </section>
 
         {/* Section: Fonctionnalités Clés */}
-        <section id="features" className="py-20">
+        <section id="features" className="py-20 bg-slate-50">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-16">
                 <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-                  Tout ce dont vous avez besoin
+                  Une plateforme complète
                 </h2>
                 <p className="text-lg text-slate-600">
-                  Des outils puissants pour chaque étape de votre sourcing
+                  Tous les outils pour gérer vos achats internationaux
                 </p>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-6">
                 {/* Feature 1: Import IA */}
-                <div className="group relative bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl p-8 border border-violet-100 hover:border-violet-200 transition-all">
+                <div className="group relative bg-white rounded-2xl p-8 border border-slate-200 hover:border-red-200 hover:shadow-lg transition-all">
                   <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-500/25">
                       <FileUp className="h-7 w-7 text-white" />
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-slate-900 mb-2">Import intelligent</h3>
                       <p className="text-slate-600 leading-relaxed">
-                        Uploadez vos listes Excel, PDF ou CSV. L'IA analyse et structure automatiquement vos données selon votre secteur d'activité.
+                        Uploadez vos listes Excel, PDF ou photos. L'IA analyse et structure automatiquement vos besoins.
                       </p>
-                      <div className="mt-4 flex items-center gap-2 text-sm text-violet-600 font-medium">
+                      <div className="mt-4 flex items-center gap-2 text-sm text-red-600 font-medium">
                         <Zap className="h-4 w-4" />
-                        Mapping automatique par IA
+                        Extraction automatique par IA
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Feature 2: Multi-fournisseurs */}
-                <div className="group relative bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-8 border border-emerald-100 hover:border-emerald-200 transition-all">
+                {/* Feature 2: Réseau Twinsk */}
+                <div className="group relative bg-white rounded-2xl p-8 border border-slate-200 hover:border-amber-200 hover:shadow-lg transition-all">
                   <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-emerald-600 flex items-center justify-center flex-shrink-0">
-                      <Users className="h-7 w-7 text-white" />
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-amber-500/25">
+                      <Factory className="h-7 w-7 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Gestion fournisseurs</h3>
+                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Réseau Twinsk</h3>
                       <p className="text-slate-600 leading-relaxed">
-                        Centralisez tous vos contacts fournisseurs. Gérez les informations, suivez l'historique des prix et des échanges.
+                        Accédez à plus de 500 usines vérifiées en Chine. Notre équipe sur place négocie pour vous.
                       </p>
-                      <div className="mt-4 flex items-center gap-2 text-sm text-emerald-600 font-medium">
-                        <Globe className="h-4 w-4" />
-                        Base fournisseurs Chine intégrée
+                      <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 font-medium">
+                        <BadgeCheck className="h-4 w-4" />
+                        Fournisseurs certifiés
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Feature 3: Comparaison */}
-                <div className="group relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100 hover:border-blue-200 transition-all">
+                <div className="group relative bg-white rounded-2xl p-8 border border-slate-200 hover:border-emerald-200 hover:shadow-lg transition-all">
                   <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/25">
                       <BarChart3 className="h-7 w-7 text-white" />
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-slate-900 mb-2">Comparateur de prix</h3>
                       <p className="text-slate-600 leading-relaxed">
-                        Visualisez les écarts de prix entre fournisseurs. Simulez les coûts d'import (transport, douane) pour une décision éclairée.
+                        Comparez les offres reçues. Visualisez les économies potentielles avec les coûts d'import inclus.
                       </p>
-                      <div className="mt-4 flex items-center gap-2 text-sm text-blue-600 font-medium">
+                      <div className="mt-4 flex items-center gap-2 text-sm text-emerald-600 font-medium">
                         <TrendingDown className="h-4 w-4" />
-                        Calcul automatique des économies
+                        Jusqu'à 30% d'économies
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Feature 4: Cotation en ligne */}
-                <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-8 border border-amber-100 hover:border-amber-200 transition-all">
+                {/* Feature 4: Suivi logistique */}
+                <div className="group relative bg-white rounded-2xl p-8 border border-slate-200 hover:border-blue-200 hover:shadow-lg transition-all">
                   <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0">
-                      <Send className="h-7 w-7 text-white" />
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/25">
+                      <Truck className="h-7 w-7 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Cotation en ligne</h3>
+                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Suivi complet</h3>
                       <p className="text-slate-600 leading-relaxed">
-                        Générez un lien unique pour chaque fournisseur. Ils remplissent leurs prix directement en ligne. Fini les emails perdus.
+                        De la cotation à la livraison, suivez chaque étape. Photos d'usine, contrôle qualité, expédition.
                       </p>
-                      <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 font-medium">
+                      <div className="mt-4 flex items-center gap-2 text-sm text-blue-600 font-medium">
                         <CheckCircle2 className="h-4 w-4" />
-                        Réponses centralisées automatiquement
+                        Traçabilité complète
                       </div>
                     </div>
                   </div>
@@ -368,28 +436,43 @@ export default function Home() {
         {/* CTA Section */}
         <section className="py-20">
           <div className="container mx-auto px-4 sm:px-6">
-            <div className="max-w-3xl mx-auto text-center bg-gradient-to-br from-violet-600 to-purple-700 rounded-3xl p-10 sm:p-14 shadow-2xl">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Prêt à optimiser vos achats ?
-              </h2>
-              <p className="text-violet-100 text-lg mb-8 max-w-xl mx-auto">
-                Rejoignez les entreprises qui sourcent efficacement avec By Project.
-              </p>
-              <Link href="/signup">
-                <Button size="lg" className="bg-white hover:bg-violet-50 text-violet-700 font-semibold px-10 h-12 text-base">
-                  Créer un compte gratuit
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <div className="flex items-center justify-center gap-8 mt-8 text-sm text-violet-200">
-                <span className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Sans engagement
-                </span>
-                <span className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Accès immédiat
-                </span>
+            <div className="max-w-4xl mx-auto text-center bg-gradient-to-br from-red-600 via-red-500 to-amber-500 rounded-3xl p-10 sm:p-14 shadow-2xl relative overflow-hidden">
+              {/* Decorative */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-400/20 rounded-full blur-3xl" />
+              
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white text-sm font-medium mb-6">
+                  <Globe className="h-4 w-4" />
+                  Twinsk • Votre partenaire en Chine
+                </div>
+                
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                  Prêt à sourcer depuis la Chine ?
+                </h2>
+                <p className="text-red-100 text-lg mb-8 max-w-xl mx-auto">
+                  Envoyez votre première demande de cotation et recevez des offres de fournisseurs chinois vérifiés sous 48h.
+                </p>
+                <Link href="/signup">
+                  <Button size="lg" className="bg-white hover:bg-red-50 text-red-600 font-semibold px-10 h-14 text-base shadow-lg">
+                    <Send className="mr-2 h-5 w-5" />
+                    Envoyer ma cotation
+                  </Button>
+                </Link>
+                <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 mt-8 text-sm text-red-100">
+                  <span className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Sans engagement
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Réponse sous 48h
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <BadgeCheck className="h-5 w-5" />
+                    Fournisseurs vérifiés
+                  </span>
+                </div>
               </div>
             </div>
           </div>
