@@ -18,7 +18,7 @@ import { ImageUpload } from "@/components/project/ImageUpload";
 import { MaterialsFilter } from "@/components/materials/MaterialsFilter";
 import { AISuggestions } from "@/components/project/AISuggestions";
 import { CategoryGroup } from "@/components/materials/CategoryGroup";
-import { MaterialDrawer } from "@/components/materials/MaterialDrawer";
+import { MaterialDetailModal } from "@/components/materials/MaterialDetailModal";
 import { MaterialCard } from "@/components/materials/MaterialCard";
 import {
   Dialog,
@@ -1761,8 +1761,8 @@ export default function ProjectPage() {
                 </div>
               )}
 
-              {/* Material Drawer */}
-              <MaterialDrawer
+              {/* Material Detail Modal */}
+              <MaterialDetailModal
                 material={selectedDrawerMaterial}
                 isOpen={isDrawerOpen}
                 onClose={() => {
@@ -1771,12 +1771,35 @@ export default function ProjectPage() {
                 }}
                 prices={drawerPrices}
                 comments={drawerComments}
-                onAddPrice={handleAddPriceFromDrawer}
-                onAddComment={handleAddCommentFromDrawer}
-                onEdit={() => {
-                  if (selectedDrawerMaterial) {
-                    handleEditMaterial(selectedDrawerMaterial);
-                    setIsDrawerOpen(false);
+                onSave={async (updatedMaterial) => {
+                  if (!updatedMaterial.id) return;
+                  try {
+                    const { error } = await supabase
+                      .from('materials')
+                      .update({
+                        name: updatedMaterial.name,
+                        description: updatedMaterial.description,
+                        category: updatedMaterial.category,
+                        quantity: updatedMaterial.quantity,
+                        // surface: updatedMaterial.surface,
+                        // weight: updatedMaterial.weight,
+                        // volume: updatedMaterial.volume,
+                      })
+                      .eq('id', updatedMaterial.id);
+                    
+                    if (error) throw error;
+                    toast.success('Matériau mis à jour');
+                    loadMaterials();
+                    // Mettre à jour le matériau sélectionné
+                    if (selectedDrawerMaterial) {
+                      setSelectedDrawerMaterial({
+                        ...selectedDrawerMaterial,
+                        ...updatedMaterial,
+                      } as any);
+                    }
+                  } catch (error) {
+                    console.error('Error updating material:', error);
+                    toast.error('Erreur lors de la mise à jour');
                   }
                 }}
                 onDelete={() => {
@@ -1785,9 +1808,64 @@ export default function ProjectPage() {
                     setIsDrawerOpen(false);
                   }
                 }}
-                onUploadImage={async (file) => {
-                  // TODO: Implement image upload
-                  toast.info('Upload photo à implémenter');
+                onAddPrice={handleAddPriceFromDrawer}
+                onDeletePrice={async (priceId) => {
+                  try {
+                    const { error } = await supabase
+                      .from('prices')
+                      .delete()
+                      .eq('id', priceId);
+                    
+                    if (error) throw error;
+                    toast.success('Prix supprimé');
+                    if (selectedDrawerMaterial) {
+                      await loadDrawerPrices(selectedDrawerMaterial.id);
+                    }
+                    await loadAllPrices();
+                  } catch (error) {
+                    console.error('Error deleting price:', error);
+                    toast.error('Erreur lors de la suppression');
+                  }
+                }}
+                onAddComment={handleAddCommentFromDrawer}
+                onUploadImage={async (file: File) => {
+                  if (!selectedDrawerMaterial) return null;
+                  try {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${selectedDrawerMaterial.id}/${Date.now()}.${fileExt}`;
+                    
+                    const { error: uploadError } = await supabase.storage
+                      .from('project-materials')
+                      .upload(fileName, file);
+                    
+                    if (uploadError) throw uploadError;
+                    
+                    const { data: { publicUrl } } = supabase.storage
+                      .from('project-materials')
+                      .getPublicUrl(fileName);
+                    
+                    // Mettre à jour les images du matériau
+                    const currentImages = selectedDrawerMaterial.images || [];
+                    const { error: updateError } = await supabase
+                      .from('materials')
+                      .update({ 
+                        specs: { 
+                          ...selectedDrawerMaterial.specs,
+                          images: [...currentImages, publicUrl]
+                        }
+                      })
+                      .eq('id', selectedDrawerMaterial.id);
+                    
+                    if (updateError) throw updateError;
+                    
+                    toast.success('Photo ajoutée');
+                    loadMaterials();
+                    return publicUrl;
+                  } catch (error) {
+                    console.error('Error uploading image:', error);
+                    toast.error("Erreur lors de l'upload");
+                    return null;
+                  }
                 }}
               />
             </div>
