@@ -53,8 +53,8 @@ export default function NewProjectPage() {
   
   // Form data
   const [selectedSectorId, setSelectedSectorId] = useState<string>("");
+  const [customSectorName, setCustomSectorName] = useState<string>("");
   const [projectName, setProjectName] = useState("");
-  const [estimatedBudget, setEstimatedBudget] = useState("");
   const [importMethod, setImportMethod] = useState<ImportMethod>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -80,6 +80,7 @@ export default function NewProjectPage() {
 
   // Get selected sector object
   const selectedSector = sectors.find(s => s.id === selectedSectorId);
+  const isOtherSector = selectedSector?.slug === 'autre';
 
   // Handlers
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,9 +109,12 @@ export default function NewProjectPage() {
   };
 
   const canSubmit = (): boolean => {
+    const sectorValid = selectedSectorId !== "" && 
+      (!isOtherSector || customSectorName.trim().length > 0);
+    
     return (
       projectName.trim().length > 0 &&
-      selectedSectorId !== "" &&
+      sectorValid &&
       importMethod !== null &&
       (importMethod !== 'file' || selectedFile !== null)
     );
@@ -161,8 +165,7 @@ export default function NewProjectPage() {
         user_id: user.id,
         name: projectName,
         sector_id: selectedSectorId,
-        estimated_budget: estimatedBudget ? parseFloat(estimatedBudget) : null,
-        budget_currency: 'EUR',
+        custom_sector_name: isOtherSector ? customSectorName.trim() : null,
         project_type: 'sourcing',
         file_path: filePath,
         mapping_status: importMethod === 'file' ? 'pending' : null,
@@ -253,7 +256,13 @@ export default function NewProjectPage() {
                 </Label>
                 <Select
                   value={selectedSectorId}
-                  onValueChange={setSelectedSectorId}
+                  onValueChange={(value) => {
+                    setSelectedSectorId(value);
+                    // Reset custom sector name when changing sector
+                    if (sectors.find(s => s.id === value)?.slug !== 'autre') {
+                      setCustomSectorName("");
+                    }
+                  }}
                   disabled={isLoading || loadingSectors}
                 >
                   <SelectTrigger className="h-11">
@@ -269,31 +278,33 @@ export default function NewProjectPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedSector && (
+                {selectedSector && !isOtherSector && (
                   <p className="text-xs text-slate-500">
                     {selectedSector.description}
                   </p>
                 )}
               </div>
 
-              {/* Budget estimé */}
-              <div className="space-y-2">
-                <Label htmlFor="budget">Budget estimé (optionnel)</Label>
-                <div className="relative">
+              {/* Champ personnalisé pour secteur "Autre" */}
+              {isOtherSector && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <Label htmlFor="customSector">
+                    Précisez votre secteur <span className="text-red-500">*</span>
+                  </Label>
                   <Input
-                    id="budget"
-                    type="number"
-                    placeholder="50000"
-                    value={estimatedBudget}
-                    onChange={(e) => setEstimatedBudget(e.target.value)}
+                    id="customSector"
+                    placeholder="Ex: Cosmétique, Textile, Électronique grand public..."
+                    value={customSectorName}
+                    onChange={(e) => setCustomSectorName(e.target.value)}
                     disabled={isLoading}
-                    className="h-11 pr-14"
+                    className="h-11"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                    EUR
-                  </span>
+                  <p className="text-xs text-slate-500">
+                    Cette information sera utilisée par l'IA pour adapter l'analyse de vos fichiers et les suggestions.
+                  </p>
                 </div>
-              </div>
+              )}
+
             </CardContent>
           </Card>
 
