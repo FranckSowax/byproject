@@ -1,38 +1,126 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, FolderPlus, Upload, Link as LinkIcon, List, FileUp, Image as ImageIcon } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { 
+  ArrowLeft, 
+  ArrowRight,
+  Check,
+  Upload, 
+  FileUp, 
+  List,
+  Sparkles,
+  Building2,
+  Hotel,
+  UtensilsCrossed,
+  Store,
+  Briefcase,
+  HeartPulse,
+  PartyPopper,
+  Package,
+  Loader2
+} from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
-type CreationMode = 'select' | 'file' | 'manual';
+// Types
+type Step = 1 | 2 | 3 | 4;
+type ImportMethod = 'file' | 'manual' | 'template' | null;
+
+interface Sector {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
+  color: string;
+  description: string;
+  item_label: string;
+  default_categories: string[];
+}
+
+// Mapping des icônes
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  'building-2': Building2,
+  'hotel': Hotel,
+  'utensils': UtensilsCrossed,
+  'store': Store,
+  'briefcase': Briefcase,
+  'heart-pulse': HeartPulse,
+  'party-popper': PartyPopper,
+  'package': Package,
+};
+
+// Couleurs par secteur
+const colorMap: Record<string, { bg: string; border: string; text: string; light: string }> = {
+  '#f59e0b': { bg: 'bg-amber-500', border: 'border-amber-300', text: 'text-amber-600', light: 'bg-amber-50' },
+  '#8b5cf6': { bg: 'bg-violet-500', border: 'border-violet-300', text: 'text-violet-600', light: 'bg-violet-50' },
+  '#ef4444': { bg: 'bg-red-500', border: 'border-red-300', text: 'text-red-600', light: 'bg-red-50' },
+  '#10b981': { bg: 'bg-emerald-500', border: 'border-emerald-300', text: 'text-emerald-600', light: 'bg-emerald-50' },
+  '#3b82f6': { bg: 'bg-blue-500', border: 'border-blue-300', text: 'text-blue-600', light: 'bg-blue-50' },
+  '#06b6d4': { bg: 'bg-cyan-500', border: 'border-cyan-300', text: 'text-cyan-600', light: 'bg-cyan-50' },
+  '#ec4899': { bg: 'bg-pink-500', border: 'border-pink-300', text: 'text-pink-600', light: 'bg-pink-50' },
+  '#6b7280': { bg: 'bg-gray-500', border: 'border-gray-300', text: 'text-gray-600', light: 'bg-gray-50' },
+};
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+  
+  // State
+  const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [creationMode, setCreationMode] = useState<CreationMode>('select');
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    sourceUrl: "",
-  });
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [loadingSectors, setLoadingSectors] = useState(true);
+  
+  // Form data
+  const [selectedSector, setSelectedSector] = useState<Sector | null>(null);
+  const [projectName, setProjectName] = useState("");
+  const [estimatedBudget, setEstimatedBudget] = useState("");
+  const [importMethod, setImportMethod] = useState<ImportMethod>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // Charger les secteurs depuis Supabase
+  useEffect(() => {
+    async function loadSectors() {
+      // Note: cast as any car les types Supabase ne sont pas encore régénérés
+      const { data, error } = await (supabase as any)
+        .from('sectors')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+      
+      if (error) {
+        console.error('Error loading sectors:', error);
+        toast.error('Erreur lors du chargement des secteurs');
+      } else {
+        setSectors((data as Sector[]) || []);
+        
+        // Si un secteur est passé en paramètre URL, le sélectionner
+        const sectorSlug = searchParams.get('sector');
+        if (sectorSlug && data) {
+          const sector = (data as Sector[]).find(s => s.slug === sectorSlug);
+          if (sector) {
+            setSelectedSector(sector);
+            setCurrentStep(2);
+          }
+        }
+      }
+      setLoadingSectors(false);
+    }
+    loadSectors();
+  }, [searchParams, supabase]);
+
+  // Handlers
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
-      // Vérifier le type de fichier
       const allowedTypes = [
         'application/pdf',
         'text/csv',
@@ -41,565 +129,523 @@ export default function NewProjectPage() {
       ];
       
       if (!allowedTypes.includes(file.type)) {
-        toast.error("Type de fichier non supporté. Utilisez PDF, CSV ou Excel.");
+        toast.error("Format non supporté. Utilisez PDF, CSV ou Excel.");
         return;
       }
       
-      // Vérifier la taille (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        toast.error("Le fichier est trop volumineux (max 10MB)");
+        toast.error("Fichier trop volumineux (max 10MB)");
         return;
       }
       
       setSelectedFile(file);
-      toast.success(`Fichier sélectionné: ${file.name}`);
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Vérifier le type de fichier
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-      
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Type d'image non supporté. Utilisez JPG, PNG ou WebP.");
-        return;
-      }
-      
-      // Vérifier la taille (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("L'image est trop volumineuse (max 5MB)");
-        return;
-      }
-      
-      setSelectedImage(file);
-      
-      // Créer un aperçu
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      
-      toast.success(`Image sélectionnée: ${file.name}`);
+  const canProceed = (): boolean => {
+    switch (currentStep) {
+      case 1: return selectedSector !== null;
+      case 2: return projectName.trim().length > 0;
+      case 3: return importMethod !== null && (importMethod !== 'file' || selectedFile !== null);
+      default: return false;
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name.trim()) {
-      toast.error("Le nom du projet est requis");
-      return;
+  const handleNext = () => {
+    if (currentStep < 4 && canProceed()) {
+      setCurrentStep((currentStep + 1) as Step);
     }
+  };
 
-    // Validation selon le mode
-    if (creationMode === 'file' && !selectedFile) {
-      toast.error("Veuillez sélectionner un fichier");
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep((currentStep - 1) as Step);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedSector || !projectName.trim()) {
+      toast.error("Informations manquantes");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Récupérer l'utilisateur connecté
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        // Si pas d'utilisateur Supabase, utiliser le mock user
-        const mockUser = localStorage.getItem("mockUser");
-        if (!mockUser) {
-          toast.error("Vous devez être connecté");
-          router.push("/login");
-          return;
-        }
-        
-        // Pour le mock user, créer un projet simulé
-        const mockProjectId = `mock-${Date.now()}`;
-        
-        // Si fichier uploadé, sauvegarder pour simulation
-        if (creationMode === 'file' && selectedFile) {
-          // Lire le fichier localement
-          const reader = new FileReader();
-          reader.onload = async (e) => {
-            const content = e.target?.result as string;
-            localStorage.setItem(`project_${mockProjectId}`, JSON.stringify({
-              filePath: null,
-              fileName: selectedFile.name,
-              fileContent: content,
-              isMock: true,
-            }));
-            
-            toast.success("Projet créé avec succès!");
-            router.push(`/dashboard/projects/${mockProjectId}/mapping`);
-          };
-          reader.readAsText(selectedFile);
-        } else {
-          // Mode manuel - créer le projet et rediriger
-          toast.success("Projet créé avec succès!");
-          router.push(`/dashboard/projects/${mockProjectId}`);
-        }
-        
-        setIsLoading(false);
+        toast.error("Vous devez être connecté");
+        router.push("/login");
         return;
       }
 
-      // Upload de l'image de présentation si présente
-      let imageUrl = null;
-      if (selectedImage) {
-        // Utiliser l'API route pour uploader (contourne RLS)
-        const formData = new FormData();
-        formData.append('file', selectedImage);
-        formData.append('userId', user.id);
-        formData.append('bucket', 'project-images');
-
-        try {
-          const response = await fetch('/api/upload-image', {
-            method: 'POST',
-            body: formData
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Upload failed');
-          }
-
-          const data = await response.json();
-          imageUrl = data.publicUrl;
-        } catch (error) {
-          console.error("Image upload error:", error);
-          toast.error("Erreur lors de l'upload de l'image");
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Upload du fichier si présent et mode fichier
+      // Upload du fichier si présent
       let filePath = null;
-      let fileName = null;
-      if (creationMode === 'file' && selectedFile) {
-        fileName = selectedFile.name;
-        
-        // Utiliser l'API route pour uploader (contourne RLS)
+      if (importMethod === 'file' && selectedFile) {
         const formData = new FormData();
         formData.append('file', selectedFile);
         formData.append('userId', user.id);
         formData.append('bucket', 'project-files');
 
-        try {
-          const response = await fetch('/api/upload-image', {
-            method: 'POST',
-            body: formData
-          });
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        });
 
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Upload failed');
-          }
-
-          const data = await response.json();
-          filePath = data.path;
-        } catch (error) {
-          console.error("Upload error:", error);
-          toast.error("Erreur lors de l'upload du fichier");
-          setIsLoading(false);
-          return;
+        if (!response.ok) {
+          throw new Error('Erreur upload fichier');
         }
+
+        const data = await response.json();
+        filePath = data.path;
       }
 
-      // Créer le projet dans la base de données
-      const projectData: any = {
+      // Créer le projet
+      const projectData = {
         user_id: user.id,
-        name: formData.name,
-        source_url: formData.sourceUrl || null,
-        image_url: imageUrl,
+        name: projectName,
+        sector_id: selectedSector.id,
+        estimated_budget: estimatedBudget ? parseFloat(estimatedBudget) : null,
+        budget_currency: 'EUR',
+        project_type: 'sourcing',
+        file_path: filePath,
+        mapping_status: importMethod === 'file' ? 'pending' : null,
       };
 
-      // Ajouter file_path et mapping_status uniquement si en mode fichier
-      if (creationMode === 'file') {
-        projectData.file_path = filePath;
-        projectData.mapping_status = 'pending';
-      }
-
-      const { data: project, error: projectError } = await supabase
+      const { data: project, error } = await supabase
         .from('projects')
         .insert(projectData)
         .select()
         .single();
 
-      if (projectError) {
-        console.error("Project creation error:", projectError);
-        toast.error(`Erreur lors de la création du projet: ${projectError.message}`);
-        setIsLoading(false);
-        return;
-      }
+      if (error) throw error;
 
       toast.success("Projet créé avec succès!");
-      
-      // Sauvegarder les infos du fichier pour l'analyse
-      if (creationMode === 'file' && selectedFile && filePath) {
+
+      // Redirection selon la méthode
+      if (importMethod === 'file' && filePath) {
         localStorage.setItem(`project_${project.id}`, JSON.stringify({
           filePath,
-          fileName,
+          fileName: selectedFile?.name,
         }));
-      }
-      
-      // Rediriger selon le mode
-      if (creationMode === 'file' && selectedFile) {
-        // Si fichier uploadé, aller vers la page d'analyse IA
         router.push(`/dashboard/projects/${project.id}/mapping`);
       } else {
-        // Mode manuel - aller directement au projet pour ajouter des matériaux
         router.push(`/dashboard/projects/${project.id}`);
       }
 
     } catch (error: any) {
       console.error("Error:", error);
-      toast.error(`Une erreur est survenue: ${error.message || 'Erreur inconnue'}`);
+      toast.error(error.message || "Une erreur est survenue");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Render step indicator
+  const steps = [
+    { num: 1, label: 'Secteur' },
+    { num: 2, label: 'Projet' },
+    { num: 3, label: 'Import' },
+    { num: 4, label: 'Confirmation' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FF] to-[#E8EEFF] p-4 md:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4">
-          <Link href="/dashboard">
-            <Button
-              variant="ghost"
-              className="hover:bg-white/50 rounded-xl w-fit"
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="text-slate-600">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Retour
+              </Button>
+            </Link>
+            <h1 className="text-lg font-semibold text-slate-900">Nouveau Projet</h1>
+            <div className="w-20" /> {/* Spacer */}
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Steps */}
+      <div className="bg-white border-b border-slate-100">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={step.num} className="flex items-center">
+                <div className="flex flex-col items-center">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
+                    currentStep > step.num 
+                      ? "bg-violet-600 text-white" 
+                      : currentStep === step.num 
+                        ? "bg-violet-600 text-white ring-4 ring-violet-100" 
+                        : "bg-slate-100 text-slate-400"
+                  )}>
+                    {currentStep > step.num ? <Check className="h-5 w-5" /> : step.num}
+                  </div>
+                  <span className={cn(
+                    "text-xs mt-1.5 font-medium",
+                    currentStep >= step.num ? "text-slate-900" : "text-slate-400"
+                  )}>
+                    {step.label}
+                  </span>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={cn(
+                    "w-16 sm:w-24 h-0.5 mx-2",
+                    currentStep > step.num ? "bg-violet-600" : "bg-slate-200"
+                  )} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        {/* Step 1: Secteur */}
+        {currentStep === 1 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-slate-900">Quel est votre secteur ?</h2>
+              <p className="text-slate-600 mt-2">Sélectionnez le domaine de votre projet</p>
+            </div>
+
+            {loadingSectors ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {sectors.map((sector) => {
+                  const Icon = iconMap[sector.icon] || Package;
+                  const colors = colorMap[sector.color] || colorMap['#6b7280'];
+                  const isSelected = selectedSector?.id === sector.id;
+                  
+                  return (
+                    <button
+                      key={sector.id}
+                      onClick={() => setSelectedSector(sector)}
+                      className={cn(
+                        "relative flex flex-col items-center p-4 rounded-xl border-2 transition-all",
+                        isSelected 
+                          ? `${colors.border} ${colors.light} ring-2 ring-offset-2` 
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+                      )}
+                      style={isSelected ? { '--tw-ring-color': sector.color } as React.CSSProperties : {}}
+                    >
+                      <div className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center mb-2",
+                        colors.bg
+                      )}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-800 text-center leading-tight">
+                        {sector.name}
+                      </span>
+                      {isSelected && (
+                        <div className={cn("absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center", colors.bg)}>
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Informations Projet */}
+        {currentStep === 2 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-slate-900">Informations du projet</h2>
+              <p className="text-slate-600 mt-2">Donnez un nom à votre projet</p>
+            </div>
+
+            <Card className="border-slate-200">
+              <CardContent className="p-6 space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-slate-700 font-medium">
+                    Nom du projet <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="name"
+                    placeholder={`Ex: ${selectedSector?.name || 'Projet'} - Sourcing Chine 2025`}
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="budget" className="text-slate-700 font-medium">
+                    Budget estimé (optionnel)
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="budget"
+                      type="number"
+                      placeholder="50000"
+                      value={estimatedBudget}
+                      onChange={(e) => setEstimatedBudget(e.target.value)}
+                      className="h-12 pr-12"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">EUR</span>
+                  </div>
+                </div>
+
+                {selectedSector && (
+                  <div className="pt-4 border-t border-slate-100">
+                    <p className="text-sm text-slate-500">
+                      <span className="font-medium">Secteur :</span> {selectedSector.name}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      <span className="font-medium">Catégories suggérées :</span>{' '}
+                      {selectedSector.default_categories?.slice(0, 4).join(', ')}...
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 3: Méthode d'import */}
+        {currentStep === 3 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-slate-900">Comment ajouter vos {selectedSector?.item_label?.toLowerCase() || 'articles'}s ?</h2>
+              <p className="text-slate-600 mt-2">Choisissez votre méthode préférée</p>
+            </div>
+
+            <div className="grid gap-4">
+              {/* Option: Import fichier */}
+              <button
+                onClick={() => setImportMethod('file')}
+                className={cn(
+                  "flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all",
+                  importMethod === 'file' 
+                    ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200" 
+                    : "border-slate-200 bg-white hover:border-slate-300"
+                )}
+              >
+                <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+                  <FileUp className="w-6 h-6 text-violet-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-slate-900">Importer un fichier</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-medium">
+                      Recommandé
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Uploadez Excel, CSV ou PDF. L'IA structure automatiquement vos données.
+                  </p>
+                </div>
+                {importMethod === 'file' && (
+                  <Check className="w-5 h-5 text-violet-600 flex-shrink-0" />
+                )}
+              </button>
+
+              {/* Option: Manuel */}
+              <button
+                onClick={() => setImportMethod('manual')}
+                className={cn(
+                  "flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all",
+                  importMethod === 'manual' 
+                    ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200" 
+                    : "border-slate-200 bg-white hover:border-slate-300"
+                )}
+              >
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <List className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-slate-900">Saisie manuelle</h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Ajoutez vos {selectedSector?.item_label?.toLowerCase() || 'articles'}s un par un manuellement.
+                  </p>
+                </div>
+                {importMethod === 'manual' && (
+                  <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                )}
+              </button>
+
+              {/* Option: Template */}
+              <button
+                onClick={() => setImportMethod('template')}
+                className={cn(
+                  "flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all",
+                  importMethod === 'template' 
+                    ? "border-amber-500 bg-amber-50 ring-2 ring-amber-200" 
+                    : "border-slate-200 bg-white hover:border-slate-300"
+                )}
+              >
+                <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-6 h-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-slate-900">Partir d'un template</h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Utilisez une liste type pré-remplie pour votre secteur.
+                  </p>
+                </div>
+                {importMethod === 'template' && (
+                  <Check className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                )}
+              </button>
+            </div>
+
+            {/* Zone d'upload si fichier sélectionné */}
+            {importMethod === 'file' && (
+              <Card className="border-slate-200 border-dashed">
+                <CardContent className="p-6">
+                  {selectedFile ? (
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <Check className="w-6 h-6 text-emerald-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-900">{selectedFile.name}</p>
+                        <p className="text-sm text-slate-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setSelectedFile(null)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Retirer
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center cursor-pointer py-4">
+                      <Upload className="w-10 h-10 text-slate-400 mb-3" />
+                      <span className="font-medium text-slate-700">Cliquez pour sélectionner</span>
+                      <span className="text-sm text-slate-500 mt-1">PDF, Excel ou CSV (max 10MB)</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.csv,.xlsx,.xls"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Step 4: Confirmation */}
+        {currentStep === 4 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-slate-900">Récapitulatif</h2>
+              <p className="text-slate-600 mt-2">Vérifiez les informations avant de créer</p>
+            </div>
+
+            <Card className="border-slate-200">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                  <span className="text-slate-600">Secteur</span>
+                  <span className="font-medium text-slate-900">{selectedSector?.name}</span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                  <span className="text-slate-600">Nom du projet</span>
+                  <span className="font-medium text-slate-900">{projectName}</span>
+                </div>
+                {estimatedBudget && (
+                  <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                    <span className="text-slate-600">Budget estimé</span>
+                    <span className="font-medium text-slate-900">{parseInt(estimatedBudget).toLocaleString()} EUR</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center py-3">
+                  <span className="text-slate-600">Méthode d'import</span>
+                  <span className="font-medium text-slate-900">
+                    {importMethod === 'file' && 'Import fichier'}
+                    {importMethod === 'manual' && 'Saisie manuelle'}
+                    {importMethod === 'template' && 'Template secteur'}
+                  </span>
+                </div>
+                {importMethod === 'file' && selectedFile && (
+                  <div className="flex justify-between items-center py-3 border-t border-slate-100">
+                    <span className="text-slate-600">Fichier</span>
+                    <span className="font-medium text-slate-900">{selectedFile.name}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
+              <div className="flex gap-3">
+                <Sparkles className="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-violet-900">Prochaine étape</p>
+                  <p className="text-sm text-violet-700 mt-1">
+                    {importMethod === 'file' 
+                      ? "L'IA analysera votre fichier et proposera un mapping intelligent des colonnes."
+                      : importMethod === 'template'
+                        ? "Vous pourrez personnaliser le template selon vos besoins."
+                        : `Vous pourrez ajouter vos ${selectedSector?.item_label?.toLowerCase() || 'articles'}s et collecter des prix.`
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation buttons */}
+        <div className="flex gap-3 mt-8">
+          {currentStep > 1 && (
+            <Button 
+              variant="outline" 
+              onClick={handleBack}
+              disabled={isLoading}
+              className="px-6"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
-              Nouveau Projet
-            </h1>
-            <p className="text-[#718096] mt-2">Créez un projet de comparaison de prix</p>
-          </div>
-        </div>
-
-        {/* Mode Selection */}
-        {creationMode === 'select' && (
-          <div className="space-y-6">
-            <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
-              <div className="h-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8]" />
-              <CardHeader>
-                <CardTitle className="text-2xl text-[#2D3748]">Comment souhaitez-vous créer votre projet ?</CardTitle>
-                <CardDescription className="text-[#718096]">
-                  Choisissez la méthode qui vous convient le mieux
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-                {/* Option 1: Avec fichier */}
-                <Card 
-                  className="group border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer"
-                  onClick={() => setCreationMode('file')}
-                >
-                  <div className="h-2 bg-gradient-to-r from-[#38B2AC] to-[#319795]" />
-                  <CardHeader className="text-center">
-                    <div className="mx-auto w-20 h-20 bg-gradient-to-br from-[#38B2AC]/10 to-[#319795]/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <FileUp className="h-10 w-10 text-[#38B2AC]" />
-                    </div>
-                    <CardTitle className="text-xl text-[#2D3748] group-hover:text-[#38B2AC] transition-colors">
-                      Importer un fichier
-                    </CardTitle>
-                    <CardDescription className="text-[#718096] mt-2">
-                      Uploadez une liste de matériaux (PDF, CSV, Excel) et laissez l'IA faire le mapping automatiquement
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-center pb-6">
-                    <div className="inline-flex items-center gap-2 text-sm text-[#38B2AC] font-semibold">
-                      <span className="text-2xl">🤖</span>
-                      Mapping automatique par IA
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Option 2: Manuel */}
-                <Card 
-                  className="group border-2 border-[#E0E4FF] hover:border-[#48BB78] hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer"
-                  onClick={() => setCreationMode('manual')}
-                >
-                  <div className="h-2 bg-gradient-to-r from-[#48BB78] to-[#38A169]" />
-                  <CardHeader className="text-center">
-                    <div className="mx-auto w-20 h-20 bg-gradient-to-br from-[#48BB78]/10 to-[#38A169]/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <List className="h-10 w-10 text-[#48BB78]" />
-                    </div>
-                    <CardTitle className="text-xl text-[#2D3748] group-hover:text-[#48BB78] transition-colors">
-                      Ajout manuel
-                    </CardTitle>
-                    <CardDescription className="text-[#718096] mt-2">
-                      Créez votre projet et ajoutez vos matériaux manuellement un par un
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-center pb-6">
-                    <div className="inline-flex items-center gap-2 text-sm text-[#48BB78] font-semibold">
-                      <span className="text-2xl">✍️</span>
-                      Contrôle total
-                    </div>
-                  </CardContent>
-                </Card>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Form - Single column layout */}
-        {creationMode !== 'select' && (
-          <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Informations du projet */}
-          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
-            <div className="h-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8]" />
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#5B5FC7]/10 to-[#7B7FE8]/10 rounded-xl flex items-center justify-center">
-                  <FolderPlus className="h-6 w-6 text-[#5B5FC7]" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl text-[#2D3748]">Informations du projet</CardTitle>
-                  <CardDescription className="text-[#718096]">
-                    Donnez un nom à votre projet
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 p-6">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-[#4A5568] font-semibold">
-                  Nom du projet <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="name"
-                  placeholder="Ex: Comparaison matériaux Gabon-Chine 2025"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  disabled={isLoading}
-                  className="border-[#E0E4FF] focus:border-[#5B5FC7] rounded-xl py-6"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="sourceUrl" className="text-[#4A5568] font-semibold">
-                  <div className="flex items-center gap-2">
-                    <LinkIcon className="h-4 w-4" />
-                    URL Google Sheets (optionnel)
-                  </div>
-                </Label>
-                <Input
-                  id="sourceUrl"
-                  type="url"
-                  placeholder="https://docs.google.com/spreadsheets/d/..."
-                  value={formData.sourceUrl}
-                  onChange={(e) => setFormData({ ...formData, sourceUrl: e.target.value })}
-                  disabled={isLoading}
-                  className="border-[#E0E4FF] focus:border-[#5B5FC7] rounded-xl py-6"
-                />
-                <p className="text-xs text-[#718096]">
-                  Vous pouvez lier une Google Sheet existante
-                </p>
-              </div>
-
-              {/* Upload d'image de présentation */}
-              <div className="space-y-2">
-                <Label htmlFor="projectImage" className="text-[#4A5568] font-semibold">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Image de présentation (optionnel)
-                  </div>
-                </Label>
-                <div className="space-y-3">
-                  {imagePreview ? (
-                    <div className="relative w-full h-48 rounded-xl overflow-hidden border-2 border-[#E0E4FF]">
-                      <img 
-                        src={imagePreview} 
-                        alt="Aperçu" 
-                        className="w-full h-full object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => {
-                          setSelectedImage(null);
-                          setImagePreview(null);
-                        }}
-                      >
-                        Supprimer
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <Input
-                        id="projectImage"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/jpg"
-                        onChange={handleImageChange}
-                        disabled={isLoading}
-                        className="hidden"
-                      />
-                      <Label
-                        htmlFor="projectImage"
-                        className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-[#E0E4FF] rounded-xl cursor-pointer hover:border-[#5B5FC7] hover:bg-[#F5F6FF] transition-all"
-                      >
-                        <ImageIcon className="h-12 w-12 text-[#5B5FC7] mb-3" />
-                        <span className="text-sm font-semibold text-[#5B5FC7]">
-                          Cliquez pour sélectionner une image
-                        </span>
-                        <span className="text-xs text-[#718096] mt-1">
-                          JPG, PNG ou WebP (max 5MB)
-                        </span>
-                      </Label>
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-[#718096]">
-                  Cette image sera affichée en haut de la carte du projet
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Upload de fichier - Only in file mode */}
-          {creationMode === 'file' && (
-            <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
-              <div className="h-2 bg-gradient-to-r from-[#48BB78] to-[#38A169]" />
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#48BB78]/10 to-[#38A169]/10 rounded-xl flex items-center justify-center">
-                    <Upload className="h-6 w-6 text-[#48BB78]" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl text-[#2D3748]">Importer un fichier</CardTitle>
-                    <CardDescription className="text-[#718096]">
-                      Uploadez votre liste de matériaux <span className="text-red-500">*</span>
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 p-6">
-              <div className="space-y-2">
-                <Label htmlFor="file" className="text-[#4A5568] font-semibold">Fichier</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  accept=".pdf,.csv,.xlsx,.xls"
-                  onChange={handleFileChange}
-                  disabled={isLoading}
-                  className="border-[#E0E4FF] focus:border-[#5B5FC7] rounded-xl cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#5B5FC7] file:text-white hover:file:bg-[#4A4DA6]"
-                />
-                <p className="text-xs text-[#718096]">
-                  Formats acceptés: PDF, CSV, Excel (max 10MB)
-                </p>
-              </div>
-
-              {selectedFile && (
-                <div className="rounded-xl bg-[#48BB78]/10 border-2 border-[#48BB78]/30 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#48BB78]/20">
-                      <Upload className="h-6 w-6 text-[#48BB78]" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-[#2D3748]">{selectedFile.name}</p>
-                      <p className="text-sm text-[#718096]">
-                        {(selectedFile.size / 1024).toFixed(2)} KB
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedFile(null)}
-                      disabled={isLoading}
-                      className="hover:bg-red-50 hover:text-red-600 rounded-xl"
-                    >
-                      Retirer
-                    </Button>
-                  </div>
-                </div>
+          )}
+          
+          {currentStep < 4 ? (
+            <Button 
+              onClick={handleNext}
+              disabled={!canProceed()}
+              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              Continuer
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Création...
+                </>
+              ) : (
+                <>
+                  Créer le projet
+                  <Check className="ml-2 h-4 w-4" />
+                </>
               )}
-
-              <div className="rounded-xl bg-gradient-to-r from-[#5B5FC7]/10 to-[#7B7FE8]/10 border border-[#5B5FC7]/20 p-4">
-                <h4 className="mb-2 font-semibold text-[#5B5FC7] flex items-center gap-2">
-                  <span className="text-xl">🤖</span>
-                  Mapping automatique par IA
-                </h4>
-                <p className="text-sm text-[#4A5568]">
-                  L'IA détectera automatiquement les colonnes (nom, quantité, prix, etc.) 
-                  et vous proposera un mapping intelligent.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          )}
-
-          {/* Info for manual mode */}
-          {creationMode === 'manual' && (
-            <Card className="border-0 bg-gradient-to-r from-[#48BB78]/10 to-[#38A169]/10 border-[#48BB78]/20 shadow-lg rounded-2xl">
-              <CardContent className="p-6">
-                <div className="flex gap-4">
-                  <div className="text-3xl">✍️</div>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-[#2D3748]">Mode manuel</h4>
-                    <p className="text-sm text-[#4A5568]">
-                      Après la création du projet, vous pourrez ajouter vos matériaux un par un 
-                      et gérer les prix pour chaque matériau.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex gap-4">
-            <Button 
-              type="button"
-              variant="outline"
-              onClick={() => setCreationMode('select')}
-              disabled={isLoading}
-              className="border-2 border-[#E0E4FF] hover:border-[#5B5FC7] rounded-xl px-6 py-6 font-semibold"
-            >
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Retour
             </Button>
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              className="flex-1 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#6B6FD7] text-white shadow-lg shadow-[#5B5FC7]/30 rounded-xl px-6 py-6 text-base sm:text-lg font-semibold transition-all hover:scale-105"
-            >
-              <FolderPlus className="mr-2 h-5 w-5" />
-              {isLoading ? "Création en cours..." : "Créer le Projet"}
-            </Button>
-          </div>
-        </form>
-        )}
-
-        {/* Info box for file mode */}
-        {creationMode === 'file' && (
-          <Card className="border-0 bg-gradient-to-r from-[#FF9B7B]/10 to-[#FFB599]/10 border-[#FF9B7B]/20 shadow-lg rounded-2xl">
-            <CardContent className="p-6">
-              <div className="flex gap-4">
-                <div className="text-3xl">💡</div>
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-[#2D3748]">Conseil</h4>
-                  <p className="text-sm text-[#4A5568]">
-                    Pour de meilleurs résultats avec le mapping IA, assurez-vous que votre fichier 
-                    contient des en-têtes de colonnes clairs (ex: "Nom du produit", "Quantité", "Prix unitaire").
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
