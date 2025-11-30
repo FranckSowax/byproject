@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 
 // Configuration pour Netlify
-export const maxDuration = 20; // 20 secondes max (suffisant pour un petit chunk)
+export const maxDuration = 20; // 20 secondes max
 export const dynamic = 'force-dynamic';
 
 const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
 const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,10 +19,6 @@ export async function POST(request: NextRequest) {
 
     if (!chunkContent) {
       return NextResponse.json({ error: 'Chunk content required' }, { status: 400 });
-    }
-
-    if (!ai) {
-      return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
     }
 
     console.log(`🧩 Processing chunk ${chunkIndex + 1}/${totalChunks} (${chunkContent.length} chars)`);
@@ -48,17 +49,48 @@ FORMAT JSON ATTENDU (sans markdown):
   "categories": ["Catégorie 1"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: prompt,
-      config: {
-        thinkingConfig: {
-          thinkingLevel: "low",
-        }
-      },
-    });
+    let responseText = '';
+    let usedModel = '';
 
-    const responseText = response.text || '{}';
+    // Essayer Gemini d'abord
+    if (ai) {
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3-pro-preview",
+          contents: prompt,
+          config: {
+            thinkingConfig: {
+              thinkingLevel: "low",
+            }
+          },
+        });
+        responseText = response.text || '';
+        usedModel = 'gemini-3-pro';
+      } catch (geminiError) {
+        console.error('Gemini error:', geminiError);
+        // Fallback to OpenAI below
+      }
+    }
+
+    // Si Gemini a échoué ou n'est pas configuré, utiliser OpenAI
+    if (!responseText) {
+      console.log('🔄 Switching to OpenAI fallback');
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'Tu es un expert extraction BTP. Réponds UNIQUEMENT en JSON valide.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 4000,
+        response_format: { type: "json_object" }
+      });
+      responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+      usedModel = 'gpt-4o-mini';
+    }
     
     // Nettoyage JSON
     let cleanedResponse = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
@@ -69,10 +101,11 @@ FORMAT JSON ATTENDU (sans markdown):
       return NextResponse.json({
         success: true,
         items: result.items || [],
-        categories: result.categories || []
+        categories: result.categories || [],
+        model: usedModel
       });
     } else {
-      console.error(`❌ No JSON in Gemini response for chunk ${chunkIndex + 1}`);
+      console.error(`❌ No JSON in response for chunk ${chunkIndex + 1}`);
       return NextResponse.json({ success: false, items: [], error: "No JSON found" });
     }
 
