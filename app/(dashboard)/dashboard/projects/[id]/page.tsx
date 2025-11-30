@@ -736,7 +736,9 @@ export default function ProjectPage() {
                 setImportProgress(progress);
                 setImportStatus(`🧠 Extraction partie ${data.chunk}/${data.total}...`);
               } else if (data.type === 'chunk_result') {
-                console.log(`✅ Chunk ${data.chunk}: ${data.itemsCount} items`);
+                console.log(`✅ Chunk ${data.chunk}: ${data.itemsCount} items`, data.items);
+              } else if (data.type === 'chunk_error') {
+                console.error(`❌ Chunk ${data.chunk} error:`, data.error, data.preview || '');
               } else if (data.type === 'complete') {
                 extractResult = data;
                 console.log('📥 Stream complete:', data);

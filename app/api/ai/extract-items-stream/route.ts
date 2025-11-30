@@ -136,17 +136,39 @@ export async function POST(request: NextRequest) {
 
             if (useGemini && ai) {
               // Utiliser l'API Google Gemini 3 Pro directe
-              const response = await ai.models.generateContent({
-                model: "gemini-3-pro-preview",
-                contents: `Expert extraction secteur "${sector}". JSON uniquement.\n\n${prompt}`,
-                config: {
-                  thinkingConfig: {
-                    thinkingLevel: "low",
+              try {
+                const response = await ai.models.generateContent({
+                  model: "gemini-3-pro-preview",
+                  contents: prompt,
+                  config: {
+                    thinkingConfig: {
+                      thinkingLevel: "low",
+                    }
+                  },
+                });
+                
+                // Accéder au texte de la réponse
+                responseText = response.text || '';
+                
+                // Si pas de texte, essayer d'autres propriétés
+                if (!responseText && response.candidates && response.candidates[0]) {
+                  const candidate = response.candidates[0];
+                  if (candidate.content && candidate.content.parts) {
+                    responseText = candidate.content.parts.map((p: any) => p.text || '').join('');
                   }
-                },
-              });
-              responseText = response.text || '{}';
-              console.log(`📝 Gemini response chunk ${chunkNum}:`, responseText.substring(0, 500));
+                }
+                
+                console.log(`📝 Gemini raw response chunk ${chunkNum}:`, JSON.stringify(response).substring(0, 500));
+                console.log(`📝 Gemini text chunk ${chunkNum}:`, responseText.substring(0, 500));
+                
+                if (!responseText) {
+                  responseText = '{}';
+                  console.error(`❌ Empty response from Gemini for chunk ${chunkNum}`);
+                }
+              } catch (geminiError) {
+                console.error(`❌ Gemini API error chunk ${chunkNum}:`, geminiError);
+                responseText = '{}';
+              }
             } else {
               const completion = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
@@ -216,10 +238,12 @@ export async function POST(request: NextRequest) {
               }
             } else {
               console.error(`❌ No JSON found in chunk ${chunkNum}:`, cleanedResponse.substring(0, 500));
+              // Envoyer un aperçu de la réponse pour debug
               controller.enqueue(encoder.encode(JSON.stringify({
                 type: 'chunk_error',
                 chunk: chunkNum,
-                error: 'No JSON in response'
+                error: 'No JSON in response',
+                preview: cleanedResponse.substring(0, 200)
               }) + '\n'));
             }
           } catch (chunkError) {
