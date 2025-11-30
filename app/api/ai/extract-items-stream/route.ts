@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         const sector = customSectorName || sectorName || 'général';
         const chunks = splitIntoChunks(fileContent);
         const totalChunks = chunks.length;
-        const modelUsed = useGemini ? 'gemini-3-pro' : 'gpt-4o';
+        const modelUsed = 'gpt-4o-mini'; // OpenAI plus fiable pour JSON
 
         // Envoyer le statut initial
         controller.enqueue(encoder.encode(JSON.stringify({
@@ -134,54 +134,25 @@ export async function POST(request: NextRequest) {
             const prompt = buildChunkPrompt(chunk, sector, chunkNum, totalChunks);
             let responseText: string;
 
-            if (useGemini && ai) {
-              // Utiliser l'API Google Gemini 3 Pro directe
-              try {
-                const response = await ai.models.generateContent({
-                  model: "gemini-3-pro-preview",
-                  contents: prompt,
-                  config: {
-                    thinkingConfig: {
-                      thinkingLevel: "low",
-                    }
-                  },
-                });
-                
-                // Accéder au texte de la réponse
-                responseText = response.text || '';
-                
-                // Si pas de texte, essayer d'autres propriétés
-                if (!responseText && response.candidates && response.candidates[0]) {
-                  const candidate = response.candidates[0];
-                  if (candidate.content && candidate.content.parts) {
-                    responseText = candidate.content.parts.map((p: any) => p.text || '').join('');
-                  }
-                }
-                
-                console.log(`📝 Gemini raw response chunk ${chunkNum}:`, JSON.stringify(response).substring(0, 500));
-                console.log(`📝 Gemini text chunk ${chunkNum}:`, responseText.substring(0, 500));
-                
-                if (!responseText) {
-                  responseText = '{}';
-                  console.error(`❌ Empty response from Gemini for chunk ${chunkNum}`);
-                }
-              } catch (geminiError) {
-                console.error(`❌ Gemini API error chunk ${chunkNum}:`, geminiError);
-                responseText = '{}';
-              }
-            } else {
-              const completion = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
-                  { role: 'system', content: `Expert extraction secteur "${sector}". JSON uniquement.` },
-                  { role: 'user', content: prompt }
-                ],
-                temperature: 0.2,
-                max_tokens: 2000,
-                response_format: { type: "json_object" }
-              });
-              responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-            }
+            // Utiliser OpenAI GPT-4o-mini (plus fiable pour l'extraction JSON)
+            const completion = await openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages: [
+                { 
+                  role: 'system', 
+                  content: `Tu es un expert en extraction de données pour le secteur "${sector}". 
+Tu extrais TOUS les matériaux/articles du contenu fourni.
+Tu réponds UNIQUEMENT en JSON valide avec cette structure:
+{"items":[{"name":"Nom","description":null,"category":"Catégorie","quantity":1,"unit":"u","specs":{}}],"categories":["Cat1"]}` 
+                },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0.1,
+              max_tokens: 4000,
+              response_format: { type: "json_object" }
+            });
+            responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+            console.log(`📝 OpenAI response chunk ${chunkNum}:`, responseText.substring(0, 500));
 
             // Nettoyer la réponse - enlever les backticks markdown si présents
             let cleanedResponse = responseText;
