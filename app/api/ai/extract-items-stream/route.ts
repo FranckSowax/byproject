@@ -90,6 +90,12 @@ IMPORTANT: Réponds UNIQUEMENT avec le JSON, pas de texte avant ou après.`;
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
   
+  // Vérifier les clés API
+  const hasOpenAI = !!process.env.OPENAI_API_KEY;
+  const hasGemini = !!process.env.GOOGLE_GEMINI_API_KEY;
+  
+  console.log('🔑 API Keys status:', { hasOpenAI, hasGemini });
+  
   const stream = new ReadableStream({
     async start(controller) {
       try {
@@ -97,6 +103,15 @@ export async function POST(request: NextRequest) {
 
         if (!projectId || !fileContent) {
           controller.enqueue(encoder.encode(JSON.stringify({ error: 'Missing data' }) + '\n'));
+          controller.close();
+          return;
+        }
+        
+        if (!hasOpenAI && !hasGemini) {
+          controller.enqueue(encoder.encode(JSON.stringify({ 
+            type: 'error',
+            error: 'No API key configured (OPENAI_API_KEY or GOOGLE_GEMINI_API_KEY)' 
+          }) + '\n'));
           controller.close();
           return;
         }
@@ -132,27 +147,38 @@ export async function POST(request: NextRequest) {
 
           try {
             const prompt = buildChunkPrompt(chunk, sector, chunkNum, totalChunks);
-            let responseText: string;
+            let responseText: string = '{}';
 
             // Utiliser OpenAI GPT-4o-mini (plus fiable pour l'extraction JSON)
-            const completion = await openai.chat.completions.create({
-              model: 'gpt-4o-mini',
-              messages: [
-                { 
-                  role: 'system', 
-                  content: `Tu es un expert en extraction de données pour le secteur "${sector}". 
+            try {
+              console.log(`🚀 Calling OpenAI for chunk ${chunkNum}...`);
+              const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                  { 
+                    role: 'system', 
+                    content: `Tu es un expert en extraction de données pour le secteur "${sector}". 
 Tu extrais TOUS les matériaux/articles du contenu fourni.
 Tu réponds UNIQUEMENT en JSON valide avec cette structure:
 {"items":[{"name":"Nom","description":null,"category":"Catégorie","quantity":1,"unit":"u","specs":{}}],"categories":["Cat1"]}` 
-                },
-                { role: 'user', content: prompt }
-              ],
-              temperature: 0.1,
-              max_tokens: 4000,
-              response_format: { type: "json_object" }
-            });
-            responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-            console.log(`📝 OpenAI response chunk ${chunkNum}:`, responseText.substring(0, 500));
+                  },
+                  { role: 'user', content: prompt }
+                ],
+                temperature: 0.1,
+                max_tokens: 4000,
+                response_format: { type: "json_object" }
+              });
+              responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+              console.log(`📝 OpenAI response chunk ${chunkNum}:`, responseText.substring(0, 500));
+            } catch (openaiError) {
+              console.error(`❌ OpenAI API error chunk ${chunkNum}:`, openaiError);
+              controller.enqueue(encoder.encode(JSON.stringify({
+                type: 'chunk_error',
+                chunk: chunkNum,
+                error: `OpenAI error: ${openaiError instanceof Error ? openaiError.message : 'Unknown'}`
+              }) + '\n'));
+              continue; // Passer au chunk suivant
+            }
 
             // Nettoyer la réponse - enlever les backticks markdown si présents
             let cleanedResponse = responseText;
