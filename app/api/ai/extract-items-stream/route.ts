@@ -23,9 +23,9 @@ const supabase = createClient(
 // Utiliser Gemini si la clé est disponible
 const useGemini = !!geminiApiKey;
 
-// Chunks plus petits pour streaming rapide
-const MAX_LINES_PER_CHUNK = 30;
-const MAX_CHARS_PER_CHUNK = 4000;
+// Un seul gros chunk pour éviter le timeout Netlify Free (10s)
+const MAX_LINES_PER_CHUNK = 500;
+const MAX_CHARS_PER_CHUNK = 50000;
 
 interface ExtractedItem {
   name: string;
