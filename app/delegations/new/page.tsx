@@ -245,16 +245,13 @@ export default function NewDelegationPage() {
       if (error) throw error;
 
       toast.success("Mission créée avec succès !", {
-        description: "Notre IA génère votre proposition sur mesure..."
+        description: "Redirection vers votre tableau de bord mission..."
       });
       
-      // Redirection vers la future page de proposition (on utilisera l'ID de la mission)
-      // router.push(`/delegations/proposal/${mission.id}`);
-      
-      // Pour l'instant, retour au dashboard avec un message
+      // Redirection vers le dashboard de la mission
       setTimeout(() => {
-        router.push('/dashboard');
-      }, 1500);
+        router.push(`/delegations/${(mission as any).id}`);
+      }, 1000);
 
     } catch (error: any) {
       console.error('Error creating mission:', error);

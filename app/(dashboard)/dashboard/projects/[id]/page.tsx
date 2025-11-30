@@ -678,7 +678,7 @@ export default function ProjectPage() {
         customSectorName = projectData.custom_sector_name;
       }
 
-      console.log('📤 Sending to AI extract-items:', {
+      console.log('📤 Sending to AI extract-items-stream:', {
         projectId: params.id,
         fileName,
         sectorName,
@@ -686,11 +686,11 @@ export default function ProjectPage() {
         contentLength: fileContent.length
       });
 
-      setImportProgress(40);
+      setImportProgress(30);
       setImportStatus('🧠 Extraction intelligente en cours...');
 
-      // Appel à la nouvelle API d'extraction avec Gemini 3 Pro
-      const extractResponse = await fetch('/api/ai/extract-items', {
+      // Utiliser l'API streaming pour éviter les timeouts Netlify
+      const extractResponse = await fetch('/api/ai/extract-items-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -708,14 +708,56 @@ export default function ProjectPage() {
         throw new Error('Erreur lors de l\'extraction IA');
       }
 
-      const extractResult = await extractResponse.json();
-      
-      console.log('📥 AI Extract Response:', extractResult);
+      // Lire le stream ligne par ligne
+      const reader = extractResponse.body?.getReader();
+      const decoder = new TextDecoder();
+      let extractResult: any = null;
 
-      setImportProgress(80);
+      if (reader) {
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const data = JSON.parse(line);
+              
+              if (data.type === 'start') {
+                console.log('🚀 Stream started:', data);
+                setImportStatus(`🧠 Analyse de ${data.totalChunks} parties...`);
+              } else if (data.type === 'progress') {
+                const progress = 30 + Math.round((data.percent / 100) * 50);
+                setImportProgress(progress);
+                setImportStatus(`🧠 Extraction partie ${data.chunk}/${data.total}...`);
+              } else if (data.type === 'chunk_result') {
+                console.log(`✅ Chunk ${data.chunk}: ${data.itemsCount} items`);
+              } else if (data.type === 'complete') {
+                extractResult = data;
+                console.log('📥 Stream complete:', data);
+              } else if (data.type === 'error') {
+                throw new Error(data.error);
+              }
+            } catch (e) {
+              // Ignorer les erreurs de parsing JSON pour les lignes incomplètes
+            }
+          }
+        }
+      }
+
+      if (!extractResult) {
+        throw new Error('Aucun résultat reçu');
+      }
+
+      setImportProgress(90);
       setImportStatus('📦 Finalisation...');
 
-      // Stocker les suggestions d'IA
+      // Stocker les suggestions d'IA (si présentes)
       if (extractResult.suggestions && extractResult.suggestions.length > 0) {
         setAiSuggestions(extractResult.suggestions);
         setShowSuggestions(true);
@@ -726,17 +768,12 @@ export default function ProjectPage() {
       
       const itemsCount = extractResult.statistics?.totalItems || 0;
       const categoriesCount = extractResult.statistics?.categoriesCount || 0;
-      const suggestionsCount = extractResult.statistics?.suggestionsCount || 0;
       const chunksProcessed = extractResult.statistics?.chunksProcessed || 1;
-      const totalChunks = extractResult.statistics?.totalChunks || 1;
 
       setTimeout(() => {
         let message = `${itemsCount} éléments importés dans ${categoriesCount} catégories`;
-        if (totalChunks > 1) {
-          message += ` (${chunksProcessed}/${totalChunks} parties traitées)`;
-        }
-        if (suggestionsCount > 0) {
-          message += ` • ${suggestionsCount} suggestions d'oublis`;
+        if (chunksProcessed > 1) {
+          message += ` (${chunksProcessed} parties traitées)`;
         }
         toast.success(message, { duration: 5000 });
         setIsImportDialogOpen(false);

@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Replicate from 'replicate';
+import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize clients
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+// Configuration pour Netlify - augmenter le timeout
+export const maxDuration = 60; // 60 secondes max (Netlify Pro)
+export const dynamic = 'force-dynamic';
+
+// Google Gemini API directe
+const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
+const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -17,12 +20,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Check if Gemini 3 Pro is available
-const useGemini = !!process.env.REPLICATE_API_TOKEN;
+// Utiliser Gemini si la clé est disponible
+const useGemini = !!geminiApiKey;
 
-// Configuration pour le chunking
-const MAX_LINES_PER_CHUNK = 100; // Nombre max de lignes par chunk
-const MAX_CHARS_PER_CHUNK = 12000; // Nombre max de caractères par chunk
+// Configuration pour le chunking - réduit pour éviter les timeouts Netlify
+const MAX_LINES_PER_CHUNK = 50; // Nombre max de lignes par chunk (réduit)
+const MAX_CHARS_PER_CHUNK = 6000; // Nombre max de caractères par chunk (réduit)
 
 interface ExtractedItem {
   name: string;
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest) {
       linesCount: fileContent.split('\n').length
     });
 
-    const modelUsed = useGemini ? 'gemini-3-pro' : 'gpt-4o';
+    const modelUsed = useGemini ? 'gemini-3-pro-preview' : 'gpt-4o';
     const chunkResults: ChunkResult[] = [];
 
     // Traiter chaque chunk
@@ -175,21 +178,23 @@ export async function POST(request: NextRequest) {
       let responseText: string;
 
       try {
-        if (useGemini) {
-          // Use Gemini 3 Pro via Replicate
-          const geminiInput = {
-            prompt: extractionPrompt,
-            system_instruction: `Tu es un expert en analyse de fichiers et extraction de données pour le secteur "${sector}". 
+        if (useGemini && ai) {
+          // Utiliser l'API Google Gemini 3 Pro directe
+          const systemPrompt = `Tu es un expert en analyse de fichiers et extraction de données pour le secteur "${sector}". 
 Tu dois extraire TOUS les éléments (matériaux, équipements, accessoires, articles) de ce chunk de fichier.
 Tu crées des catégories intelligentes adaptées au secteur.
-Tu réponds UNIQUEMENT en JSON valide, sans markdown ni explication.`,
-            thinking_level: "high" as const,
-            temperature: 0.3,
-            max_output_tokens: 16000,
-          };
+Tu réponds UNIQUEMENT en JSON valide, sans markdown ni explication.`;
 
-          const output = await replicate.run("google/gemini-3-pro", { input: geminiInput });
-          responseText = Array.isArray(output) ? output.join("") : String(output);
+          const response = await ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: `${systemPrompt}\n\n${extractionPrompt}`,
+            config: {
+              thinkingConfig: {
+                thinkingLevel: "high",
+              }
+            },
+          });
+          responseText = response.text || '{}';
           
         } else {
           // Fallback to OpenAI GPT-4o
@@ -509,17 +514,19 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
 
     let responseText: string;
 
-    if (modelUsed === 'gemini-3-pro') {
-      const geminiInput = {
-        prompt,
-        system_instruction: `Tu es un expert du secteur "${sector}". Tu suggères des oublis potentiels basés sur ton expertise. Réponds UNIQUEMENT en JSON valide.`,
-        thinking_level: "low" as const,
-        temperature: 0.5,
-        max_output_tokens: 4000,
-      };
-
-      const output = await replicate.run("google/gemini-3-pro", { input: geminiInput });
-      responseText = Array.isArray(output) ? output.join("") : String(output);
+    if (modelUsed === 'gemini-3-pro-preview' && ai) {
+      const systemPrompt = `Tu es un expert du secteur "${sector}". Tu suggères des oublis potentiels basés sur ton expertise. Réponds UNIQUEMENT en JSON valide.`;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents: `${systemPrompt}\n\n${prompt}`,
+        config: {
+          thinkingConfig: {
+            thinkingLevel: "low",
+          }
+        },
+      });
+      responseText = response.text || '{}';
     } else {
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o',
