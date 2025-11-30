@@ -19,33 +19,40 @@ export default async function handler(request: Request, context: Context) {
       return Response.json({ error: "OPENAI_API_KEY not configured" }, { status: 500 });
     }
 
-    // Appel OpenAI
+    // Limiter le contenu pour éviter le timeout (max 8000 chars)
+    const truncatedContent = fileContent.substring(0, 8000);
+    console.log(`📝 Processing ${truncatedContent.length} chars for sector: ${sector}`);
+
+    // Appel OpenAI avec timeout court
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s max
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${openaiKey}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: `Tu es un expert en extraction de données pour le secteur "${sector}". 
-Tu extrais TOUS les matériaux/articles du contenu fourni.
-Tu réponds UNIQUEMENT en JSON valide avec cette structure:
-{"items":[{"name":"Nom","description":null,"category":"Catégorie","quantity":1,"unit":"u","specs":{}}],"categories":["Cat1"]}`
+            content: `Expert extraction BTP. JSON uniquement: {"items":[{"name":"X","category":"Y","quantity":1,"unit":"u"}],"categories":["Y"]}`
           },
           {
             role: "user",
-            content: `Extrais tous les matériaux de ce fichier "${fileName}":\n\n${fileContent.substring(0, 15000)}`
+            content: `Extrais les matériaux:\n${truncatedContent}`
           }
         ],
-        temperature: 0.1,
-        max_tokens: 8000,
+        temperature: 0,
+        max_tokens: 4000,
         response_format: { type: "json_object" }
       }),
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();
