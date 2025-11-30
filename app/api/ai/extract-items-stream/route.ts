@@ -69,17 +69,22 @@ function splitIntoChunks(fileContent: string): string[] {
 }
 
 function buildChunkPrompt(chunk: string, sector: string, chunkNum: number, total: number): string {
-  return `Secteur: "${sector}" | Chunk ${chunkNum}/${total}
+  return `Tu es un expert en extraction de données pour le secteur "${sector}".
 
-CONTENU:
-\`\`\`
+CHUNK ${chunkNum}/${total} - CONTENU À ANALYSER:
 ${chunk}
-\`\`\`
 
-Extrais TOUS les éléments. Format JSON:
-{"items":[{"name":"Nom","description":"Desc ou null","category":"Cat","quantity":10,"unit":"pcs","specs":{}}],"categories":["Cat1"]}
+INSTRUCTIONS:
+1. Extrais CHAQUE ligne qui contient un matériau, produit ou article
+2. Crée des catégories logiques pour le secteur BTP/Construction
+3. Récupère les quantités si présentes
 
-JSON UNIQUEMENT:`;
+RÉPONDS UNIQUEMENT avec ce JSON (sans backticks, sans explication):
+{"items":[{"name":"Nom du matériau","description":"Description détaillée ou null","category":"Catégorie BTP","quantity":10,"unit":"unité","specs":{}}],"categories":["Catégorie1","Catégorie2"]}
+
+CATÉGORIES SUGGÉRÉES pour BTP: Plomberie, Électricité, Menuiserie, Peinture, Carrelage, Quincaillerie, Gros œuvre, Second œuvre, Sanitaire, Revêtements
+
+IMPORTANT: Réponds UNIQUEMENT avec le JSON, pas de texte avant ou après.`;
 }
 
 export async function POST(request: NextRequest) {
@@ -141,9 +146,10 @@ export async function POST(request: NextRequest) {
                 },
               });
               responseText = response.text || '{}';
+              console.log(`📝 Gemini response chunk ${chunkNum}:`, responseText.substring(0, 500));
             } else {
               const completion = await openai.chat.completions.create({
-                model: 'gpt-4o-mini', // Plus rapide
+                model: 'gpt-4o-mini',
                 messages: [
                   { role: 'system', content: `Expert extraction secteur "${sector}". JSON uniquement.` },
                   { role: 'user', content: prompt }
@@ -155,32 +161,73 @@ export async function POST(request: NextRequest) {
               responseText = completion.choices[0]?.message?.content?.trim() || '{}';
             }
 
-            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            // Nettoyer la réponse - enlever les backticks markdown si présents
+            let cleanedResponse = responseText;
+            
+            // Enlever ```json ... ``` ou ``` ... ```
+            cleanedResponse = cleanedResponse.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+            
+            // Chercher le JSON
+            const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+            
             if (jsonMatch) {
-              const result = JSON.parse(jsonMatch[0]);
-              const items = result.items || [];
-              const categories = result.categories || [];
+              try {
+                const result = JSON.parse(jsonMatch[0]);
+                const items = result.items || [];
+                const categories = result.categories || [];
 
-              items.forEach((item: ExtractedItem) => {
-                const exists = allItems.find(i => i.name.toLowerCase() === item.name.toLowerCase());
-                if (!exists) allItems.push(item);
-              });
-              categories.forEach((cat: string) => allCategories.add(cat));
+                console.log(`✅ Chunk ${chunkNum} parsed: ${items.length} items, ${categories.length} categories`);
 
-              // Envoyer les items extraits de ce chunk
+                items.forEach((item: ExtractedItem) => {
+                  // Valider que l'item a au moins un nom
+                  if (item && item.name && item.name.trim()) {
+                    const exists = allItems.find(i => i.name.toLowerCase() === item.name.toLowerCase());
+                    if (!exists) {
+                      allItems.push({
+                        name: item.name.trim(),
+                        description: item.description || null,
+                        category: item.category || 'Non catégorisé',
+                        quantity: item.quantity || null,
+                        unit: item.unit || null,
+                        specs: item.specs || {},
+                      });
+                    }
+                  }
+                });
+                categories.forEach((cat: string) => {
+                  if (cat && cat.trim()) allCategories.add(cat.trim());
+                });
+
+                // Envoyer les items extraits de ce chunk
+                controller.enqueue(encoder.encode(JSON.stringify({
+                  type: 'chunk_result',
+                  chunk: chunkNum,
+                  itemsCount: items.length,
+                  items: items.slice(0, 5)
+                }) + '\n'));
+              } catch (parseError) {
+                console.error(`❌ JSON parse error chunk ${chunkNum}:`, parseError);
+                console.error('Raw response:', cleanedResponse.substring(0, 1000));
+                controller.enqueue(encoder.encode(JSON.stringify({
+                  type: 'chunk_error',
+                  chunk: chunkNum,
+                  error: 'JSON parse failed'
+                }) + '\n'));
+              }
+            } else {
+              console.error(`❌ No JSON found in chunk ${chunkNum}:`, cleanedResponse.substring(0, 500));
               controller.enqueue(encoder.encode(JSON.stringify({
-                type: 'chunk_result',
+                type: 'chunk_error',
                 chunk: chunkNum,
-                itemsCount: items.length,
-                items: items.slice(0, 5) // Aperçu des 5 premiers
+                error: 'No JSON in response'
               }) + '\n'));
             }
           } catch (chunkError) {
-            console.error(`Chunk ${chunkNum} error:`, chunkError);
+            console.error(`❌ Chunk ${chunkNum} error:`, chunkError);
             controller.enqueue(encoder.encode(JSON.stringify({
               type: 'chunk_error',
               chunk: chunkNum,
-              error: 'Extraction failed'
+              error: chunkError instanceof Error ? chunkError.message : 'Extraction failed'
             }) + '\n'));
           }
         }
