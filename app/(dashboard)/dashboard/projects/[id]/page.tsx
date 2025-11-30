@@ -689,12 +689,12 @@ export default function ProjectPage() {
       setImportProgress(10);
       setImportStatus('✂️ Préparation des données...');
 
-      // 1. Découper le fichier en chunks (max 5000 chars ou 50 lignes)
+      // 1. Découper le fichier en chunks (max 1500 chars pour être sûr de passer < 10s)
       const lines = fileContent.split('\n');
       const chunks: string[] = [];
       let currentChunk: string[] = [];
       let currentSize = 0;
-      const MAX_CHUNK_SIZE = 5000;
+      const MAX_CHUNK_SIZE = 1500; // Réduit drastiquement pour éviter timeout Netlify
 
       // Garder l'en-tête (première ligne) pour chaque chunk
       const header = lines[0];
