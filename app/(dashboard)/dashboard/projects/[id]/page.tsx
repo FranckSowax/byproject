@@ -678,7 +678,7 @@ export default function ProjectPage() {
         customSectorName = projectData.custom_sector_name;
       }
 
-      console.log('📤 Sending to Edge Function extract-items:', {
+      console.log('📤 Starting client-side chunking:', {
         projectId: params.id,
         fileName,
         sectorName,
@@ -686,65 +686,131 @@ export default function ProjectPage() {
         contentLength: fileContent.length
       });
 
-      setImportProgress(30);
-      setImportStatus('🧠 Extraction intelligente en cours...');
+      setImportProgress(10);
+      setImportStatus('✂️ Préparation des données...');
 
-      // Utiliser l'Edge Function Netlify (timeout 30s)
-      const extractResponse = await fetch('/api/edge/extract-items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: params.id,
-          fileContent,
-          fileName,
-          sectorName,
-          customSectorName
-        }),
-      });
+      // 1. Découper le fichier en chunks (max 5000 chars ou 50 lignes)
+      const lines = fileContent.split('\n');
+      const chunks: string[] = [];
+      let currentChunk: string[] = [];
+      let currentSize = 0;
+      const MAX_CHUNK_SIZE = 5000;
 
-      if (!extractResponse.ok) {
-        const errorText = await extractResponse.text();
-        console.error('❌ Extract API error:', errorText);
-        throw new Error('Erreur lors de l\'extraction IA');
-      }
-
-      const extractResult = await extractResponse.json();
-      console.log('📥 Extract result:', extractResult);
-
-      if (extractResult.error) {
-        throw new Error(extractResult.error);
-      }
-
-      setImportProgress(90);
-      setImportStatus('📦 Finalisation...');
-
-      // Stocker les suggestions d'IA (si présentes)
-      if (extractResult.suggestions && extractResult.suggestions.length > 0) {
-        setAiSuggestions(extractResult.suggestions);
-        setShowSuggestions(true);
-      }
-
-      setImportProgress(100);
-      setImportStatus('✅ Import terminé !');
+      // Garder l'en-tête (première ligne) pour chaque chunk
+      const header = lines[0];
       
-      const itemsCount = extractResult.statistics?.totalItems || 0;
-      const categoriesCount = extractResult.statistics?.categoriesCount || 0;
-      const chunksProcessed = extractResult.statistics?.chunksProcessed || 1;
-
-      setTimeout(() => {
-        let message = `${itemsCount} éléments importés dans ${categoriesCount} catégories`;
-        if (chunksProcessed > 1) {
-          message += ` (${chunksProcessed} parties traitées)`;
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        
+        if (currentSize + line.length > MAX_CHUNK_SIZE && currentChunk.length > 0) {
+          chunks.push([header, ...currentChunk].join('\n'));
+          currentChunk = [];
+          currentSize = 0;
         }
-        toast.success(message, { duration: 5000 });
-        setIsImportDialogOpen(false);
-        setIsImporting(false);
-        setImportFile(null);
-        setImportProgress(0);
-        setImportStatus('');
-        setImportedCount(0);
-        loadMaterials();
-      }, 1500);
+        currentChunk.push(line);
+        currentSize += line.length;
+      }
+      if (currentChunk.length > 0) {
+        chunks.push([header, ...currentChunk].join('\n'));
+      }
+
+      console.log(`📦 Created ${chunks.length} chunks to process`);
+      setImportStatus(`🧠 Analyse de 1/${chunks.length} parties avec Gemini 3...`);
+
+      let allItems: any[] = [];
+      let allCategories = new Set<string>();
+
+      // 2. Envoyer chaque chunk séquentiellement
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const chunkIndex = i;
+        
+        try {
+          const response = await fetch('/api/ai/extract-items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chunkContent: chunk,
+              sector: customSectorName || sectorName || 'général',
+              chunkIndex,
+              totalChunks: chunks.length
+            }),
+          });
+
+          if (!response.ok) {
+            console.error(`❌ Error processing chunk ${i+1}:`, await response.text());
+            continue; // Continuer avec les autres chunks
+          }
+
+          const result = await response.json();
+          if (result.success && result.items) {
+            console.log(`✅ Chunk ${i+1} processed: ${result.items.length} items`);
+            allItems = [...allItems, ...result.items];
+            if (result.categories) {
+              result.categories.forEach((c: string) => allCategories.add(c));
+            }
+          }
+
+          // Mettre à jour la progression
+          const percent = Math.round(((i + 1) / chunks.length) * 90);
+          setImportProgress(percent);
+          setImportStatus(`🧠 Analyse de ${Math.min(i + 2, chunks.length)}/${chunks.length} parties...`);
+          
+        } catch (err) {
+          console.error(`❌ Exception chunk ${i+1}:`, err);
+        }
+      }
+
+      // 3. Sauvegarder les résultats dans Supabase
+      if (allItems.length > 0) {
+        setImportStatus('💾 Sauvegarde des données...');
+        
+        // Préparer les données pour l'insertion
+        const materialsToInsert = allItems.map(item => ({
+          project_id: params.id,
+          name: item.name,
+          description: item.description,
+          category: item.category,
+          quantity: item.quantity,
+          specs: {
+            ...item.specs,
+            unit: item.unit,
+            extracted_by: 'gemini-3-pro-client-chunking',
+            sector: customSectorName || sectorName,
+          },
+        }));
+
+        // Insérer par lots de 50 pour éviter les limites de payload
+        const INSERT_BATCH_SIZE = 50;
+        for (let i = 0; i < materialsToInsert.length; i += INSERT_BATCH_SIZE) {
+          const batch = materialsToInsert.slice(i, i + INSERT_BATCH_SIZE);
+          const { error } = await supabase.from('materials').insert(batch);
+          if (error) console.error('Error inserting batch:', error);
+        }
+
+        // Mettre à jour le statut du projet
+        await supabase
+          .from('projects')
+          .update({ mapping_status: 'completed' })
+          .eq('id', params.id);
+
+        setImportProgress(100);
+        setImportStatus('✅ Import terminé !');
+
+        setTimeout(() => {
+          toast.success(`${allItems.length} éléments importés dans ${allCategories.size} catégories`);
+          setIsImportDialogOpen(false);
+          setIsImporting(false);
+          setImportFile(null);
+          setImportProgress(0);
+          setImportStatus('');
+          setImportedCount(0);
+          loadMaterials();
+        }, 1000);
+      } else {
+        throw new Error('Aucun élément trouvé dans le fichier');
+      }
 
     } catch (error) {
       console.error('Error importing file:', error);
