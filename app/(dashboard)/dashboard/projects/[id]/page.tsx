@@ -678,7 +678,7 @@ export default function ProjectPage() {
         customSectorName = projectData.custom_sector_name;
       }
 
-      console.log('📤 Sending to AI extract-items-stream:', {
+      console.log('📤 Sending to Edge Function extract-items:', {
         projectId: params.id,
         fileName,
         sectorName,
@@ -689,8 +689,8 @@ export default function ProjectPage() {
       setImportProgress(30);
       setImportStatus('🧠 Extraction intelligente en cours...');
 
-      // Utiliser l'API streaming pour éviter les timeouts Netlify
-      const extractResponse = await fetch('/api/ai/extract-items-stream', {
+      // Utiliser l'Edge Function Netlify (timeout 30s)
+      const extractResponse = await fetch('/api/edge/extract-items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -708,52 +708,11 @@ export default function ProjectPage() {
         throw new Error('Erreur lors de l\'extraction IA');
       }
 
-      // Lire le stream ligne par ligne
-      const reader = extractResponse.body?.getReader();
-      const decoder = new TextDecoder();
-      let extractResult: any = null;
+      const extractResult = await extractResponse.json();
+      console.log('📥 Extract result:', extractResult);
 
-      if (reader) {
-        let buffer = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              const data = JSON.parse(line);
-              
-              if (data.type === 'start') {
-                console.log('🚀 Stream started:', data);
-                setImportStatus(`🧠 Analyse de ${data.totalChunks} parties...`);
-              } else if (data.type === 'progress') {
-                const progress = 30 + Math.round((data.percent / 100) * 50);
-                setImportProgress(progress);
-                setImportStatus(`🧠 Extraction partie ${data.chunk}/${data.total}...`);
-              } else if (data.type === 'chunk_result') {
-                console.log(`✅ Chunk ${data.chunk}: ${data.itemsCount} items`, data.items);
-              } else if (data.type === 'chunk_error') {
-                console.error(`❌ Chunk ${data.chunk} error:`, data.error, data.preview || '');
-              } else if (data.type === 'complete') {
-                extractResult = data;
-                console.log('📥 Stream complete:', data);
-              } else if (data.type === 'error') {
-                throw new Error(data.error);
-              }
-            } catch (e) {
-              // Ignorer les erreurs de parsing JSON pour les lignes incomplètes
-            }
-          }
-        }
-      }
-
-      if (!extractResult) {
-        throw new Error('Aucun résultat reçu');
+      if (extractResult.error) {
+        throw new Error(extractResult.error);
       }
 
       setImportProgress(90);
