@@ -176,6 +176,11 @@ export default function ProjectPage() {
   });
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
 
+  // États pour la suppression en masse
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'all' | 'filtered'>('all');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     loadProject();
     loadMaterials();
@@ -730,10 +735,41 @@ export default function ProjectPage() {
         throw new Error('Aucun article trouvé avec la structure détectée');
       }
 
+      setImportProgress(50);
+      setImportStatus(`🏷️ Catégorisation IA de ${items.length} articles...`);
+
+      // 4. Catégorisation IA des matériaux
+      try {
+        const categorizeResponse = await fetch('/api/ai/categorize-materials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            materials: items,
+            projectType: project?.sector || 'Construction'
+          }),
+        });
+
+        if (categorizeResponse.ok) {
+          const catResult = await categorizeResponse.json();
+          const categoryMap = catResult.categoryMap || {};
+          
+          // Appliquer les catégories IA aux items
+          items.forEach((item, index) => {
+            if (categoryMap[index]) {
+              item.category = categoryMap[index];
+            }
+          });
+          
+          console.log(`🏷️ AI categorized ${Object.keys(categoryMap).length} items with ${catResult.model}`);
+        }
+      } catch (catError) {
+        console.warn('AI categorization failed, keeping original categories:', catError);
+      }
+
       setImportProgress(70);
       setImportStatus(`💾 Sauvegarde de ${items.length} articles...`);
 
-      // 4. Sauvegarde dans Supabase
+      // 5. Sauvegarde dans Supabase
       const materialsToInsert = items.map(item => ({
         project_id: params.id,
         name: item.name,
@@ -848,6 +884,59 @@ export default function ProjectPage() {
       toast.error("Erreur lors de l'ajout");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Fonction de suppression en masse des matériaux
+  const handleDeleteMaterials = async (mode: 'all' | 'filtered') => {
+    try {
+      setIsDeleting(true);
+      
+      const materialsToDelete = mode === 'all' ? materials : filteredMaterials;
+      const materialIds = materialsToDelete.map(m => m.id);
+      
+      if (materialIds.length === 0) {
+        toast.error('Aucun matériau à supprimer');
+        return;
+      }
+
+      // Supprimer d'abord les prix associés
+      const { error: pricesError } = await supabase
+        .from('prices')
+        .delete()
+        .in('material_id', materialIds);
+      
+      if (pricesError) {
+        console.error('Error deleting prices:', pricesError);
+      }
+
+      // Supprimer les commentaires associés
+      const { error: commentsError } = await supabase
+        .from('material_comments')
+        .delete()
+        .in('material_id', materialIds);
+      
+      if (commentsError) {
+        console.error('Error deleting comments:', commentsError);
+      }
+
+      // Supprimer les matériaux
+      const { error } = await supabase
+        .from('materials')
+        .delete()
+        .in('id', materialIds);
+
+      if (error) throw error;
+
+      toast.success(`${materialIds.length} matériau(x) supprimé(s)`);
+      setIsDeleteDialogOpen(false);
+      loadMaterials();
+      loadAllPrices();
+    } catch (error) {
+      console.error('Error deleting materials:', error);
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1749,16 +1838,35 @@ export default function ProjectPage() {
                     Liste
                   </Button>
                 </div>
-                {viewMode === 'categories' && (
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={expandAllCategories}>
-                      Tout ouvrir
+                <div className="flex items-center gap-2">
+                  {viewMode === 'categories' && (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={expandAllCategories}>
+                        Tout ouvrir
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={collapseAllCategories}>
+                        Tout fermer
+                      </Button>
+                    </>
+                  )}
+                  {/* Bouton de suppression */}
+                  {permissions.canDelete && materials.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                      onClick={() => {
+                        setDeleteMode(filteredMaterials.length < materials.length ? 'filtered' : 'all');
+                        setIsDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Supprimer {filteredMaterials.length < materials.length 
+                        ? `(${filteredMaterials.length} filtrés)` 
+                        : `tout (${materials.length})`}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={collapseAllCategories}>
-                      Tout fermer
-                    </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* Vue par catégories */}
@@ -3629,6 +3737,78 @@ export default function ProjectPage() {
               className="bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] hover:from-[#4A4DA6] hover:to-[#5B5FC7] text-white"
             >
               {isSaving ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmation de suppression */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-red-600 flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription className="text-[#4A5568]">
+              Cette action est irréversible. Tous les prix et commentaires associés seront également supprimés.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-800 font-medium">
+                {deleteMode === 'all' 
+                  ? `Supprimer TOUS les ${materials.length} matériaux du projet ?`
+                  : `Supprimer les ${filteredMaterials.length} matériaux filtrés ?`
+                }
+              </p>
+            </div>
+            {filteredMaterials.length < materials.length && (
+              <div className="flex gap-2">
+                <Button
+                  variant={deleteMode === 'filtered' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDeleteMode('filtered')}
+                  className={deleteMode === 'filtered' ? 'bg-red-600 hover:bg-red-700' : ''}
+                >
+                  Filtrés ({filteredMaterials.length})
+                </Button>
+                <Button
+                  variant={deleteMode === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDeleteMode('all')}
+                  className={deleteMode === 'all' ? 'bg-red-600 hover:bg-red-700' : ''}
+                >
+                  Tous ({materials.length})
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDeleteMaterials(deleteMode)}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  Suppression...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer définitivement
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
