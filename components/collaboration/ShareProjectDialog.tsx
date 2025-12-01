@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { Mail, UserPlus, X, Users, Shield, Copy, Check } from "lucide-react";
+import { Mail, UserPlus, X, Users, Shield, Copy, Check, RefreshCw, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface ShareProjectDialogProps {
   projectId: string;
@@ -44,10 +45,15 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.debug('Error loading collaborators:', error.message);
+        setCollaborators([]);
+        return;
+      }
       setCollaborators(data || []);
     } catch (error) {
-      console.error('Error loading collaborators:', error);
+      console.debug('Error loading collaborators:', error);
+      setCollaborators([]);
     }
   };
 
@@ -71,13 +77,17 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      // Vérifier si l'utilisateur n'est pas déjà invité
-      const { data: existing } = await supabase
+      // Vérifier si l'utilisateur n'est pas déjà invité (avec maybeSingle pour éviter erreur 406)
+      const { data: existing, error: checkError } = await supabase
         .from('project_collaborators')
-        .select('*')
+        .select('id, status')
         .eq('project_id', projectId)
         .eq('email', email.toLowerCase())
-        .single();
+        .maybeSingle();
+
+      if (checkError) {
+        console.debug('Check error:', checkError.message);
+      }
 
       if (existing) {
         toast.error("Cet utilisateur est déjà invité");
@@ -85,15 +95,21 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
         return;
       }
 
+      // Vérifier si l'utilisateur existe déjà dans auth.users
+      // Si oui, on peut lier directement son user_id
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
       // Créer l'invitation dans project_collaborators
-      // Note: user_id sera null pour les nouveaux utilisateurs
-      // Il sera mis à jour quand l'utilisateur acceptera l'invitation
       const { error: inviteError } = await supabase
         .from('project_collaborators')
         .insert({
           project_id: projectId,
           email: email.toLowerCase(),
-          user_id: null,
+          user_id: existingUser?.id || null, // Lier si l'utilisateur existe
           role: role,
           invited_by: user.id,
           status: 'pending',
@@ -101,8 +117,27 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
 
       if (inviteError) throw inviteError;
 
+      // Envoyer l'email d'invitation via l'API
+      try {
+        await fetch('/api/collaborators/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.toLowerCase(),
+            projectId,
+            projectName,
+            role,
+            inviterEmail: user.email,
+          }),
+        });
+      } catch (emailError) {
+        console.debug('Email sending skipped:', emailError);
+      }
+
       toast.success(`Invitation envoyée à ${email}`);
-      toast.info("L'utilisateur recevra un email pour accepter l'invitation");
+      if (!existingUser) {
+        toast.info("L'utilisateur devra créer un compte pour accéder au projet");
+      }
       
       setEmail("");
       setRole("viewer");
@@ -118,8 +153,8 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
   };
 
   // Retirer un collaborateur
-  const handleRemove = async (collaboratorId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir retirer cet accès ?")) return;
+  const handleRemove = async (collaboratorId: string, collaboratorEmail: string) => {
+    if (!confirm(`Êtes-vous sûr de vouloir retirer l'accès de ${collaboratorEmail} ?`)) return;
 
     try {
       const { error } = await supabase
@@ -129,7 +164,7 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
 
       if (error) throw error;
 
-      toast.success("Accès retiré");
+      toast.success(`Accès de ${collaboratorEmail} retiré`);
       loadCollaborators();
     } catch (error) {
       console.error('Error removing collaborator:', error);
@@ -137,12 +172,54 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
     }
   };
 
+  // Changer le rôle d'un collaborateur
+  const handleChangeRole = async (collaboratorId: string, newRole: string) => {
+    try {
+      const { error } = await supabase
+        .from('project_collaborators')
+        .update({ role: newRole })
+        .eq('id', collaboratorId);
+
+      if (error) throw error;
+
+      toast.success("Rôle mis à jour");
+      loadCollaborators();
+    } catch (error) {
+      console.error('Error changing role:', error);
+      toast.error("Erreur lors de la modification");
+    }
+  };
+
+  // Renvoyer une invitation
+  const handleResendInvite = async (collaboratorEmail: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      await fetch('/api/collaborators/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: collaboratorEmail,
+          projectId,
+          projectName,
+          role: collaborators.find(c => c.email === collaboratorEmail)?.role || 'viewer',
+          inviterEmail: user?.email,
+        }),
+      });
+
+      toast.success(`Invitation renvoyée à ${collaboratorEmail}`);
+    } catch (error) {
+      console.error('Error resending invite:', error);
+      toast.error("Erreur lors du renvoi");
+    }
+  };
+
   // Charger les collaborateurs à l'ouverture
-  useState(() => {
+  useEffect(() => {
     if (isOpen) {
       loadCollaborators();
     }
-  });
+  }, [isOpen, projectId]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -271,15 +348,52 @@ export function ShareProjectDialog({ projectId, projectName, isOpen, onClose, on
                         </Badge>
                       </div>
                     </div>
+                    
+                    {/* Actions pour les collaborateurs (pas pour le propriétaire) */}
                     {collab.role !== 'owner' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemove(collab.id)}
-                        className="ml-2 text-red-600 hover:text-red-700 hover:bg-red-100 rounded-lg"
-                      >
-                        <X className="h-5 w-5" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="ml-2 hover:bg-white/50 rounded-lg"
+                          >
+                            <MoreVertical className="h-5 w-5 text-gray-500" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          {/* Renvoyer l'invitation si en attente */}
+                          {collab.status === 'pending' && (
+                            <DropdownMenuItem 
+                              onClick={() => handleResendInvite(collab.email)}
+                              className="cursor-pointer"
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Renvoyer l'invitation
+                            </DropdownMenuItem>
+                          )}
+                          
+                          {/* Changer le rôle */}
+                          <DropdownMenuItem 
+                            onClick={() => handleChangeRole(collab.id, collab.role === 'editor' ? 'viewer' : 'editor')}
+                            className="cursor-pointer"
+                          >
+                            <Shield className="mr-2 h-4 w-4" />
+                            {collab.role === 'editor' ? 'Passer en Lecteur' : 'Passer en Éditeur'}
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuSeparator />
+                          
+                          {/* Retirer l'accès */}
+                          <DropdownMenuItem 
+                            onClick={() => handleRemove(collab.id, collab.email)}
+                            className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Retirer l'accès
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 ))}
