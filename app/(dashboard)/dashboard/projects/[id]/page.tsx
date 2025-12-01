@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, UserCircle, History, TrendingUp, Shield, Send, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Upload, Settings, Trash2, Edit, X, DollarSign, Image as ImageIcon, MessageSquare, BarChart3, Ship, Package, Users, UserCircle, History, TrendingUp, Shield, Send, Clock, CheckCircle2, Sparkles, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -143,7 +143,16 @@ export default function ProjectPage() {
   // État pour la demande de cotation
   const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
 
-  // États pour les suggestions IA
+  // États pour les suggestions IA (matériaux manquants)
+  const [materialSuggestions, setMaterialSuggestions] = useState<Array<{
+    name: string;
+    category: string;
+    reason: string;
+    priority: 'high' | 'medium' | 'low';
+  }>>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  
+  // Ancien format pour compatibilité (à supprimer plus tard)
   const [aiSuggestions, setAiSuggestions] = useState<Array<{
     category: string;
     missingItems: Array<{ name: string; reason: string }>;
@@ -156,7 +165,7 @@ export default function ProjectPage() {
   const [drawerPrices, setDrawerPrices] = useState<any[]>([]);
   const [drawerComments, setDrawerComments] = useState<any[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<'categories' | 'list'>('categories');
+  const [viewMode, setViewMode] = useState<'categories' | 'list' | 'suggestions'>('categories');
   const [commentsByMaterial, setCommentsByMaterial] = useState<Record<string, any[]>>({});
 
   // États pour l'édition du projet
@@ -937,6 +946,85 @@ export default function ProjectPage() {
       toast.error('Erreur lors de la suppression');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Fonctions pour les suggestions IA
+  const handleAcceptSuggestion = async (suggestion: { name: string; category: string; reason: string; priority: string }) => {
+    try {
+      // Insérer le matériau suggéré dans la base de données
+      const { error } = await supabase
+        .from('materials')
+        .insert({
+          project_id: params.id,
+          name: suggestion.name,
+          category: suggestion.category,
+          description: `Suggestion IA: ${suggestion.reason}`,
+          quantity: null,
+          specs: { 
+            suggested_by_ai: true,
+            suggestion_reason: suggestion.reason,
+            suggestion_priority: suggestion.priority
+          },
+        });
+
+      if (error) throw error;
+
+      // Retirer la suggestion de la liste
+      setMaterialSuggestions(prev => prev.filter(s => s.name !== suggestion.name));
+      toast.success(`"${suggestion.name}" ajouté à la liste`);
+      loadMaterials();
+    } catch (error) {
+      console.error('Error accepting suggestion:', error);
+      toast.error("Erreur lors de l'ajout du matériau");
+    }
+  };
+
+  const handleRejectSuggestion = (suggestionName: string) => {
+    setMaterialSuggestions(prev => prev.filter(s => s.name !== suggestionName));
+    toast.info('Suggestion ignorée');
+  };
+
+  const handleDismissAllSuggestions = () => {
+    setMaterialSuggestions([]);
+    toast.info('Toutes les suggestions ont été ignorées');
+  };
+
+  // Fonction pour régénérer les suggestions
+  const handleRegenerateSuggestions = async () => {
+    if (materials.length === 0) {
+      toast.error('Aucun matériau dans le projet');
+      return;
+    }
+
+    try {
+      setIsLoadingSuggestions(true);
+      const response = await fetch('/api/ai/suggest-materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          materials: materials,
+          projectType: project?.sector || 'Construction',
+          projectName: project?.name || 'Projet'
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.suggestions && result.suggestions.length > 0) {
+          setMaterialSuggestions(result.suggestions);
+          toast.success(`${result.suggestions.length} suggestions générées`);
+        } else {
+          toast.info('Aucune suggestion trouvée');
+        }
+      } else {
+        throw new Error('Erreur API');
+      }
+    } catch (error) {
+      console.error('Error generating suggestions:', error);
+      toast.error('Erreur lors de la génération des suggestions');
+    } finally {
+      setIsLoadingSuggestions(false);
     }
   };
 
@@ -1818,7 +1906,7 @@ export default function ProjectPage() {
                 />
               )}
               
-              {/* Toggle vue catégories / liste */}
+              {/* Toggle vue catégories / liste / suggestions */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Button
@@ -1837,6 +1925,20 @@ export default function ProjectPage() {
                   >
                     Liste
                   </Button>
+                  <Button
+                    variant={viewMode === 'suggestions' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('suggestions')}
+                    className={viewMode === 'suggestions' ? 'bg-blue-600 hover:bg-blue-700' : 'border-blue-200 text-blue-600 hover:bg-blue-50'}
+                  >
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    Suggestions
+                    {materialSuggestions.length > 0 && (
+                      <Badge className="ml-1 bg-blue-500 text-white text-xs px-1.5">
+                        {materialSuggestions.length}
+                      </Badge>
+                    )}
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   {viewMode === 'categories' && (
@@ -1850,7 +1952,7 @@ export default function ProjectPage() {
                     </>
                   )}
                   {/* Bouton de suppression */}
-                  {permissions.canDelete && materials.length > 0 && (
+                  {permissions.canDelete && materials.length > 0 && viewMode !== 'suggestions' && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -1870,7 +1972,7 @@ export default function ProjectPage() {
               </div>
 
               {/* Vue par catégories */}
-              {viewMode === 'categories' ? (
+              {viewMode === 'categories' && (
                 <div className="space-y-3">
                   {sortedCategories.map((category) => (
                     <CategoryGroup
@@ -1886,8 +1988,10 @@ export default function ProjectPage() {
                     />
                   ))}
                 </div>
-              ) : (
-                /* Vue liste simple */
+              )}
+
+              {/* Vue liste simple */}
+              {viewMode === 'list' && (
                 <div className="space-y-2">
                   {filteredMaterials.map((material) => (
                     <MaterialCard
@@ -1898,6 +2002,130 @@ export default function ProjectPage() {
                       onClick={() => handleOpenDrawer(material)}
                     />
                   ))}
+                </div>
+              )}
+
+              {/* Vue Suggestions IA */}
+              {viewMode === 'suggestions' && (
+                <div className="space-y-6">
+                  {/* Header avec bouton de génération */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
+                          <Sparkles className="h-7 w-7 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-blue-900">
+                            Suggestions IA
+                          </h3>
+                          <p className="text-sm text-blue-600">
+                            L'IA analyse votre liste et suggère les matériaux potentiellement manquants
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleRegenerateSuggestions}
+                        disabled={isLoadingSuggestions || materials.length === 0}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        {isLoadingSuggestions ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                            Analyse en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            {materialSuggestions.length > 0 ? 'Régénérer' : 'Générer des suggestions'}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Liste des suggestions */}
+                  {materialSuggestions.length > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600">
+                          {materialSuggestions.length} suggestion{materialSuggestions.length > 1 ? 's' : ''} trouvée{materialSuggestions.length > 1 ? 's' : ''}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleDismissAllSuggestions}
+                          className="text-gray-500 hover:text-red-600"
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Tout ignorer
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {materialSuggestions.map((suggestion, index) => (
+                          <div
+                            key={`suggestion-${index}`}
+                            className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-blue-900">{suggestion.name}</span>
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${
+                                    suggestion.priority === 'high' 
+                                      ? 'border-red-300 text-red-700 bg-red-50' 
+                                      : suggestion.priority === 'medium'
+                                      ? 'border-orange-300 text-orange-700 bg-orange-50'
+                                      : 'border-gray-300 text-gray-600 bg-gray-50'
+                                  }`}
+                                >
+                                  {suggestion.priority === 'high' ? '⚠️ Important' : suggestion.priority === 'medium' ? '📌 Recommandé' : '💡 Optionnel'}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs border-blue-300 text-blue-600">
+                                  {suggestion.category}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-blue-700">{suggestion.reason}</p>
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              <Button
+                                size="sm"
+                                onClick={() => handleAcceptSuggestion(suggestion)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                <CheckCircle2 className="h-4 w-4 mr-1" />
+                                Ajouter
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRejectSuggestion(suggestion.name)}
+                                className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    /* État vide */
+                    <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                      <Sparkles className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <h4 className="text-lg font-medium text-gray-600 mb-2">
+                        Aucune suggestion pour le moment
+                      </h4>
+                      <p className="text-sm text-gray-500 mb-4">
+                        {materials.length === 0 
+                          ? "Ajoutez d'abord des matériaux à votre projet"
+                          : "Cliquez sur le bouton ci-dessus pour générer des suggestions"
+                        }
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
