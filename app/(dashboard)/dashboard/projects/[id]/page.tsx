@@ -638,9 +638,146 @@ export default function ProjectPage() {
       return;
     }
 
+    const fileName = importFile.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    const isPDF = fileName.endsWith('.pdf');
+    const isCSV = fileName.endsWith('.csv');
+    const isTXT = fileName.endsWith('.txt');
+    const isDOC = fileName.endsWith('.doc') || fileName.endsWith('.docx');
+
     try {
       setIsImporting(true);
       setImportProgress(10);
+
+      // ============================================
+      // TRAITEMENT PDF, CSV, TXT, DOC
+      // ============================================
+      if (isPDF || isCSV || isTXT || isDOC) {
+        setImportStatus(`📂 Lecture du fichier ${isPDF ? 'PDF' : isCSV ? 'CSV' : isTXT ? 'TXT' : 'Word'}...`);
+        
+        let textContent = '';
+        
+        if (isCSV || isTXT) {
+          // Lecture directe du texte
+          textContent = await importFile.text();
+        } else if (isPDF) {
+          // Extraction PDF avec pdf.js
+          setImportStatus('📄 Extraction du texte PDF...');
+          const pdfjsLib = await import('pdfjs-dist');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+          
+          const arrayBuffer = await importFile.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          
+          const textParts: string[] = [];
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            const pageText = content.items
+              .map((item: any) => item.str)
+              .join(' ');
+            textParts.push(pageText);
+            
+            // Mise à jour progression
+            setImportProgress(10 + Math.round((i / pdf.numPages) * 20));
+          }
+          textContent = textParts.join('\n\n');
+          console.log(`📄 PDF extracted: ${pdf.numPages} pages, ${textContent.length} chars`);
+        } else if (isDOC) {
+          // Extraction DOCX avec mammoth
+          setImportStatus('📝 Extraction du texte Word...');
+          const mammoth = await import('mammoth');
+          const arrayBuffer = await importFile.arrayBuffer();
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          textContent = result.value;
+          console.log(`📝 DOCX extracted: ${textContent.length} chars`);
+        }
+
+        if (!textContent || textContent.trim().length < 10) {
+          throw new Error('Impossible d\'extraire le contenu du fichier');
+        }
+
+        setImportProgress(35);
+        setImportStatus('🧠 Extraction IA des matériaux...');
+
+        // Appel à l'API d'extraction
+        const formData = new FormData();
+        formData.append('textContent', textContent);
+        formData.append('fileType', isPDF ? 'pdf' : isCSV ? 'csv' : isTXT ? 'txt' : 'doc');
+        formData.append('sector', project?.sector || 'Construction BTP');
+
+        const extractResponse = await fetch('/api/ai/extract-from-file', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!extractResponse.ok) {
+          const errorData = await extractResponse.json();
+          throw new Error(errorData.error || 'Erreur lors de l\'extraction');
+        }
+
+        const extractResult = await extractResponse.json();
+        const items = extractResult.items || [];
+
+        if (items.length === 0) {
+          throw new Error('Aucun matériau trouvé dans le fichier');
+        }
+
+        console.log(`✅ Extracted ${items.length} items via ${extractResult.method}`);
+
+        setImportProgress(60);
+        setImportStatus(`💾 Sauvegarde de ${items.length} articles...`);
+
+        // Sauvegarde dans Supabase
+        const materialsToInsert = items.map((item: any) => ({
+          project_id: params.id,
+          name: item.name,
+          description: item.description,
+          category: item.category || 'Non catégorisé',
+          quantity: item.quantity,
+          specs: {
+            unit: item.unit,
+            extracted_by: extractResult.method,
+            file_type: extractResult.fileType,
+          },
+        }));
+
+        // Insérer par lots de 50
+        const INSERT_BATCH_SIZE = 50;
+        for (let i = 0; i < materialsToInsert.length; i += INSERT_BATCH_SIZE) {
+          const batch = materialsToInsert.slice(i, i + INSERT_BATCH_SIZE);
+          const { error } = await supabase.from('materials').insert(batch);
+          if (error) console.error('Error inserting batch:', error);
+          
+          const progress = 60 + Math.round((i / materialsToInsert.length) * 35);
+          setImportProgress(progress);
+        }
+
+        // Mettre à jour le statut du projet
+        await supabase
+          .from('projects')
+          .update({ mapping_status: 'completed' })
+          .eq('id', params.id);
+
+        setImportProgress(100);
+        setImportStatus('✅ Import terminé avec succès !');
+
+        setTimeout(() => {
+          toast.success(`${items.length} éléments importés depuis ${isPDF ? 'PDF' : isCSV ? 'CSV' : isTXT ? 'TXT' : 'Word'}`);
+          setIsImportDialogOpen(false);
+          setIsImporting(false);
+          setImportFile(null);
+          setImportProgress(0);
+          setImportStatus('');
+          loadMaterials();
+        }, 1500);
+
+        return;
+      }
+
+      // ============================================
+      // TRAITEMENT EXCEL (existant)
+      // ============================================
       setImportStatus('📂 Lecture du fichier Excel...');
 
       // 1. Lire le fichier Excel localement avec SheetJS (import dynamique)
@@ -3807,7 +3944,7 @@ export default function ProjectPage() {
                 <div className="border-2 border-dashed border-[#E0E4FF] hover:border-[#38B2AC] rounded-xl p-8 text-center transition-colors">
                   <input
                     type="file"
-                    accept=".csv,.xlsx,.xls"
+                    accept=".csv,.xlsx,.xls,.pdf,.txt,.doc,.docx"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
                         setImportFile(e.target.files[0]);
@@ -3824,7 +3961,7 @@ export default function ProjectPage() {
                       {importFile ? importFile.name : 'Cliquez pour sélectionner un fichier'}
                     </p>
                     <p className="text-sm text-[#718096]">
-                      CSV ou Excel (XLSX, XLS)
+                      PDF, Excel, CSV, Word ou TXT
                     </p>
                   </label>
                 </div>
@@ -3832,15 +3969,18 @@ export default function ProjectPage() {
                 {/* Info format */}
                 <div className="bg-[#38B2AC]/10 border border-[#38B2AC]/20 rounded-xl p-4">
                   <p className="text-sm text-[#4A5568] font-semibold mb-2">
-                    📋 Format attendu:
+                    📋 Formats supportés:
                   </p>
                   <ul className="text-sm text-[#718096] space-y-1">
-                    <li>• <strong>Nom</strong>: Nom du matériau (obligatoire)</li>
-                    <li>• <strong>Catégorie</strong>: Type de matériau (optionnel)</li>
-                    <li>• <strong>Quantité</strong>: Nombre d'unités (optionnel)</li>
-                    <li>• <strong>Poids</strong>: Poids unitaire en kg (optionnel)</li>
-                    <li>• <strong>Volume</strong>: Volume en m³ (optionnel)</li>
+                    <li>• <strong>Excel</strong> (.xlsx, .xls) - Extraction déterministe</li>
+                    <li>• <strong>CSV</strong> (.csv) - Extraction déterministe</li>
+                    <li>• <strong>PDF</strong> (.pdf) - Extraction IA chirurgicale</li>
+                    <li>• <strong>Word</strong> (.doc, .docx) - Extraction IA chirurgicale</li>
+                    <li>• <strong>Texte</strong> (.txt) - Extraction IA chirurgicale</li>
                   </ul>
+                  <p className="text-xs text-[#A0AEC0] mt-2">
+                    L'IA extrait automatiquement les matériaux, quantités et catégories
+                  </p>
                 </div>
               </>
             ) : (
