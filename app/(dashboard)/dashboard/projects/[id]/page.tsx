@@ -1639,25 +1639,26 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FF] to-[#E8EEFF] p-4 md:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header moderne */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard">
+    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FF] to-[#E8EEFF] p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 w-full">
+        {/* Header moderne - Mobile first */}
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Ligne 1: Retour + Titre */}
+          <div className="flex items-start gap-3 w-full min-w-0">
+            <Link href="/dashboard" className="flex-shrink-0">
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl hover:scale-105 transition-all border-0"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl hover:scale-105 transition-all border-0"
               >
-                <ArrowLeft className="h-5 w-5 text-[#5B5FC7]" />
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 text-[#5B5FC7]" />
               </Button>
             </Link>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent truncate">
                 {project.name}
               </h1>
-              <p className="text-[#718096] mt-1">
+              <p className="text-sm sm:text-base text-[#718096] mt-1 truncate">
                 Créé le {new Date(project.created_at).toLocaleDateString('fr-FR', {
                   day: 'numeric',
                   month: 'long',
@@ -1666,18 +1667,20 @@ export default function ProjectPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          
+          {/* Ligne 2: Actions - Scrollable horizontalement sur mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 sm:overflow-visible sm:flex-wrap">
             {/* Badge de rôle */}
             {permissions.role && (
               <Badge 
                 variant="outline"
-                className={
+                className={`flex-shrink-0 ${
                   permissions.role === 'owner'
                     ? 'border-purple-300 text-purple-700 bg-purple-50'
                     : permissions.role === 'editor'
                     ? 'border-green-300 text-green-700 bg-green-50'
                     : 'border-blue-300 text-blue-700 bg-blue-50'
-                }
+                }`}
               >
                 {permissions.role === 'owner' ? '👑 Propriétaire' :
                  permissions.role === 'editor' ? '✏️ Éditeur' : '👁️ Lecteur'}
@@ -1689,17 +1692,17 @@ export default function ProjectPage() {
               <Button 
                 onClick={handleCreateQuotation}
                 disabled={isCreatingQuotation}
-                className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all rounded-xl"
+                className="flex-shrink-0 gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all rounded-xl text-sm px-3 py-2"
               >
                 {isCreatingQuotation ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Création...
+                    <span className="hidden sm:inline">Création...</span>
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    Demander une cotation
+                    <span className="hidden sm:inline">Demander une cotation</span>
                   </>
                 )}
               </Button>
@@ -1710,30 +1713,30 @@ export default function ProjectPage() {
                 variant="outline" 
                 size="icon"
                 onClick={() => setIsShareDialogOpen(true)}
-                className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
+                className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
                 title="Partager le projet"
               >
-                <Users className="h-5 w-5" />
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             )}
             <Button 
               variant="outline" 
               size="icon"
               onClick={() => setShowHistory(!showHistory)}
-              className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
+              className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
               title="Historique du projet"
             >
-              <History className="h-5 w-5" />
+              <History className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             {permissions.canManage && (
               <Button 
                 variant="outline" 
                 size="icon"
                 onClick={handleOpenEditProject}
-                className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
+                className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#5B5FC7] hover:text-white transition-all"
                 title="Éditer le projet"
               >
-                <Settings className="h-5 w-5" />
+                <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             )}
             {permissions.canDelete && (
@@ -1741,10 +1744,10 @@ export default function ProjectPage() {
                 variant="outline" 
                 size="icon" 
                 onClick={handleDelete}
-                className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-red-500 hover:bg-red-500 hover:text-white transition-all"
+                className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl border-2 border-[#E0E4FF] hover:border-red-500 hover:bg-red-500 hover:text-white transition-all"
                 title="Supprimer le projet"
               >
-                <Trash2 className="h-5 w-5" />
+                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             )}
           </div>
@@ -1752,7 +1755,7 @@ export default function ProjectPage() {
 
 
       {/* Actions rapides - Style moderne */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
         <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden hover:scale-105 cursor-pointer">
           <div className="h-2 bg-gradient-to-r from-[#48BB78] to-[#38A169]" />
           <CardHeader>
@@ -1836,15 +1839,15 @@ export default function ProjectPage() {
       {/* Section Matériaux - Style moderne */}
       <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden">
         <div className="h-2 bg-gradient-to-r from-[#5B5FC7] via-[#7B7FE8] to-[#FF9B7B]" />
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#5B5FC7]/10 to-[#FF9B7B]/10 rounded-xl flex items-center justify-center">
-                <FileText className="h-6 w-6 text-[#5B5FC7]" />
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#5B5FC7]/10 to-[#FF9B7B]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-[#5B5FC7]" />
               </div>
-              <div>
-                <CardTitle className="text-2xl font-bold text-[#4A5568]">Matériaux</CardTitle>
-                <CardDescription className="text-[#718096]">
+              <div className="min-w-0">
+                <CardTitle className="text-lg sm:text-2xl font-bold text-[#4A5568]">Matériaux</CardTitle>
+                <CardDescription className="text-[#718096] text-sm truncate">
                   Liste des équipements à comparer
                 </CardDescription>
               </div>
@@ -1853,19 +1856,19 @@ export default function ProjectPage() {
               <Button 
                 size="sm" 
                 onClick={handleAddMaterial}
-                className="bg-gradient-to-r from-[#48BB78] to-[#38A169] hover:from-[#38A169] hover:to-[#2F855A] text-white shadow-lg shadow-[#48BB78]/30 rounded-xl transition-all hover:scale-105"
+                className="bg-gradient-to-r from-[#48BB78] to-[#38A169] hover:from-[#38A169] hover:to-[#2F855A] text-white shadow-lg shadow-[#48BB78]/30 rounded-xl transition-all hover:scale-105 flex-shrink-0"
               >
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter
+                <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                <span className="text-sm">Ajouter</span>
               </Button>
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6">
           {isLoadingMaterials ? (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 border-4 border-[#5B5FC7]/20 border-t-[#5B5FC7] rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-[#718096] font-medium">Chargement des matériaux...</p>
+            <div className="text-center py-12 sm:py-16">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-[#5B5FC7]/20 border-t-[#5B5FC7] rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-[#718096] font-medium text-sm sm:text-base">Chargement des matériaux...</p>
             </div>
           ) : materials.length > 0 ? (
             <div className="space-y-6">
@@ -1920,21 +1923,23 @@ export default function ProjectPage() {
               )}
               
               {/* Toggle vue catégories / liste / suggestions */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                {/* Onglets - Scrollable sur mobile */}
+                <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
                   <Button
                     variant={viewMode === 'categories' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setViewMode('categories')}
-                    className={viewMode === 'categories' ? 'bg-violet-600 hover:bg-violet-700' : ''}
+                    className={`flex-shrink-0 text-xs sm:text-sm ${viewMode === 'categories' ? 'bg-violet-600 hover:bg-violet-700' : ''}`}
                   >
-                    Par catégorie
+                    <span className="hidden sm:inline">Par catégorie</span>
+                    <span className="sm:hidden">Catégorie</span>
                   </Button>
                   <Button
                     variant={viewMode === 'list' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setViewMode('list')}
-                    className={viewMode === 'list' ? 'bg-violet-600 hover:bg-violet-700' : ''}
+                    className={`flex-shrink-0 text-xs sm:text-sm ${viewMode === 'list' ? 'bg-violet-600 hover:bg-violet-700' : ''}`}
                   >
                     Liste
                   </Button>
@@ -1942,10 +1947,11 @@ export default function ProjectPage() {
                     variant={viewMode === 'suggestions' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setViewMode('suggestions')}
-                    className={viewMode === 'suggestions' ? 'bg-blue-600 hover:bg-blue-700' : 'border-blue-200 text-blue-600 hover:bg-blue-50'}
+                    className={`flex-shrink-0 text-xs sm:text-sm ${viewMode === 'suggestions' ? 'bg-blue-600 hover:bg-blue-700' : 'border-blue-200 text-blue-600 hover:bg-blue-50'}`}
                   >
-                    <Sparkles className="h-4 w-4 mr-1" />
-                    Suggestions
+                    <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span className="hidden sm:inline">Suggestions</span>
+                    <span className="sm:hidden">IA</span>
                     {materialSuggestions.length > 0 && (
                       <Badge className="ml-1 bg-blue-500 text-white text-xs px-1.5">
                         {materialSuggestions.length}
@@ -1953,14 +1959,17 @@ export default function ProjectPage() {
                     )}
                   </Button>
                 </div>
-                <div className="flex items-center gap-2">
+                {/* Actions secondaires */}
+                <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                   {viewMode === 'categories' && (
                     <>
-                      <Button variant="ghost" size="sm" onClick={expandAllCategories}>
-                        Tout ouvrir
+                      <Button variant="ghost" size="sm" onClick={expandAllCategories} className="text-xs sm:text-sm px-2 sm:px-3">
+                        <span className="hidden sm:inline">Tout ouvrir</span>
+                        <span className="sm:hidden">Ouvrir</span>
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={collapseAllCategories}>
-                        Tout fermer
+                      <Button variant="ghost" size="sm" onClick={collapseAllCategories} className="text-xs sm:text-sm px-2 sm:px-3">
+                        <span className="hidden sm:inline">Tout fermer</span>
+                        <span className="sm:hidden">Fermer</span>
                       </Button>
                     </>
                   )}
@@ -1969,16 +1978,19 @@ export default function ProjectPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 text-xs sm:text-sm"
                       onClick={() => {
                         setDeleteMode(filteredMaterials.length < materials.length ? 'filtered' : 'all');
                         setIsDeleteDialogOpen(true);
                       }}
                     >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Supprimer {filteredMaterials.length < materials.length 
-                        ? `(${filteredMaterials.length} filtrés)` 
-                        : `tout (${materials.length})`}
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                      <span className="hidden sm:inline">
+                        Supprimer {filteredMaterials.length < materials.length 
+                          ? `(${filteredMaterials.length})` 
+                          : `(${materials.length})`}
+                      </span>
+                      <span className="sm:hidden">{filteredMaterials.length < materials.length ? filteredMaterials.length : materials.length}</span>
                     </Button>
                   )}
                 </div>
