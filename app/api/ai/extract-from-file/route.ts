@@ -56,7 +56,46 @@ function parseCSV(content: string): { headers: string[], rows: string[][] } {
   return { headers, rows };
 }
 
-// Extraction pour CSV - déterministe et rapide
+// Fonction pour détecter la devise dans un texte ou valeur
+function detectCurrency(text: string): string | null {
+  if (!text) return null;
+  const textLower = text.toLowerCase();
+  
+  // Devises courantes
+  if (textLower.includes('€') || textLower.includes('eur')) return 'EUR';
+  if (textLower.includes('$') || textLower.includes('usd')) return 'USD';
+  if (textLower.includes('fcfa') || textLower.includes('xaf') || textLower.includes('xof') || textLower.includes('cfa')) return 'XAF';
+  if (textLower.includes('£') || textLower.includes('gbp')) return 'GBP';
+  if (textLower.includes('¥') || textLower.includes('cny') || textLower.includes('rmb')) return 'CNY';
+  if (textLower.includes('mad') || textLower.includes('dh')) return 'MAD';
+  if (textLower.includes('dzd') || textLower.includes('da')) return 'DZD';
+  if (textLower.includes('tnd')) return 'TND';
+  
+  return null;
+}
+
+// Fonction pour nettoyer et parser un prix
+function parsePrice(value: string): { price: number | null, currency: string | null } {
+  if (!value) return { price: null, currency: null };
+  
+  const currency = detectCurrency(value);
+  
+  // Nettoyer le prix: enlever symboles de devise, espaces, et convertir virgule en point
+  let cleanPrice = value
+    .replace(/[€$£¥]/g, '')
+    .replace(/fcfa|xaf|xof|cfa|eur|usd|gbp|cny|mad|dzd|tnd|dh|da/gi, '')
+    .replace(/\s/g, '')
+    .replace(/,/g, '.')
+    .trim();
+  
+  // Extraire le nombre
+  const match = cleanPrice.match(/[\d.]+/);
+  const price = match ? parseFloat(match[0]) : null;
+  
+  return { price: isNaN(price as number) ? null : price, currency };
+}
+
+// Extraction pour CSV - déterministe et rapide avec prix
 async function extractFromCSV(content: string, sector: string): Promise<any> {
   const { headers, rows } = parseCSV(content);
   
@@ -71,7 +110,7 @@ async function extractFromCSV(content: string, sector: string): Promise<any> {
     h.includes('nom') || h.includes('désignation') || h.includes('designation') || 
     h.includes('article') || h.includes('produit') || h.includes('matériau') || 
     h.includes('materiau') || h.includes('libellé') || h.includes('libelle') ||
-    h.includes('name') || h.includes('item') || h.includes('description')
+    h.includes('name') || h.includes('item')
   );
   
   const qtyIdx = headerLower.findIndex(h => 
@@ -93,8 +132,63 @@ async function extractFromCSV(content: string, sector: string): Promise<any> {
     h.includes('commentaire') || h.includes('note') || h.includes('spec')
   );
 
+  // Colonnes pour les prix
+  const priceIdx = headerLower.findIndex(h => 
+    h.includes('prix') || h.includes('price') || h.includes('tarif') || 
+    h.includes('cout') || h.includes('coût') || h.includes('cost') ||
+    h.includes('pu') || h.includes('p.u') || h.includes('montant') ||
+    h.includes('valeur') || h.includes('value')
+  );
+
+  const unitPriceIdx = headerLower.findIndex(h => 
+    (h.includes('prix') && h.includes('unit')) || h.includes('pu') || h.includes('p.u') ||
+    h.includes('unit price') || h.includes('prix unitaire')
+  );
+
+  const totalPriceIdx = headerLower.findIndex(h => 
+    (h.includes('prix') && h.includes('total')) || h.includes('montant') ||
+    h.includes('total') || h.includes('amount')
+  );
+
+  // Colonne pour la devise
+  const currencyIdx = headerLower.findIndex(h => 
+    h.includes('devise') || h.includes('currency') || h.includes('monnaie')
+  );
+
+  // Colonne pour le fournisseur
+  const supplierIdx = headerLower.findIndex(h => 
+    h.includes('fournisseur') || h.includes('supplier') || h.includes('vendor') ||
+    h.includes('fabricant') || h.includes('manufacturer') || h.includes('marque') ||
+    h.includes('brand') || h.includes('source')
+  );
+
+  // Détecter la devise globale du document
+  let globalCurrency: string | null = null;
+  // Chercher dans les en-têtes
+  for (const header of headers) {
+    const detected = detectCurrency(header);
+    if (detected) {
+      globalCurrency = detected;
+      break;
+    }
+  }
+  // Chercher dans les premières lignes si pas trouvé
+  if (!globalCurrency) {
+    for (let i = 0; i < Math.min(5, rows.length); i++) {
+      for (const cell of rows[i]) {
+        const detected = detectCurrency(cell);
+        if (detected) {
+          globalCurrency = detected;
+          break;
+        }
+      }
+      if (globalCurrency) break;
+    }
+  }
+
   const items: any[] = [];
   const categories = new Set<string>();
+  const suppliers = new Set<string>();
 
   for (const row of rows) {
     // Trouver le nom - si pas de colonne identifiée, prendre la première non-vide
@@ -111,27 +205,58 @@ async function extractFromCSV(content: string, sector: string): Promise<any> {
     const unit = unitIdx >= 0 ? row[unitIdx]?.trim() : null;
     const category = catIdx >= 0 ? row[catIdx]?.trim() || 'Non catégorisé' : 'Non catégorisé';
     const description = descIdx >= 0 ? row[descIdx]?.trim() : null;
+
+    // Extraction du prix
+    let priceValue = null;
+    let priceCurrency = globalCurrency;
+    
+    // Priorité: prix unitaire > prix général > prix total
+    const priceColIdx = unitPriceIdx >= 0 ? unitPriceIdx : (priceIdx >= 0 ? priceIdx : totalPriceIdx);
+    if (priceColIdx >= 0 && row[priceColIdx]) {
+      const parsed = parsePrice(row[priceColIdx]);
+      priceValue = parsed.price;
+      if (parsed.currency) priceCurrency = parsed.currency;
+    }
+
+    // Devise explicite
+    if (currencyIdx >= 0 && row[currencyIdx]) {
+      const detected = detectCurrency(row[currencyIdx]);
+      if (detected) priceCurrency = detected;
+    }
+
+    // Fournisseur
+    const supplier = supplierIdx >= 0 ? row[supplierIdx]?.trim() : null;
     
     items.push({
       name,
       description,
       category,
       quantity,
-      unit
+      unit,
+      price: priceValue,
+      currency: priceCurrency,
+      supplier
     });
     
     if (category && category !== 'Non catégorisé') {
       categories.add(category);
+    }
+    if (supplier) {
+      suppliers.add(supplier);
     }
   }
 
   return {
     items,
     categories: Array.from(categories),
+    suppliers: Array.from(suppliers),
+    detectedCurrency: globalCurrency,
     method: 'csv-deterministic',
     stats: {
       totalRows: rows.length,
       extractedItems: items.length,
+      itemsWithPrice: items.filter(i => i.price !== null).length,
+      itemsWithSupplier: items.filter(i => i.supplier !== null).length,
       headers
     }
   };
@@ -142,8 +267,12 @@ async function extractFromText(content: string, sector: string, fileType: string
   const chunks = splitTextIntoChunks(content, 6000);
   const allItems: any[] = [];
   const allCategories = new Set<string>();
+  const allSuppliers = new Set<string>();
   
-  console.log(`📄 Processing ${fileType}: ${chunks.length} chunks, ${content.length} chars total`);
+  // Détecter la devise globale du document
+  const globalCurrency = detectCurrency(content.substring(0, 5000));
+  
+  console.log(`📄 Processing ${fileType}: ${chunks.length} chunks, ${content.length} chars total, currency: ${globalCurrency || 'unknown'}`);
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
@@ -151,17 +280,21 @@ async function extractFromText(content: string, sector: string, fileType: string
     const prompt = `Tu es un expert en extraction de données BTP pour le secteur "${sector}".
 
 CONTEXTE: Fichier ${fileType.toUpperCase()}, partie ${i + 1}/${chunks.length}
+${globalCurrency ? `DEVISE DÉTECTÉE: ${globalCurrency}` : ''}
 
 CONTENU À ANALYSER:
 """
 ${chunk}
 """
 
-MISSION CHIRURGICALE:
+MISSION CHIRURGICALE - EXTRACTION COMPLÈTE:
 1. Identifie CHAQUE matériau, article, équipement ou produit mentionné
 2. Extrais les quantités si présentes (même approximatives)
 3. Détecte les unités (m, m², m³, kg, L, U, pièce, lot, etc.)
-4. Catégorise selon les standards BTP:
+4. **PRIX**: Extrais le prix unitaire si mentionné (nombre uniquement)
+5. **DEVISE**: Identifie la devise (EUR, USD, XAF/FCFA, GBP, CNY, MAD, etc.)
+6. **FOURNISSEUR**: Identifie le fournisseur, fabricant ou marque si mentionné
+7. Catégorise selon les standards BTP:
    - Gros œuvre (béton, ciment, parpaings, ferraillage...)
    - Second œuvre (plâtre, cloisons, isolation...)
    - Électricité (câbles, prises, disjoncteurs...)
@@ -177,6 +310,8 @@ RÈGLES:
 - Ignore les totaux et sous-totaux
 - Si un article apparaît plusieurs fois, garde chaque occurrence
 - Sois exhaustif: mieux vaut extraire trop que pas assez
+- Pour les prix: extrais le prix UNITAIRE de préférence, sinon le prix total
+- Pour la devise: utilise le code ISO (EUR, USD, XAF, etc.)
 
 FORMAT JSON STRICT (sans markdown):
 {
@@ -186,10 +321,15 @@ FORMAT JSON STRICT (sans markdown):
       "description": "Détails additionnels ou null",
       "category": "Catégorie BTP",
       "quantity": 10.5,
-      "unit": "m²"
+      "unit": "m²",
+      "price": 150.00,
+      "currency": "EUR",
+      "supplier": "Nom du fournisseur ou null"
     }
   ],
-  "categories": ["Liste des catégories trouvées"]
+  "categories": ["Liste des catégories trouvées"],
+  "suppliers": ["Liste des fournisseurs trouvés"],
+  "detectedCurrency": "EUR"
 }`;
 
     try {
@@ -218,6 +358,9 @@ FORMAT JSON STRICT (sans markdown):
         if (result.categories && Array.isArray(result.categories)) {
           result.categories.forEach((cat: string) => allCategories.add(cat));
         }
+        if (result.suppliers && Array.isArray(result.suppliers)) {
+          result.suppliers.forEach((sup: string) => allSuppliers.add(sup));
+        }
       } catch (parseError) {
         console.error(`Parse error for chunk ${i + 1}:`, parseError);
       }
@@ -230,15 +373,24 @@ FORMAT JSON STRICT (sans markdown):
   // Dédupliquer les items similaires
   const uniqueItems = deduplicateItems(allItems);
 
+  // Collecter les fournisseurs depuis les items
+  uniqueItems.forEach(item => {
+    if (item.supplier) allSuppliers.add(item.supplier);
+  });
+
   return {
     items: uniqueItems,
     categories: Array.from(allCategories),
+    suppliers: Array.from(allSuppliers),
+    detectedCurrency: globalCurrency,
     method: 'ai-extraction',
     stats: {
       chunks: chunks.length,
       totalChars: content.length,
       rawItems: allItems.length,
-      uniqueItems: uniqueItems.length
+      uniqueItems: uniqueItems.length,
+      itemsWithPrice: uniqueItems.filter(i => i.price !== null && i.price !== undefined).length,
+      itemsWithSupplier: uniqueItems.filter(i => i.supplier !== null && i.supplier !== undefined).length
     }
   };
 }
@@ -251,16 +403,35 @@ function deduplicateItems(items: any[]): any[] {
     const key = item.name.toLowerCase().trim();
     
     if (seen.has(key)) {
-      // Fusionner les quantités si possible
+      // Fusionner les données
       const existing = seen.get(key);
+      
+      // Fusionner les quantités si possible
       if (item.quantity && existing.quantity) {
         existing.quantity += item.quantity;
       } else if (item.quantity && !existing.quantity) {
         existing.quantity = item.quantity;
       }
+      
       // Garder la description la plus longue
       if (item.description && (!existing.description || item.description.length > existing.description.length)) {
         existing.description = item.description;
+      }
+      
+      // Garder le prix s'il n'existe pas encore
+      if (item.price && !existing.price) {
+        existing.price = item.price;
+        existing.currency = item.currency || existing.currency;
+      }
+      
+      // Garder le fournisseur s'il n'existe pas encore
+      if (item.supplier && !existing.supplier) {
+        existing.supplier = item.supplier;
+      }
+      
+      // Garder la devise si pas encore définie
+      if (item.currency && !existing.currency) {
+        existing.currency = item.currency;
       }
     } else {
       seen.set(key, { ...item });

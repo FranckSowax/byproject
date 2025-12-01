@@ -725,10 +725,15 @@ export default function ProjectPage() {
 
         console.log(`✅ Extracted ${items.length} items via ${extractResult.method}`);
 
-        setImportProgress(60);
-        setImportStatus(`💾 Sauvegarde de ${items.length} articles...`);
+        // Stats d'extraction
+        const itemsWithPrice = items.filter((i: any) => i.price !== null && i.price !== undefined).length;
+        const itemsWithSupplier = items.filter((i: any) => i.supplier).length;
+        const detectedCurrency = extractResult.detectedCurrency;
 
-        // Sauvegarde dans Supabase
+        setImportProgress(60);
+        setImportStatus(`💾 Sauvegarde de ${items.length} articles (${itemsWithPrice} avec prix)...`);
+
+        // Sauvegarde dans Supabase avec prix et fournisseur
         const materialsToInsert = items.map((item: any) => ({
           project_id: params.id,
           name: item.name,
@@ -739,18 +744,60 @@ export default function ProjectPage() {
             unit: item.unit,
             extracted_by: extractResult.method,
             file_type: extractResult.fileType,
+            // Stocker le prix extrait dans specs pour référence
+            extracted_price: item.price || null,
+            extracted_currency: item.currency || detectedCurrency || null,
+            extracted_supplier: item.supplier || null,
           },
         }));
 
-        // Insérer par lots de 50
+        // Insérer les matériaux par lots de 50
         const INSERT_BATCH_SIZE = 50;
+        const insertedMaterialIds: string[] = [];
+        
         for (let i = 0; i < materialsToInsert.length; i += INSERT_BATCH_SIZE) {
           const batch = materialsToInsert.slice(i, i + INSERT_BATCH_SIZE);
-          const { error } = await supabase.from('materials').insert(batch);
-          if (error) console.error('Error inserting batch:', error);
+          const { data: insertedData, error } = await supabase
+            .from('materials')
+            .insert(batch)
+            .select('id');
           
-          const progress = 60 + Math.round((i / materialsToInsert.length) * 35);
+          if (error) {
+            console.error('Error inserting batch:', error);
+          } else if (insertedData) {
+            insertedMaterialIds.push(...insertedData.map(m => m.id));
+          }
+          
+          const progress = 60 + Math.round((i / materialsToInsert.length) * 25);
           setImportProgress(progress);
+        }
+
+        // Créer les entrées de prix pour les matériaux qui ont un prix extrait
+        setImportStatus(`💰 Enregistrement des ${itemsWithPrice} prix extraits...`);
+        
+        const pricesToInsert: any[] = [];
+        items.forEach((item: any, index: number) => {
+          if (item.price && insertedMaterialIds[index]) {
+            pricesToInsert.push({
+              material_id: insertedMaterialIds[index],
+              price: item.price,
+              currency: item.currency || detectedCurrency || 'XAF',
+              country: 'local', // Par défaut local
+              supplier_name: item.supplier || 'Importé depuis fichier',
+              source: `Extrait de ${isPDF ? 'PDF' : isCSV ? 'CSV' : isTXT ? 'TXT' : 'Word'}`,
+              is_reference: true,
+            });
+          }
+        });
+
+        // Insérer les prix par lots
+        if (pricesToInsert.length > 0) {
+          for (let i = 0; i < pricesToInsert.length; i += INSERT_BATCH_SIZE) {
+            const batch = pricesToInsert.slice(i, i + INSERT_BATCH_SIZE);
+            const { error } = await supabase.from('material_prices').insert(batch);
+            if (error) console.error('Error inserting prices:', error);
+          }
+          console.log(`💰 Inserted ${pricesToInsert.length} prices`);
         }
 
         // Mettre à jour le statut du projet
@@ -762,8 +809,14 @@ export default function ProjectPage() {
         setImportProgress(100);
         setImportStatus('✅ Import terminé avec succès !');
 
+        // Message de succès détaillé
+        let successMsg = `${items.length} éléments importés depuis ${isPDF ? 'PDF' : isCSV ? 'CSV' : isTXT ? 'TXT' : 'Word'}`;
+        if (itemsWithPrice > 0) {
+          successMsg += ` (${itemsWithPrice} prix, ${itemsWithSupplier} fournisseurs)`;
+        }
+
         setTimeout(() => {
-          toast.success(`${items.length} éléments importés depuis ${isPDF ? 'PDF' : isCSV ? 'CSV' : isTXT ? 'TXT' : 'Word'}`);
+          toast.success(successMsg);
           setIsImportDialogOpen(false);
           setIsImporting(false);
           setImportFile(null);
