@@ -605,216 +605,184 @@ export default function ProjectPage() {
     return materialsByCategory[b].length - materialsByCategory[a].length;
   });
 
-  const handleFileImport = async () => {
-    if (!importFile) return;
+  const handleImportFile = async () => {
+    if (!importFile) {
+      toast.error('Veuillez sélectionner un fichier');
+      return;
+    }
 
     try {
       setIsImporting(true);
       setImportProgress(10);
-      setImportStatus('Lecture du fichier...');
+      setImportStatus('📂 Lecture du fichier Excel...');
 
-      const fileName = importFile.name;
-      const fileNameLower = fileName.toLowerCase();
-      const isExcel = fileNameLower.endsWith('.xlsx') || fileNameLower.endsWith('.xls');
-      const isCsv = fileNameLower.endsWith('.csv');
-
-      let fileContent = '';
-
-      if (isExcel) {
-        // Parser Excel avec XLSX
-        console.log('📊 Parsing Excel file...');
-        const XLSX = await import('xlsx');
-        const arrayBuffer = await importFile.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        // Convertir en CSV pour l'IA
-        fileContent = XLSX.utils.sheet_to_csv(worksheet);
-        
-        console.log('✅ Excel parsed:', {
-          sheet: firstSheetName,
-          contentLength: fileContent.length
-        });
-      } else if (isCsv) {
-        // Parser CSV
-        console.log('📄 Parsing CSV file...');
-        fileContent = await importFile.text();
-        
-        console.log('✅ CSV parsed:', {
-          contentLength: fileContent.length
-        });
-      } else {
-        throw new Error('Format de fichier non supporté. Utilisez .xlsx, .xls ou .csv');
+      // 1. Lire le fichier Excel localement avec SheetJS (import dynamique)
+      const XLSX = await import('xlsx');
+      const arrayBuffer = await importFile.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      
+      // Convertir en tableau de tableaux (raw data)
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+      
+      if (!rawData || rawData.length === 0) {
+        throw new Error('Fichier vide ou illisible');
       }
 
-      if (!fileContent.trim()) {
-        throw new Error('Fichier vide ou invalide');
-      }
-
+      console.log(`📊 Excel loaded: ${rawData.length} rows`);
       setImportProgress(20);
-      setImportStatus('🤖 Gemini 3 Pro analyse le fichier...');
+      setImportStatus('🧠 Analyse de la structure du fichier...');
 
-      // Récupérer les infos du secteur depuis le projet
-      const { data: projectData } = await supabase
-        .from('projects')
-        .select('sector_id, custom_sector_name')
-        .eq('id', params.id)
-        .single();
-
-      let sectorName = 'général';
-      let customSectorName = null;
-
-      if (projectData?.sector_id) {
-        const { data: sectorData } = await (supabase as any)
-          .from('sectors')
-          .select('name')
-          .eq('id', projectData.sector_id)
-          .single();
-        
-        if (sectorData) {
-          sectorName = sectorData.name;
-        }
-        customSectorName = projectData.custom_sector_name;
-      }
-
-      console.log('📤 Starting client-side chunking:', {
-        projectId: params.id,
-        fileName,
-        sectorName,
-        customSectorName,
-        contentLength: fileContent.length
+      // 2. Envoyer un échantillon à l'IA pour analyse de structure
+      // On prend les 25 premières lignes qui contiennent généralement l'en-tête
+      const sampleRows = rawData.slice(0, 25); 
+      
+      const analyzeResponse = await fetch('/api/ai/analyze-file-structure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileSample: sampleRows,
+          fileName: importFile.name
+        }),
       });
 
-      setImportProgress(10);
-      setImportStatus('✂️ Préparation des données...');
+      if (!analyzeResponse.ok) {
+        const errorText = await analyzeResponse.text();
+        console.error('Analysis error:', errorText);
+        throw new Error('Erreur lors de l\'analyse de structure');
+      }
 
-      // 1. Découper le fichier en chunks (max 1500 chars pour être sûr de passer < 10s)
-      const lines = fileContent.split('\n');
-      const chunks: string[] = [];
-      let currentChunk: string[] = [];
-      let currentSize = 0;
-      const MAX_CHUNK_SIZE = 1500; // Réduit drastiquement pour éviter timeout Netlify
+      const analysisResult = await analyzeResponse.json();
+      const config = analysisResult.config;
+      const modelUsed = analysisResult.model;
 
-      // Garder l'en-tête (première ligne) pour chaque chunk
-      const header = lines[0];
+      console.log('🧠 Structure analysis result:', config);
       
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line.trim()) continue;
+      if (!config || typeof config.headerRowIndex !== 'number') {
+        throw new Error('Impossible de détecter la structure du fichier');
+      }
+
+      setImportProgress(40);
+      setImportStatus(`🚀 Extraction déterministe (${modelUsed})...`);
+
+      // 3. Extraction déterministe basée sur la config
+      const items: any[] = [];
+      const categories = new Set<string>();
+      const headerRow = config.headerRowIndex;
+      const cols = config.columns;
+
+      // Boucler sur les lignes APRÈS l'en-tête
+      for (let i = headerRow + 1; i < rawData.length; i++) {
+        const row = rawData[i];
         
-        if (currentSize + line.length > MAX_CHUNK_SIZE && currentChunk.length > 0) {
-          chunks.push([header, ...currentChunk].join('\n'));
-          currentChunk = [];
-          currentSize = 0;
+        // Ignorer les lignes vides ou trop courtes
+        if (!row || row.length === 0) continue;
+
+        // Récupérer le nom (critique)
+        const name = cols.name !== null && row[cols.name] !== undefined ? row[cols.name] : null;
+        
+        // Filtre basique: il faut au moins un nom valide
+        if (!name || typeof name !== 'string' || name.trim().length < 2) continue;
+        
+        // Ignorer les lignes qui ressemblent à des totaux
+        if (name.toLowerCase().includes('total') || name.toLowerCase().includes('montant')) continue;
+
+        // Extraction des autres champs
+        let description = cols.description !== null && row[cols.description] !== undefined ? row[cols.description] : null;
+        // Si description == name, on met null pour ne pas dupliquer
+        if (description === name) description = null;
+
+        let category = cols.category !== null && row[cols.category] !== undefined ? row[cols.category] : 'Non catégorisé';
+        
+        // Nettoyage Quantité
+        let quantity = cols.quantity !== null && row[cols.quantity] !== undefined ? row[cols.quantity] : null;
+        if (typeof quantity === 'string') {
+          // Nettoyer "1 200,50" -> 1200.50
+          const cleanQty = quantity.replace(/\s/g, '').replace(/,/g, '.');
+          quantity = parseFloat(cleanQty.replace(/[^\d.-]/g, ''));
         }
-        currentChunk.push(line);
-        currentSize += line.length;
-      }
-      if (currentChunk.length > 0) {
-        chunks.push([header, ...currentChunk].join('\n'));
-      }
-
-      console.log(`📦 Created ${chunks.length} chunks to process`);
-      setImportStatus(`🧠 Analyse de 1/${chunks.length} parties avec Gemini 3...`);
-
-      let allItems: any[] = [];
-      let allCategories = new Set<string>();
-
-      // 2. Envoyer chaque chunk séquentiellement
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        const chunkIndex = i;
         
-        try {
-          const response = await fetch('/api/ai/extract-items', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chunkContent: chunk,
-              sector: customSectorName || sectorName || 'général',
-              chunkIndex,
-              totalChunks: chunks.length
-            }),
-          });
+        // Nettoyage Unité
+        const unit = cols.unit !== null && row[cols.unit] !== undefined ? row[cols.unit] : null;
 
-          if (!response.ok) {
-            console.error(`❌ Error processing chunk ${i+1}:`, await response.text());
-            continue; // Continuer avec les autres chunks
-          }
-
-          const result = await response.json();
-          if (result.success && result.items) {
-            console.log(`✅ Chunk ${i+1} processed: ${result.items.length} items`);
-            allItems = [...allItems, ...result.items];
-            if (result.categories) {
-              result.categories.forEach((c: string) => allCategories.add(c));
-            }
-          }
-
-          // Mettre à jour la progression
-          const percent = Math.round(((i + 1) / chunks.length) * 90);
-          setImportProgress(percent);
-          setImportStatus(`🧠 Analyse de ${Math.min(i + 2, chunks.length)}/${chunks.length} parties...`);
-          
-        } catch (err) {
-          console.error(`❌ Exception chunk ${i+1}:`, err);
-        }
-      }
-
-      // 3. Sauvegarder les résultats dans Supabase
-      if (allItems.length > 0) {
-        setImportStatus('💾 Sauvegarde des données...');
+        // Nettoyage Prix (informatif pour l'instant)
+        let price = cols.price !== null && row[cols.price] !== undefined ? row[cols.price] : null;
         
-        // Préparer les données pour l'insertion
-        const materialsToInsert = allItems.map(item => ({
-          project_id: params.id,
-          name: item.name,
-          description: item.description,
-          category: item.category,
-          quantity: item.quantity,
+        items.push({
+          name: name.trim(),
+          description: description ? description.toString().trim() : null,
+          category: category ? category.toString().trim() : 'Non catégorisé',
+          quantity: isNaN(quantity) ? null : quantity,
+          unit: unit ? unit.toString().trim() : null,
           specs: {
-            ...item.specs,
-            unit: item.unit,
-            extracted_by: 'gemini-3-pro-client-chunking',
-            sector: customSectorName || sectorName,
-          },
-        }));
+            extracted_from_row: i,
+            original_price: price
+          }
+        });
 
-        // Insérer par lots de 50 pour éviter les limites de payload
-        const INSERT_BATCH_SIZE = 50;
-        for (let i = 0; i < materialsToInsert.length; i += INSERT_BATCH_SIZE) {
-          const batch = materialsToInsert.slice(i, i + INSERT_BATCH_SIZE);
-          const { error } = await supabase.from('materials').insert(batch);
-          if (error) console.error('Error inserting batch:', error);
-        }
-
-        // Mettre à jour le statut du projet
-        await supabase
-          .from('projects')
-          .update({ mapping_status: 'completed' })
-          .eq('id', params.id);
-
-        setImportProgress(100);
-        setImportStatus('✅ Import terminé !');
-
-        setTimeout(() => {
-          toast.success(`${allItems.length} éléments importés dans ${allCategories.size} catégories`);
-          setIsImportDialogOpen(false);
-          setIsImporting(false);
-          setImportFile(null);
-          setImportProgress(0);
-          setImportStatus('');
-          setImportedCount(0);
-          loadMaterials();
-        }, 1000);
-      } else {
-        throw new Error('Aucun élément trouvé dans le fichier');
+        if (category && category !== 'Non catégorisé') categories.add(category.toString().trim());
       }
+
+      console.log(`✅ Extracted ${items.length} items deterministically`);
+      
+      if (items.length === 0) {
+        throw new Error('Aucun article trouvé avec la structure détectée');
+      }
+
+      setImportProgress(70);
+      setImportStatus(`💾 Sauvegarde de ${items.length} articles...`);
+
+      // 4. Sauvegarde dans Supabase
+      const materialsToInsert = items.map(item => ({
+        project_id: params.id,
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        quantity: item.quantity,
+        specs: {
+          ...item.specs,
+          unit: item.unit,
+          extracted_by: `smart-etl-${modelUsed}`,
+          sector: 'construction',
+        },
+      }));
+
+      // Insérer par lots de 50
+      const INSERT_BATCH_SIZE = 50;
+      for (let i = 0; i < materialsToInsert.length; i += INSERT_BATCH_SIZE) {
+        const batch = materialsToInsert.slice(i, i + INSERT_BATCH_SIZE);
+        const { error } = await supabase.from('materials').insert(batch);
+        if (error) console.error('Error inserting batch:', error);
+        
+        // Mise à jour progression
+        const progress = 70 + Math.round((i / materialsToInsert.length) * 30);
+        setImportProgress(progress);
+      }
+
+      // Mettre à jour le statut du projet
+      await supabase
+        .from('projects')
+        .update({ mapping_status: 'completed' })
+        .eq('id', params.id);
+
+      setImportProgress(100);
+      setImportStatus('✅ Import terminé avec succès !');
+
+      setTimeout(() => {
+        toast.success(`${items.length} éléments importés via Smart ETL`);
+        setIsImportDialogOpen(false);
+        setIsImporting(false);
+        setImportFile(null);
+        setImportProgress(0);
+        setImportStatus('');
+        setImportedCount(0);
+        loadMaterials();
+      }, 1500);
 
     } catch (error) {
       console.error('Error importing file:', error);
-      toast.error('Erreur lors de l\'import du fichier');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de l\'import');
       setIsImporting(false);
       setImportProgress(0);
       setImportStatus('');
