@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Analyser avec GPT-4o
+    // 3. Analyser avec l'IA
     const analysis = await analyzeWithGPT4(fileText, fileName);
 
     if (!analysis) {
@@ -321,15 +321,15 @@ async function extractTextFromPDFWithVision(file: Blob, fileName: string): Promi
   }
 }
 
-// Analyser une page avec GPT-4 Vision
+// Analyser une page avec GPT-4o-mini Vision
 async function analyzePageWithVision(pdfBuffer: ArrayBuffer, pageIndex: number): Promise<string> {
   try {
     // Convertir le buffer en base64
     const base64 = Buffer.from(pdfBuffer).toString('base64');
     
-    // Utiliser GPT-4 Vision pour extraire le texte
+    // Utiliser GPT-4o-mini Vision pour extraire le texte
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "user",
@@ -390,7 +390,7 @@ async function extractTextFromPDFWithTesseract(file: Blob, fileName: string): Pr
   }
 }
 
-// Fonction pour analyser avec GPT-4o
+// Fonction pour analyser avec l'IA
 async function analyzeWithGPT4(fileContent: string, fileName: string) {
   try {
     const prompt = `Tu es un expert en analyse de fichiers de matériaux de construction et d'équipements. 
@@ -474,7 +474,7 @@ Si tu vois:
 RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -497,7 +497,7 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
     const parsedResponse = JSON.parse(response);
     
     // Log pour debug
-    console.log('GPT-4o Analysis Results:', {
+    console.log('AI Analysis Results:', {
       materialsFound: parsedResponse.materials?.length || 0,
       fileName,
       statistics: parsedResponse.statistics
@@ -506,7 +506,7 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
     return parsedResponse;
 
   } catch (error) {
-    console.error('GPT-4 analysis error:', error);
+    console.error('AI analysis error:', error);
     return null;
   }
 }

@@ -163,7 +163,7 @@ export default function MappingPage() {
                 {status === 'error' && 'Erreur d\'analyse'}
               </CardTitle>
               <CardDescription>
-                {status === 'analyzing' && 'GPT-4o analyse votre fichier'}
+                {status === 'analyzing' && 'L\'IA analyse votre fichier'}
                 {status === 'completed' && 'Votre fichier a été analysé avec succès'}
                 {status === 'error' && 'Une erreur est survenue'}
               </CardDescription>
@@ -209,7 +209,7 @@ export default function MappingPage() {
                 </div>
                 <div className="flex-1">
                   <p className="font-medium">Analyse par IA</p>
-                  <p className="text-sm text-gray-600">GPT-4o détecte les colonnes et matériaux</p>
+                  <p className="text-sm text-gray-600">L'IA détecte les colonnes et matériaux</p>
                 </div>
                 {progress > 60 && <CheckCircle className="h-5 w-5 text-green-600" />}
               </div>
@@ -301,7 +301,7 @@ export default function MappingPage() {
               <div className="space-y-1">
                 <h4 className="font-semibold text-blue-900">Comment ça marche?</h4>
                 <p className="text-sm text-blue-800">
-                  GPT-4o analyse votre fichier et détecte automatiquement les colonnes 
+                  L'IA analyse votre fichier et détecte automatiquement les colonnes 
                   (nom, quantité, prix, etc.). Vous pourrez ensuite corriger le mapping 
                   si nécessaire et ajouter les prix pour chaque pays.
                 </p>

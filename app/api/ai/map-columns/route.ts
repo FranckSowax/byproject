@@ -117,8 +117,8 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
       modelUsed = 'gemini-3-pro';
       
     } else {
-      // Fallback to OpenAI GPT-4o
-      console.log('🔍 Mapping columns with GPT-4o (fallback)...', {
+      // Fallback to OpenAI GPT-4o-mini
+      console.log('🔍 Mapping columns with GPT-4o-mini (fallback)...', {
         headersCount: headers.length,
         targetFields,
         sector,
@@ -126,7 +126,7 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
       });
 
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -143,7 +143,7 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
       });
 
       responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-      modelUsed = 'gpt-4o';
+      modelUsed = 'gpt-4o-mini';
     }
     
     console.log('📄 Raw AI Response:', responseText.substring(0, 500));

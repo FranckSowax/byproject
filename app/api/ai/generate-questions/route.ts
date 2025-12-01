@@ -38,7 +38,7 @@ ${context ? `Contexte supplémentaire : ${context}` : ''}
 Génère les 10 questions les plus pertinentes maintenant.`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o', // Ou deepseek-chat selon la configuration
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }

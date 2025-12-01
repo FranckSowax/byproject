@@ -1956,7 +1956,7 @@ export default function ProjectPage() {
                 {String(params.id).startsWith('mock-') && (
                   <p className="text-sm text-green-700 mt-2">
                     💡 <strong>Mode Démo:</strong> Vous utilisez le login admin. Pour voir les matériaux 
-                    réellement créés dans la base de données et utiliser GPT-4o, connectez-vous avec 
+                    réellement créés dans la base de données, connectez-vous avec 
                     un compte Supabase sur <a href="/login" className="underline">/login</a>.
                   </p>
                 )}
@@ -3524,7 +3524,7 @@ export default function ProjectPage() {
                   Annuler
                 </Button>
                 <Button
-                  onClick={handleFileImport}
+                  onClick={handleImportFile}
                   disabled={!importFile}
                   className="bg-gradient-to-r from-[#38B2AC] to-[#319795] hover:from-[#319795] hover:to-[#2C7A7B] text-white"
                 >
