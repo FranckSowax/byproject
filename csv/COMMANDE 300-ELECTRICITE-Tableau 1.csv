@@ -1,0 +1,43 @@
+"
+COMMANDE DES MATERIAUX DU LOGEMENT 375 DU TYPE OGOOUE A BIKELE
+  
+";;;;;;;;;;;;;;;;;;;;;
+"
+SERIE 300 : ELECTRICITE
+  
+";;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+NO ORDRE;DESIGNATION;UNITE;QUANTITE;PRIX UNITAIRE HT;PRIX TOTAL HT;FOURNISSEUR;;;;;;;;;;;;;;;
+SERIE 300 : ELECTRICITE;;;;;;;;;;;;;;;;;;;;;
+1;Câble cuivre nu 25mm² posé enterré en fond de fouille;ml;5; 	3 059 ; 	15 294 ;BRICORAMA;;;;;;;;;;;;;;;
+2;Piquet de terre ;u;1; 	5 345 ; 	5 345 ;;;;;;;;;;;;;;;;
+3;Barrette de coupure de terre 150x45 ;u;1; 	11 092 ; 	11 092 ;;;;;;;;;;;;;;;;
+4;Fil TH 10mm²  vert / jaune / mètre;ml;10; 	1 109 ; 	11 092 ;;;;;;;;;;;;;;;;
+5;Câble rvk souple noir 4*6mm2 / mètre ;ml;15; 	3 261 ; 	48 908 ;;;;;;;;;;;;;;;;
+6;Gaine ICT Ø 25 passage dans le plafond et maçonnerie/100m;u;2; 	25 882 ; 	51 765 ;;;;;;;;;;;;;;;;
+7;Câble coaxiale (pour antenne TV) ;ml;30; 	515 ; 	15 450 ;;;;;;;;;;;;;;;;
+8;Inter Différentiel  40/30mA;u;1; 	25 210 ; 	25 210 ;;;;;;;;;;;;;;;;
+9;DPN 10A;u;3; 	4 639 ; 	13 916 ;;;;;;;;;;;;;;;;
+10;DPN 16A ;u;6; 	4 639 ; 	27 832 ;;;;;;;;;;;;;;;;
+11;DPN 20A;u;4; 	4 639 ; 	18 555 ;;;;;;;;;;;;;;;;
+12;DNP 25A;u;0; 	4 639 ; 	- 0;;;;;;;;;;;;;;;;
+13;Tableau de protection  et de distribution+  marque LE GRAND ou Equivalent ;u;1; 	29 240 ; 	29 240 ;;;;;;;;;;;;;;;;
+14;Peignes de raccordement ;u;4; 	2 353 ; 	9 412 ;;;;;;;;;;;;;;;;
+15;Domino 16A;u;4; 	2 700 ; 	10 800 ;;;;;;;;;;;;;;;;
+16;Interrupteur simple allumage / kaptica 10 A blanc;u;5; 	807 ; 	4 034 ;;;;;;;;;;;;;;;;
+17;Interrupteur va et vient / kaptica 10A blanc;u;12; 	1 311 ; 	15 731 ;;;;;;;;;;;;;;;;
+18;Applique sanitaire avec interrupteur et prise de courant;u;2; 	5 345 ; 	10 689 ;;;;;;;;;;;;;;;;
+19;Prise de courant 2P+T 16/20/25A avec éclipse;u;12; 	1 008 ; 	12 101 ;;;;;;;;;;;;;;;;
+20;Prise de courant 2P+T 16A avec éclipse étanche;u;3; 	4 370 ; 	13 109 ;;;;;;;;;;;;;;;;
+21;Reglettes completes 1,2;u;2; 	2 017 ; 	4 034 ;;;;;;;;;;;;;;;;
+22;Reglettes completes 0,6;u;6; 	1 983 ; 	11 899 ;;;;;;;;;;;;;;;;
+23;Reglettes completes 1,2 etanche(1x36w);u;4; 	8 403 ; 	33 613 ;;;;;;;;;;;;;;;;
+24;Hublot étanche 100W;u;2; 	3 160 ; 	6 319 ;;;;;;;;;;;;;;;;
+25;Dismatic;u;4; 	13 109 ; 	52 436 ;;;;;;;;;;;;;;;;
+26;Prise tv;u;2; 	1 990 ; 	3 980 ;;;;;;;;;;;;;;;;
+27;Chauffe eau de 80 l +  Groupe de Securité,;u;1; 	129 400 ; 	129 400 ;;;;;;;;;;;;;;;;
+28;Transport;ff;1; 	150 000 ; 	150 000 ;;;;;;;;;;;;;;;;
+TOTAL SERIE 300 : ELECTRICITE;;;;; 	741 256 ;;;;;;;;;;;;;;;;
+"
+DPPI                                                                                                                                                                     ";;;     SEP;;;INGENIEUR;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;

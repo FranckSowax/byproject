@@ -1,0 +1,45 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - generic [ref=e11]: Créer un compte
+      - generic [ref=e12]: Commencez à comparer les prix des matériaux de construction dès aujourd'hui
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]: Nom complet
+          - textbox "Nom complet" [ref=e17]:
+            - /placeholder: Jean Dupont
+            - text: Test User E2E
+        - generic [ref=e18]:
+          - generic [ref=e19]: Email
+          - textbox "Email" [ref=e20]:
+            - /placeholder: nom@exemple.com
+            - text: test+1762632971178@example.com
+        - generic [ref=e21]:
+          - generic [ref=e22]: Langue préférée
+          - combobox [ref=e23]:
+            - generic: English
+            - img
+          - combobox [ref=e24]
+        - generic [ref=e25]:
+          - generic [ref=e26]: Mot de passe
+          - textbox "Mot de passe" [active] [ref=e27]: "123"
+          - paragraph [ref=e28]: Minimum 8 caractères
+        - generic [ref=e29]:
+          - generic [ref=e30]: Confirmer le mot de passe
+          - textbox "Confirmer le mot de passe" [ref=e31]: "123"
+      - generic [ref=e32]:
+        - button "Créer un compte" [ref=e33]
+        - paragraph [ref=e34]:
+          - text: Vous avez déjà un compte ?
+          - link "Se connecter" [ref=e35] [cursor=pointer]:
+            - /url: /login
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e41] [cursor=pointer]:
+    - img [ref=e42]
+  - alert [ref=e46]
+```

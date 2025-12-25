@@ -1,0 +1,932 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { ArrowLeft, Download, TrendingDown, TrendingUp, Ship, Package, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
+import Link from 'next/link';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+interface Material {
+  id: string;
+  name: string;
+  quantity: number | null;
+}
+
+interface PriceVariation {
+  id: string;
+  label: string;
+  amount: string;
+  notes?: string;
+  labelFr?: string;
+}
+
+interface Price {
+  id: number;
+  material_id: string;
+  country: string;
+  amount: number;
+  currency: string;
+  converted_amount: number;
+  package_length?: number | null;
+  package_width?: number | null;
+  package_height?: number | null;
+  units_per_package?: number | null;
+  variations?: PriceVariation[] | null;
+  supplier: {
+    name: string;
+    country: string;
+  } | null;
+}
+
+// Type pour un matériau étendu incluant les variations
+interface ExtendedMaterial extends Material {
+  isVariation?: boolean;
+  parentId?: string;
+  parentName?: string;
+  variationLabel?: string;
+  variationPrice?: number;
+  basePrice?: Price;
+}
+
+export default function ComparisonPage() {
+  const params = useParams();
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [project, setProject] = useState<any>(null);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [pricesByMaterial, setPricesByMaterial] = useState<Record<string, Price[]>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCountry, setSelectedCountry] = useState<string>('all');
+
+  useEffect(() => {
+    loadData();
+  }, [params.id]);
+
+  // Fonction pour "exploser" les matériaux avec variations
+  const expandMaterialsWithVariations = (materials: Material[], pricesByMaterial: Record<string, Price[]>): ExtendedMaterial[] => {
+    const expanded: ExtendedMaterial[] = [];
+
+    materials.forEach(material => {
+      // Ajouter le matériau de base
+      expanded.push(material);
+
+      // Vérifier si ce matériau a des prix avec variations
+      const prices = pricesByMaterial[material.id] || [];
+      
+      prices.forEach(price => {
+        if (price.variations && price.variations.length > 0) {
+          price.variations.forEach((variation, index) => {
+            // Créer un "matériau virtuel" pour chaque variation
+            const variationMaterial: ExtendedMaterial = {
+              id: `${material.id}-var-${price.id}-${index}`,
+              name: `${material.name} - ${variation.label}`,
+              quantity: material.quantity,
+              isVariation: true,
+              parentId: material.id,
+              parentName: material.name,
+              variationLabel: variation.label,
+              variationPrice: parseFloat(variation.amount) || 0,
+              basePrice: price, // Garder référence au prix de base pour supplier info
+            };
+            expanded.push(variationMaterial);
+          });
+        }
+      });
+    });
+
+    return expanded;
+  };
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      
+      const projectId = params.id as string;
+      if (!projectId) return;
+
+      // Charger le projet
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      setProject(projectData);
+
+      // Charger les matériaux
+      const { data: materialsData } = await supabase
+        .from('materials')
+        .select('id, name, quantity')
+        .eq('project_id', projectId)
+        .order('name');
+
+      setMaterials((materialsData as unknown as Material[]) || []);
+
+      // Charger tous les prix
+      if (materialsData && materialsData.length > 0) {
+        const typedMaterials = materialsData as unknown as Material[];
+        const materialIds = typedMaterials.map(m => m.id);
+        const { data: pricesData } = await supabase
+          .from('prices')
+          .select(`
+            *,
+            supplier:suppliers(name, country)
+          `)
+          .in('material_id', materialIds);
+
+        // Grouper les prix par matériau
+        const grouped: Record<string, Price[]> = {};
+        const typedPrices = (pricesData as unknown as Price[]) || [];
+        typedPrices.forEach(price => {
+          if (!grouped[price.material_id]) {
+            grouped[price.material_id] = [];
+          }
+          grouped[price.material_id].push(price);
+        });
+
+        setPricesByMaterial(grouped);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Erreur lors du chargement');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getBestPrice = (materialId: string, country?: string) => {
+    const prices = pricesByMaterial[materialId] || [];
+    // Filtrer par pays en vérifiant à la fois price.country et supplier.country
+    const filtered = country 
+      ? prices.filter(p => p.country === country || p.supplier?.country === country) 
+      : prices;
+    if (filtered.length === 0) return null;
+    return filtered.reduce((min, p) => 
+      (p.converted_amount || p.amount) < (min.converted_amount || min.amount) ? p : min
+    );
+  };
+
+  const calculateTotal = (country?: string) => {
+    const expandedMaterials = expandMaterialsWithVariations(materials, pricesByMaterial);
+    
+    return expandedMaterials.reduce((total, material) => {
+      // Si c'est une variation, utiliser son prix spécifique
+      if (material.isVariation && material.variationPrice) {
+        const quantity = material.quantity || 1;
+        return total + (material.variationPrice * quantity);
+      }
+      
+      // Sinon, utiliser la logique normale
+      const bestPrice = getBestPrice(material.id, country);
+      if (!bestPrice) return total;
+      const quantity = material.quantity || 1;
+      // Utiliser converted_amount en priorité, sinon amount
+      const price = bestPrice.converted_amount && bestPrice.converted_amount > 0 
+        ? bestPrice.converted_amount 
+        : bestPrice.amount;
+      return total + price * quantity;
+    }, 0);
+  };
+
+  const calculateVolume = (country?: string) => {
+    return materials.reduce((totalVolume, material) => {
+      const bestPrice = getBestPrice(material.id, country);
+      if (!bestPrice) return totalVolume;
+      const quantity = material.quantity || 1;
+      
+      // Calcul CBM si dimensions disponibles
+      if (bestPrice.package_length && bestPrice.package_width && bestPrice.package_height) {
+        const cbmPerUnit = (bestPrice.package_length * bestPrice.package_width * bestPrice.package_height) / 1000000;
+        const unitsPerPackage = bestPrice.units_per_package || 1;
+        const packagesNeeded = Math.ceil(quantity / unitsPerPackage);
+        return totalVolume + (cbmPerUnit * packagesNeeded);
+      }
+      return totalVolume;
+    }, 0);
+  };
+
+  const calculateShippingCost = (volume: number, country?: string) => {
+    // Tarifs estimés (à ajuster selon vos besoins)
+    const rates: Record<string, number> = {
+      'Chine': 50, // 50 USD par CBM (maritime)
+      'Dubai': 80, // 80 USD par CBM (maritime)
+      'Turquie': 70, // 70 USD par CBM (maritime)
+    };
+    
+    const ratePerCBM = country && rates[country] ? rates[country] : 0;
+    const shippingUSD = volume * ratePerCBM;
+    
+    // Conversion USD vers FCFA (taux approximatif: 1 USD = 600 FCFA)
+    return shippingUSD * 600;
+  };
+
+  // Extraire dynamiquement les pays des fournisseurs
+  const countries = Array.from(
+    new Set(
+      Object.values(pricesByMaterial)
+        .flat()
+        .map(p => p.supplier?.country)
+        .filter(Boolean)
+    )
+  ).sort() as string[];
+
+  // Définir les pays locaux (Afrique)
+  const localCountries = ['Cameroun', 'Gabon', 'Congo', 'RDC', 'Côte d\'Ivoire', 'Sénégal', 'Bénin', 'Togo'];
+  
+  // Fonction pour calculer le total local (meilleurs prix parmi les pays locaux)
+  const calculateLocalTotal = () => {
+    const expandedMaterials = expandMaterialsWithVariations(materials, pricesByMaterial);
+    
+    return expandedMaterials.reduce((total, material) => {
+      // Si c'est une variation avec prix local/non spécifié à un pays, inclure
+      if (material.isVariation && material.variationPrice && material.basePrice) {
+        // Vérifier si le prix de base est d'un pays local
+        const isLocal = localCountries.includes(material.basePrice.country || '') || 
+                       localCountries.includes(material.basePrice.supplier?.country || '');
+        if (isLocal) {
+          const quantity = material.quantity || 1;
+          return total + (material.variationPrice * quantity);
+        }
+        return total;
+      }
+      
+      const prices = pricesByMaterial[material.id] || [];
+      // Filtrer uniquement les prix des pays locaux (vérifier price.country et supplier.country)
+      const localPrices = prices.filter(p => 
+        localCountries.includes(p.country || '') || 
+        localCountries.includes(p.supplier?.country || '')
+      );
+      if (localPrices.length === 0) return total;
+      
+      // Trouver le meilleur prix local
+      const bestLocalPrice = localPrices.reduce((min, p) => 
+        (p.converted_amount || p.amount) < (min.converted_amount || min.amount) ? p : min
+      );
+      
+      const quantity = material.quantity || 1;
+      // Utiliser converted_amount en priorité
+      const price = bestLocalPrice.converted_amount && bestLocalPrice.converted_amount > 0
+        ? bestLocalPrice.converted_amount
+        : bestLocalPrice.amount;
+      return total + price * quantity;
+    }, 0);
+  };
+  
+  // Calculer le coût local avec les meilleurs prix locaux uniquement
+  const totalLocal = calculateLocalTotal();
+  const totalChina = calculateTotal('Chine');
+  const volumeLocal = calculateVolume();
+  const volumeChina = calculateVolume('Chine');
+  const shippingCostChina = calculateShippingCost(volumeChina, 'Chine');
+  
+  const totalChinaWithShipping = totalChina + shippingCostChina;
+  const savings = totalLocal - totalChinaWithShipping;
+  const savingsPercentage = totalLocal > 0 ? (savings / totalLocal * 100).toFixed(1) : 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Fonction pour formater les nombres avec espaces (compatible PDF)
+      const formatNumber = (num: number): string => {
+        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      };
+      
+      // Configuration des couleurs
+      const primaryColor: [number, number, number] = [91, 95, 199]; // #5B5FC7
+      const accentColor: [number, number, number] = [255, 155, 123]; // #FF9B7B
+      
+      // En-tête
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, 210, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.text('Rapport de Comparaison', 105, 20, { align: 'center' });
+      
+      doc.setFontSize(12);
+      doc.text(project?.name || 'Projet', 105, 30, { align: 'center' });
+      
+      // Date
+      const today = new Date().toLocaleDateString('fr-FR');
+      doc.setFontSize(10);
+      doc.text(`Généré le ${today}`, 105, 36, { align: 'center' });
+      
+      // Résumé Global
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(16);
+      doc.text('Résumé Global', 14, 55);
+      
+      // Tableau résumé
+      autoTable(doc, {
+        startY: 60,
+        head: [['Indicateur', 'Valeur']],
+        body: [
+          ['Coût Total Local (Meilleurs Prix)', `${formatNumber(totalLocal)} FCFA`],
+          ['Coût Matériaux Chine', `${formatNumber(totalChina)} FCFA`],
+          ['Volume Chine', `${volumeChina.toFixed(3)} CBM`],
+          ['Frais Transport Maritime', `${formatNumber(shippingCostChina)} FCFA`],
+          ['Coût Total Chine (avec transport)', `${formatNumber(totalChinaWithShipping)} FCFA`],
+          ['Économie / Surcoût', `${savings > 0 ? '-' : '+'}${formatNumber(Math.abs(savings))} FCFA (${savingsPercentage}%)`],
+        ],
+        headStyles: { fillColor: primaryColor, textColor: 255 },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        margin: { left: 14, right: 14 },
+      });
+      
+      // Recommandation
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(14);
+      doc.text('Recommandation', 14, finalY);
+      
+      doc.setFontSize(11);
+      if (savings > 0) {
+        doc.setTextColor(34, 139, 34);
+        doc.text('✓ Acheter en Chine est plus avantageux', 14, finalY + 8);
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text(
+          `Vous économiserez ${savingsPercentage}% en important de Chine, soit ${formatNumber(savings)} FCFA.`,
+          14,
+          finalY + 15,
+          { maxWidth: 180 }
+        );
+      } else {
+        doc.setTextColor(65, 105, 225);
+        doc.text('ℹ Acheter localement est préférable', 14, finalY + 8);
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text('Les prix locaux sont compétitifs pour ce projet.', 14, finalY + 15);
+      }
+      
+      // Nouvelle page pour le détail des matériaux
+      doc.addPage();
+      doc.setFontSize(16);
+      doc.text('Détail par Matériau', 14, 20);
+      
+      let currentY = 30;
+      
+      materials.forEach((material, index) => {
+        const prices = pricesByMaterial[material.id] || [];
+        const sortedPrices = [...prices].sort((a, b) => 
+          (a.converted_amount || a.amount) - (b.converted_amount || b.amount)
+        );
+        
+        // Vérifier si on a besoin d'une nouvelle page
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
+        }
+        
+        // Nom du matériau
+        doc.setFontSize(12);
+        doc.setTextColor(...primaryColor);
+        doc.text(`${index + 1}. ${material.name}`, 14, currentY);
+        currentY += 7;
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Quantité: ${material.quantity || 1}`, 14, currentY);
+        currentY += 5;
+        
+        if (sortedPrices.length > 0) {
+          // Tableau des prix pour ce matériau
+          const priceRows = sortedPrices.slice(0, 5).map((price, idx) => [
+            idx === 0 ? '[MEILLEUR] ' + (price.supplier?.name || 'N/A') : price.supplier?.name || 'N/A',
+            price.country,
+            `${formatNumber(price.converted_amount || price.amount)} FCFA`,
+            `${formatNumber((price.converted_amount || price.amount) * (material.quantity || 1))} FCFA`,
+          ]);
+          
+          autoTable(doc, {
+            startY: currentY,
+            head: [['Fournisseur', 'Pays', 'Prix Unitaire', 'Total']],
+            body: priceRows,
+            headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            alternateRowStyles: { fillColor: [248, 249, 255] },
+            margin: { left: 14, right: 14 },
+            theme: 'grid',
+          });
+          
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        } else {
+          doc.setTextColor(150, 150, 150);
+          doc.text('Aucun prix disponible', 14, currentY);
+          currentY += 10;
+        }
+      });
+      
+      // Footer sur toutes les pages
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `${project?.name || 'Projet'} - Page ${i}/${pageCount}`,
+          105,
+          290,
+          { align: 'center' }
+        );
+      }
+      
+      // Télécharger le PDF
+      const fileName = `comparaison-${project?.name || 'projet'}-${today.replace(/\//g, '-')}.pdf`;
+      doc.save(fileName);
+      
+      toast.success('PDF généré avec succès !');
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      toast.error('Erreur lors de la génération du PDF');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FF] to-[#E8EEFF] p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header moderne */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Link href={`/dashboard/projects/${params.id}`}>
+              <Button
+                variant="ghost"
+                className="hover:bg-white/50 rounded-xl"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Retour
+              </Button>
+            </Link>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] bg-clip-text text-transparent">
+                Comparaison des Prix
+              </h1>
+              <p className="text-[#718096] mt-2">{project?.name}</p>
+            </div>
+            <Button 
+              onClick={handleExportPDF}
+              className="w-full sm:w-auto bg-white hover:bg-white text-[#5B5FC7] border-2 border-[#5B5FC7] hover:border-[#7B7FE8] shadow-lg rounded-xl px-6 py-6 transition-all hover:shadow-xl hover:shadow-[#5B5FC7]/20 relative overflow-hidden group"
+            >
+              <span className="absolute inset-0 border-2 border-[#5B5FC7] rounded-xl animate-pulse opacity-50"></span>
+              <Download className="mr-2 h-5 w-5 relative z-10" />
+              <span className="relative z-10">Exporter PDF</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Résumé Global - Style moderne */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-[#4299E1] to-[#3182CE]" />
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#4299E1]/10 to-[#3182CE]/10 rounded-xl flex items-center justify-center">
+                  <Package className="h-6 w-6 text-[#4299E1]" />
+                </div>
+                <p className="text-sm font-semibold text-[#718096]">📍 Coût Total Local</p>
+              </div>
+              <p className="text-4xl font-bold text-[#4299E1] mb-4">
+                {totalLocal.toLocaleString()} <span className="text-xl">FCFA</span>
+              </p>
+              <div className="mt-4 pt-4 border-t border-[#E0E4FF]">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-[#718096]">Volume estimé:</p>
+                  <p className="text-sm font-bold text-[#4299E1]">
+                    {volumeLocal.toFixed(3)} CBM
+                  </p>
+                </div>
+                <p className="text-xs text-[#718096]">
+                  {materials.length} matériaux • Pas de frais transport
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-[#48BB78] to-[#38A169]" />
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#48BB78]/10 to-[#38A169]/10 rounded-xl flex items-center justify-center">
+                  <Ship className="h-6 w-6 text-[#48BB78]" />
+                </div>
+                <p className="text-sm font-semibold text-[#718096]">🇨🇳 Coût Matériaux Chine</p>
+              </div>
+              <p className="text-4xl font-bold text-[#48BB78] mb-4">
+                {totalChina.toLocaleString()} <span className="text-xl">FCFA</span>
+              </p>
+              <div className="mt-4 pt-4 border-t border-[#E0E4FF] space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-[#718096]">Volume estimé:</p>
+                  <p className="text-sm font-bold text-[#48BB78]">
+                    {volumeChina.toFixed(3)} CBM
+                  </p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-[#718096]">+ Transport maritime:</p>
+                  <p className="text-sm font-bold text-[#FF9B7B]">
+                    {shippingCostChina.toLocaleString()} FCFA
+                  </p>
+                </div>
+                <div className="pt-3 border-t border-[#E0E4FF]">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-[#718096]">Total avec transport:</p>
+                    <p className="text-2xl font-bold text-[#48BB78]">
+                      {totalChinaWithShipping.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <div className={`h-2 bg-gradient-to-r ${savings > 0 ? 'from-[#5B5FC7] to-[#7B7FE8]' : 'from-red-500 to-red-600'}`} />
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-12 h-12 bg-gradient-to-br ${savings > 0 ? 'from-[#5B5FC7]/10 to-[#7B7FE8]/10' : 'from-red-500/10 to-red-600/10'} rounded-xl flex items-center justify-center`}>
+                  {savings > 0 ? (
+                    <TrendingDown className="h-6 w-6 text-[#5B5FC7]" />
+                  ) : (
+                    <TrendingUp className="h-6 w-6 text-red-500" />
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-[#718096]">
+                  {savings > 0 ? '💰 Économie Totale' : '⚠️ Surcoût'}
+                </p>
+              </div>
+              <p className={`text-4xl font-bold mb-4 ${savings > 0 ? 'text-[#5B5FC7]' : 'text-red-500'}`}>
+                {Math.abs(savings).toLocaleString()} <span className="text-xl">FCFA</span>
+              </p>
+              <div className="mt-4 pt-4 border-t border-[#E0E4FF]">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-[#718096]">Pourcentage:</p>
+                  <p className={`text-lg font-bold ${savings > 0 ? 'text-[#5B5FC7]' : 'text-red-500'}`}>
+                    {savingsPercentage}% {savings > 0 ? 'd\'économie' : 'de plus'}
+                  </p>
+                </div>
+                <p className="text-xs text-[#718096]">
+                  Incluant transport maritime
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Filtres */}
+        <Card className="p-4 sm:p-6 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Button
+              variant={selectedCountry === 'all' ? 'default' : 'outline'}
+              size="lg"
+              onClick={() => setSelectedCountry('all')}
+              className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
+                selectedCountry === 'all' 
+                  ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white shadow-lg hover:shadow-xl' 
+                  : 'border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF]'
+              }`}
+            >
+              Tous les pays
+            </Button>
+            {countries.map(country => {
+              const countryFlags: Record<string, string> = {
+                'Cameroun': '🇨🇲',
+                'Chine': '🇨🇳',
+                'Dubai': '🇦🇪',
+                'Turquie': '🇹🇷',
+                'France': '🇫🇷',
+                'Allemagne': '🇩🇪',
+                'Italie': '🇮🇹',
+                'Espagne': '🇪🇸',
+              };
+              const flag = countryFlags[country] || '📍';
+              
+              return (
+                <Button
+                  key={country}
+                  variant={selectedCountry === country ? 'default' : 'outline'}
+                  size="lg"
+                  onClick={() => setSelectedCountry(country)}
+                  className={`w-full py-6 text-base font-semibold rounded-xl transition-all ${
+                    selectedCountry === country 
+                      ? 'bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] text-white shadow-lg hover:shadow-xl' 
+                      : 'border-2 border-[#E0E4FF] hover:border-[#5B5FC7] hover:bg-[#F5F6FF]'
+                  }`}
+                >
+                  {flag} {country}
+                </Button>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Tableau de Comparaison - Accordéon Mobile Responsive */}
+        <Accordion type="multiple" className="space-y-4">
+          {expandMaterialsWithVariations(materials, pricesByMaterial).map(material => {
+            // Si c'est une variation, afficher son prix fixe
+            if (material.isVariation && material.variationPrice && material.basePrice) {
+              const quantity = material.quantity || 1;
+              const totalPrice = material.variationPrice * quantity;
+              
+              return (
+                <AccordionItem 
+                  key={material.id} 
+                  value={material.id}
+                  className="border-0 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all"
+                >
+                  <AccordionTrigger className="hover:no-underline p-0 [&>svg]:hidden">
+                    <div className="w-full transition-all flex items-center">
+                      {/* Titre avec badge variation */}
+                      <div className="flex-1 p-4 sm:p-6 text-left">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-purple-600 text-white">Variation</Badge>
+                          <h3 className="font-bold text-base sm:text-lg text-[#2D3748]">
+                            {material.name}
+                          </h3>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-[#718096]">
+                          <Badge variant="outline" className="bg-white/50">
+                            Qté: {quantity}
+                          </Badge>
+                          <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
+                            Prix unitaire: {material.variationPrice.toLocaleString()} FCFA
+                          </Badge>
+                          <Badge variant="outline" className="bg-[#48BB78]/10 text-[#48BB78] border-[#48BB78]/30">
+                            Total: {totalPrice.toLocaleString()} FCFA
+                          </Badge>
+                        </div>
+                        {material.basePrice?.supplier && (
+                          <p className="text-xs text-gray-600 mt-2">
+                            📍 {material.basePrice.supplier.name} - {material.basePrice.country}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Zone chevron */}
+                      <div className="w-1/4 min-w-[80px] bg-purple-100 hover:bg-purple-200 transition-colors flex items-center justify-center h-full py-4 sm:py-6 border-l border-purple-200">
+                        <ChevronDown className="h-6 w-6 sm:h-7 sm:w-7 text-purple-600 shrink-0 transition-transform duration-200" />
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+
+                  <AccordionContent className="p-4 sm:p-6 bg-gradient-to-b from-purple-50 to-white">
+                    <div className="bg-white rounded-lg p-4 border-2 border-purple-200">
+                      <p className="text-sm text-gray-700">
+                        <span className="font-semibold">Variation de prix</span> pour différentes quantités/caractéristiques du matériau <span className="font-semibold">{material.parentName}</span>
+                      </p>
+                      {material.basePrice && (
+                        <div className="mt-3 pt-3 border-t space-y-1 text-sm">
+                          <p><span className="text-gray-600">Fournisseur:</span> <span className="font-medium">{material.basePrice.supplier?.name}</span></p>
+                          <p><span className="text-gray-600">Pays:</span> <span className="font-medium">{material.basePrice.country}</span></p>
+                          <p><span className="text-gray-600">Devise:</span> <span className="font-medium">{material.basePrice.currency}</span></p>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            }
+            
+            // Affichage normal pour les matériaux standards
+            const prices = pricesByMaterial[material.id] || [];
+            const filteredPrices = selectedCountry === 'all' 
+              ? prices 
+              : prices.filter(p => p.supplier?.country === selectedCountry);
+            
+            const sortedPrices = [...filteredPrices].sort((a, b) => 
+              (a.converted_amount || a.amount) - (b.converted_amount || b.amount)
+            );
+
+            const bestPrice = sortedPrices[0];
+            const quantity = material.quantity || 1;
+
+            return (
+              <AccordionItem 
+                key={material.id} 
+                value={material.id}
+                className="border-0 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all data-[state=open]:border-2 data-[state=open]:border-[#5B5FC7]"
+              >
+                <AccordionTrigger className="hover:no-underline p-0 [&[data-state=open]>div]:bg-white [&[data-state=open]>div]:border-b-2 [&[data-state=open]>div]:border-[#5B5FC7] [&>svg]:hidden">
+                  <div className="w-full bg-gradient-to-r from-gray-50 to-gray-100 transition-all flex items-center">
+                    {/* Titre et infos - 3/4 de la largeur - aligné à gauche */}
+                    <div className="flex-1 p-4 sm:p-6 text-left">
+                      <h3 className="font-bold text-base sm:text-lg text-[#2D3748] mb-2">
+                        {material.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-[#718096]">
+                        <Badge variant="outline" className="bg-white/50">
+                          Qté: {quantity}
+                        </Badge>
+                        {sortedPrices.length > 0 && (
+                          <Badge variant="outline" className="bg-white/50">
+                            {sortedPrices.length} prix
+                          </Badge>
+                        )}
+                        {bestPrice && (
+                          <Badge variant="outline" className="bg-[#48BB78]/10 text-[#48BB78] border-[#48BB78]/30">
+                            Meilleur: {(bestPrice.converted_amount || bestPrice.amount).toLocaleString()} FCFA
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Zone chevron - 1/4 de la largeur */}
+                    <div className="w-1/4 min-w-[80px] bg-[#5B5FC7]/5 hover:bg-[#5B5FC7]/10 transition-colors flex items-center justify-center h-full py-4 sm:py-6 border-l border-[#E0E4FF]">
+                      <ChevronDown className="h-6 w-6 sm:h-7 sm:w-7 text-[#5B5FC7] shrink-0 transition-transform duration-200" />
+                    </div>
+                  </div>
+                </AccordionTrigger>
+
+                <AccordionContent className="p-0">
+                  {/* Prix Cards - Mobile Friendly */}
+                  {sortedPrices.length > 0 ? (
+                    <div className="p-4 sm:p-6 bg-gradient-to-b from-[#F8F9FF] to-white">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                        {sortedPrices.map((price, index) => {
+                        const isLowest = index === 0;
+                        const unitPrice = price.converted_amount || price.amount;
+                        const totalPrice = unitPrice * quantity;
+                        const difference = isLowest ? 0 : unitPrice - (sortedPrices[0].converted_amount || sortedPrices[0].amount);
+
+                        return (
+                          <Card
+                            key={price.id}
+                            className={`p-4 ${isLowest ? 'border-2 border-green-500 bg-green-50' : 'hover:shadow-md transition-shadow'}`}
+                          >
+                            <div className="space-y-3">
+                              {/* Header */}
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2">
+                                  {isLowest && (
+                                    <Badge className="bg-green-600">
+                                      🏆 Meilleur
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline">
+                                    #{index + 1}
+                                  </Badge>
+                                </div>
+                                <span className="text-2xl">
+                                  {price.country === 'Cameroun' && '🇨🇲'}
+                                  {price.country === 'Gabon' && '🇬🇦'}
+                                  {price.country === 'Congo' && '🇨🇬'}
+                                  {price.country === 'RDC' && '🇨🇩'}
+                                  {price.country === 'Côte d\'Ivoire' && '🇨🇮'}
+                                  {price.country === 'Sénégal' && '🇸🇳'}
+                                  {price.country === 'Bénin' && '🇧🇯'}
+                                  {price.country === 'Togo' && '🇹🇬'}
+                                  {price.country === 'Chine' && '🇨🇳'}
+                                  {price.country === 'China' && '🇨🇳'}
+                                  {price.country === 'Dubai' && '🇦🇪'}
+                                  {price.country === 'Turquie' && '🇹🇷'}
+                                  {price.country === 'France' && '🇫🇷'}
+                                  {price.country === 'Allemagne' && '🇩🇪'}
+                                  {price.country === 'Italie' && '🇮🇹'}
+                                  {price.country === 'Espagne' && '🇪🇸'}
+                                  {price.country === 'Vietnam' && '🇻🇳'}
+                                  {price.country === 'Thaïlande' && '🇹🇭'}
+                                  {price.country === 'Inde' && '🇮🇳'}
+                                  {price.country === 'Bangladesh' && '🇧🇩'}
+                                  {price.country === 'Pakistan' && '🇵🇰'}
+                                  {price.country === 'Indonésie' && '🇮🇩'}
+                                  {price.country === 'Malaisie' && '🇲🇾'}
+                                  {!['Cameroun', 'Gabon', 'Congo', 'RDC', 'Côte d\'Ivoire', 'Sénégal', 'Bénin', 'Togo', 'Chine', 'China', 'Dubai', 'Turquie', 'France', 'Allemagne', 'Italie', 'Espagne', 'Vietnam', 'Thaïlande', 'Inde', 'Bangladesh', 'Pakistan', 'Indonésie', 'Malaisie'].includes(price.country) && '🌍'}
+                                </span>
+                              </div>
+
+                              {/* Fournisseur */}
+                              {price.supplier && (
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {price.supplier.name}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {price.country}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Prix Unitaire */}
+                              <div className="bg-white p-3 rounded-lg">
+                                <p className="text-xs text-gray-600 mb-1">Prix unitaire</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                  {unitPrice.toLocaleString()} FCFA
+                                </p>
+                                {price.currency !== 'FCFA' && (
+                                  <p className="text-xs text-gray-500">
+                                    {price.amount} {price.currency}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Prix Total */}
+                              <div className="bg-blue-50 p-3 rounded-lg">
+                                <p className="text-xs text-gray-600 mb-1">
+                                  Total ({quantity}x)
+                                </p>
+                                <p className="text-xl font-bold text-blue-600">
+                                  {totalPrice.toLocaleString()} FCFA
+                                </p>
+                              </div>
+
+                              {/* Différence */}
+                              {!isLowest && difference > 0 && (
+                                <div className="bg-red-50 border border-red-200 p-2 rounded">
+                                  <p className="text-xs font-medium text-red-600">
+                                    +{(difference * quantity).toLocaleString()} FCFA
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    vs meilleur prix
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-[#718096]">
+                    <p>Aucun prix disponible pour ce matériau</p>
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+            );
+          })}
+        </Accordion>
+
+        {/* Footer Summary */}
+        <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="font-semibold text-lg mb-4">Résumé du Projet</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Matériaux:</span>
+                  <span className="font-medium">{materials.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Coût Local:</span>
+                  <span className="font-medium">{totalLocal.toLocaleString()} FCFA</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Coût Chine:</span>
+                  <span className="font-medium">{totalChina.toLocaleString()} FCFA</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t">
+                  <span className="font-semibold">Économie:</span>
+                  <span className={`font-bold ${savings > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {savings > 0 ? '-' : '+'}{Math.abs(savings).toLocaleString()} FCFA
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-lg mb-4">Recommandation</h3>
+              {savings > 0 ? (
+                <div className="bg-green-100 border border-green-300 rounded-lg p-4">
+                  <p className="text-green-800 font-medium mb-2">
+                    ✅ Acheter en Chine est plus avantageux
+                  </p>
+                  <p className="text-sm text-green-700">
+                    Vous économiserez {savingsPercentage}% en important de Chine, 
+                    soit {savings.toLocaleString()} FCFA sur le projet total.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-blue-100 border border-blue-300 rounded-lg p-4">
+                  <p className="text-blue-800 font-medium mb-2">
+                    ℹ️ Acheter localement est préférable
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    Les prix locaux sont compétitifs pour ce projet.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
