@@ -102,6 +102,9 @@ const translations = {
     submitted: 'Cotation Soumise',
     notFound: 'Demande non trouvée',
     expired: 'Cette demande a expiré',
+    saveDraft: 'Enregistrer le brouillon',
+    draftSaved: 'Brouillon enregistré',
+    saveError: 'Erreur lors de l\'enregistrement',
   },
   en: {
     title: 'Quotation Request',
@@ -140,6 +143,9 @@ const translations = {
     submitted: '报价已提交',
     notFound: '未找到请求',
     expired: '此请求已过期',
+    saveDraft: '保存草稿',
+    draftSaved: '草稿已保存',
+    saveError: '保存草稿时出错',
   },
 };
 
@@ -168,6 +174,7 @@ export default function SupplierQuotePage() {
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const t = translations[language];
 
@@ -937,7 +944,17 @@ export default function SupplierQuotePage() {
         </div>
 
         {/* Submit Button */}
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-end gap-4 mt-6">
+          <Button
+            variant="outline"
+            onClick={handleSaveDraft}
+            disabled={isSaving}
+            size="lg"
+            className="border-2"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isSaving ? '...' : t.saveDraft}
+          </Button>
           <Button
             onClick={handleSubmitQuotation}
             size="lg"
@@ -948,8 +965,17 @@ export default function SupplierQuotePage() {
         </div>
       </div>
 
-      {/* Floating Submit Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating Buttons */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4">
+        <Button
+          variant="secondary"
+          onClick={handleSaveDraft}
+          disabled={isSaving}
+          className="shadow-lg rounded-full px-4 py-4 h-auto font-medium transition-all hover:scale-105 border-2 border-gray-200 bg-white"
+          title={t.saveDraft}
+        >
+          <Save className="h-5 w-5" />
+        </Button>
         <Button
           onClick={handleSubmitQuotation}
           className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl rounded-full px-6 py-6 h-auto text-lg font-semibold transition-all hover:scale-105 animate-in slide-in-from-bottom-10"
