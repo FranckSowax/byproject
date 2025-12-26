@@ -232,7 +232,7 @@ export default function SupplierQuotePage() {
           // Load material photos
           // @ts-ignore - Photos table not in generated types yet
           const { data: materialPhotos } = await supabase
-            .from('photos')
+            .from('photos' as any)
             .select('url')
             .eq('material_id', material.id)
             .eq('photo_type', 'material');
@@ -258,7 +258,7 @@ export default function SupplierQuotePage() {
             (prices || []).map(async (price: any) => {
               // @ts-ignore - Photos table not in generated types yet
               const { data: pricePhotos } = await supabase
-                .from('photos')
+                .from('photos' as any)
                 .select('url')
                 .eq('price_id', price.id)
                 .eq('photo_type', 'price');
@@ -273,7 +273,7 @@ export default function SupplierQuotePage() {
           // Load availability status
           // @ts-ignore - Table not in generated types yet
           const { data: availability, error: availError } = await supabase
-            .from('supplier_material_availability')
+            .from('supplier_material_availability' as any)
             .select('is_available')
             .eq('material_id', material.id)
             .eq('supplier_id', currentSupplierId)
@@ -491,7 +491,7 @@ export default function SupplierQuotePage() {
 
         // @ts-ignore - Photos table not in generated types yet
         const { error: photoError } = await supabase
-          .from('photos')
+          .from('photos' as any)
           .insert(photoInserts);
 
         if (photoError) {
@@ -566,7 +566,7 @@ export default function SupplierQuotePage() {
         // Get existing photos
         // @ts-ignore - Photos table not in generated types yet
         const { data: existingPhotos } = await supabase
-          .from('photos')
+          .from('photos' as any)
           .select('url')
           .eq('material_id', selectedMaterial.id)
           .eq('photo_type', 'material');
@@ -586,7 +586,7 @@ export default function SupplierQuotePage() {
 
           // @ts-ignore - Photos table not in generated types yet
           const { error: photoError } = await supabase
-            .from('photos')
+            .from('photos' as any)
             .insert(photoInserts);
 
           if (photoError) {
@@ -648,7 +648,7 @@ export default function SupplierQuotePage() {
       
       // @ts-ignore - Table not in generated types yet
       const { error } = await supabase
-        .from('supplier_material_availability')
+        .from('supplier_material_availability' as any)
         .upsert({
           material_id: material.id,
           supplier_id: supplierId,
@@ -679,6 +679,59 @@ export default function SupplierQuotePage() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    // Basic validation - at least email should be there
+    if (!supplierInfo.email) {
+      toast.error(language === 'fr' ? 'Veuillez au moins renseigner votre email' : language === 'en' ? 'Please provide at least your email' : '请至少提供您的电子邮件');
+      const element = document.getElementById('supplier-info-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+        element.classList.add('ring-2', 'ring-red-500');
+        setTimeout(() => element.classList.remove('ring-2', 'ring-red-500'), 2000);
+      }
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      
+      // Filter materials: only those with prices OR marked as unavailable
+      const quotedMaterials = materials.filter(m => 
+        (m.prices && m.prices.length > 0) || m.unavailable
+      );
+
+      // Prepare payload
+      const payload = {
+        supplier_request_id: request?.id,
+        supplier_name: supplierInfo.contactName,
+        supplier_email: supplierInfo.email,
+        supplier_company: supplierInfo.companyName,
+        supplier_country: supplierInfo.country,
+        supplier_phone: supplierInfo.whatsapp || supplierInfo.wechat,
+        quoted_materials: quotedMaterials,
+        status: 'draft',
+        currency: materials.find(m => m.prices?.length)?.prices?.[0]?.currency || 'CNY',
+        notes: '',
+        saved_at: new Date().toISOString(),
+      };
+
+      const response = await fetch(`/api/supplier-quote/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error('Failed to save draft');
+
+      toast.success(t.draftSaved);
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast.error(t.saveError);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSubmitQuotation = async () => {
     if (!supplierInfo.companyName || !supplierInfo.contactName || !supplierInfo.email) {
       toast.error(language === 'fr' ? 'Veuillez remplir toutes les informations' : language === 'en' ? 'Please fill all information' : '请填写所有信息');
@@ -700,7 +753,7 @@ export default function SupplierQuotePage() {
       // Create supplier quote
       // @ts-ignore - Table not in generated types yet
       const { error } = await supabase
-        .from('supplier_quotes')
+        .from('supplier_quotes' as any)
         .insert({
           supplier_request_id: request?.id,
           supplier_name: supplierInfo.contactName,

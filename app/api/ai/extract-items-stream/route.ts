@@ -7,21 +7,26 @@ import { createClient } from '@supabase/supabase-js';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
+
 // Google Gemini API directe
-const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
-const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
+const getGoogleGenAIClient = () => {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  if (!apiKey) return null;
+  return new GoogleGenAI({ apiKey });
+};
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// Utiliser Gemini si la clé est disponible
-const useGemini = !!geminiApiKey;
+const getSupabaseClient = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+};
 
 // Un seul gros chunk pour éviter le timeout Netlify Free (10s)
 const MAX_LINES_PER_CHUNK = 500;
@@ -100,6 +105,7 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         const { projectId, fileContent, fileName, sectorName, customSectorName } = await request.json();
+        const supabase = getSupabaseClient();
 
         if (!projectId || !fileContent) {
           controller.enqueue(encoder.encode(JSON.stringify({ error: 'Missing data' }) + '\n'));
@@ -150,34 +156,42 @@ export async function POST(request: NextRequest) {
             let responseText: string = '{}';
 
             // Utiliser OpenAI GPT-4o-mini (plus fiable pour l'extraction JSON)
-            try {
-              console.log(`🚀 Calling OpenAI for chunk ${chunkNum}...`);
-              const completion = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
-                  { 
-                    role: 'system', 
-                    content: `Tu es un expert en extraction de données pour le secteur "${sector}". 
-Tu extrais TOUS les matériaux/articles du contenu fourni.
-Tu réponds UNIQUEMENT en JSON valide avec cette structure:
-{"items":[{"name":"Nom","description":null,"category":"Catégorie","quantity":1,"unit":"u","specs":{}}],"categories":["Cat1"]}` 
-                  },
-                  { role: 'user', content: prompt }
-                ],
-                temperature: 0.1,
-                max_tokens: 4000,
-                response_format: { type: "json_object" }
-              });
-              responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-              console.log(`📝 OpenAI response chunk ${chunkNum}:`, responseText.substring(0, 500));
-            } catch (openaiError) {
-              console.error(`❌ OpenAI API error chunk ${chunkNum}:`, openaiError);
-              controller.enqueue(encoder.encode(JSON.stringify({
-                type: 'chunk_error',
-                chunk: chunkNum,
-                error: `OpenAI error: ${openaiError instanceof Error ? openaiError.message : 'Unknown'}`
-              }) + '\n'));
-              continue; // Passer au chunk suivant
+            const openai = getOpenAIClient();
+            if (openai) {
+              try {
+                console.log(`🚀 Calling OpenAI for chunk ${chunkNum}...`);
+                const completion = await openai.chat.completions.create({
+                  model: 'gpt-4o-mini',
+                  messages: [
+                    { 
+                      role: 'system', 
+                      content: `Tu es un expert en extraction de données pour le secteur "${sector}". 
+  Tu extrais TOUS les matériaux/articles du contenu fourni.
+  Tu réponds UNIQUEMENT en JSON valide avec cette structure:
+  {"items":[{"name":"Nom","description":null,"category":"Catégorie","quantity":1,"unit":"u","specs":{}}],"categories":["Cat1"]}` 
+                    },
+                    { role: 'user', content: prompt }
+                  ],
+                  temperature: 0.1,
+                  max_tokens: 4000,
+                  response_format: { type: "json_object" }
+                });
+                responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+                console.log(`📝 OpenAI response chunk ${chunkNum}:`, responseText.substring(0, 500));
+              } catch (openaiError) {
+                console.error(`❌ OpenAI API error chunk ${chunkNum}:`, openaiError);
+                controller.enqueue(encoder.encode(JSON.stringify({
+                  type: 'chunk_error',
+                  chunk: chunkNum,
+                  error: `OpenAI error: ${openaiError instanceof Error ? openaiError.message : 'Unknown'}`
+                }) + '\n'));
+                continue; // Passer au chunk suivant
+              }
+            } else {
+               // Fallback if OpenAI is not available but logic suggests we are here because checks passed...
+               // This branch might be reached if hasOpenAI was true but getOpenAIClient returned null (unlikely with correct logic)
+               console.error('OpenAI client not initialized');
+               continue;
             }
 
             // Nettoyer la réponse - enlever les backticks markdown si présents

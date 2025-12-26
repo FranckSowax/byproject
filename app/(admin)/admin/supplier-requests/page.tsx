@@ -88,6 +88,8 @@ const statusConfig = {
   },
 };
 
+export const dynamic = 'force-dynamic';
+
 export default function AdminSupplierRequestsPage() {
   const [requests, setRequests] = useState<SupplierRequest[]>([]);
   const [loading, setLoading] = useState(true);

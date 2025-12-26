@@ -3,15 +3,17 @@ import Replicate from 'replicate';
 import OpenAI from 'openai';
 
 // Initialisation des clients
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+const getReplicateClient = () => {
+  const auth = process.env.REPLICATE_API_TOKEN;
+  if (!auth) return null;
+  return new Replicate({ auth });
+};
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const useGemini = !!process.env.REPLICATE_API_TOKEN;
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
 
 interface MissionFormField {
   id: string;
@@ -105,33 +107,49 @@ Génère un formulaire complet et pertinent pour cette mission. Le formulaire do
 Réponds UNIQUEMENT avec le JSON structuré.`;
 
     let responseText = '';
+    const replicate = getReplicateClient();
+    const useGemini = !!replicate;
+    let provider = 'none';
 
-    if (useGemini) {
+    if (useGemini && replicate) {
       // Utiliser Gemini 3 Pro via Replicate
-      const output = await replicate.run("google/gemini-3-pro", {
-        input: {
-          prompt: userPrompt,
-          system_instruction: systemPrompt,
-          temperature: 0.7,
-          max_output_tokens: 8000,
-          thinking_level: "low"
-        }
-      });
+      try {
+        const output = await replicate.run("google/gemini-3-pro", {
+          input: {
+            prompt: userPrompt,
+            system_instruction: systemPrompt,
+            temperature: 0.7,
+            max_output_tokens: 8000,
+            thinking_level: "low"
+          }
+        });
 
-      responseText = Array.isArray(output) ? output.join("") : String(output);
-    } else {
+        responseText = Array.isArray(output) ? output.join("") : String(output);
+        provider = 'gemini';
+      } catch (e) {
+        console.error('Gemini error, fallback to OpenAI:', e);
+      }
+    } 
+    
+    if (!responseText) {
       // Fallback sur OpenAI
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      });
+      const openai = getOpenAIClient();
+      if (openai) {
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7,
+        });
 
-      responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+        responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+        provider = 'openai';
+      } else {
+        throw new Error('Aucun service IA configuré');
+      }
     }
 
     // Parser le JSON de la réponse
@@ -149,7 +167,7 @@ Réponds UNIQUEMENT avec le JSON structuré.`;
     return NextResponse.json({
       success: true,
       form: formData,
-      provider: useGemini ? 'gemini' : 'openai'
+      provider: provider
     });
 
   } catch (error: any) {

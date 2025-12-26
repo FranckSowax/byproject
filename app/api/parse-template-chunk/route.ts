@@ -5,14 +5,19 @@ import * as XLSX from 'xlsx';
 
 // Initialize Gemini with Flash model for speed and efficiency
 // Using gemini-1.5-flash as requested (it's the current efficient "Gemini 3" class model)
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-// Configure for JSON output
-const model = genAI.getGenerativeModel({ 
-  model: "gemini-1.5-flash",
-  generationConfig: {
-    responseMimeType: "application/json"
-  }
-});
+const getGeminiModel = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  
+  const genAI = new GoogleGenerativeAI(apiKey);
+  // Configure for JSON output
+  return genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",
+    generationConfig: {
+      responseMimeType: "application/json"
+    }
+  });
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +30,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { fileUrl, chunkIndex, totalChunks, fileType } = await request.json();
+    
+    // Check if Gemini is configured
+    const model = getGeminiModel();
+    if (!model) {
+      return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
+    }
     
     if (!fileUrl) {
       return NextResponse.json({ error: 'URL fichier manquante' }, { status: 400 });

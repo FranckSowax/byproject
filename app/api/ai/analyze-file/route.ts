@@ -5,15 +5,19 @@ import * as XLSX from 'xlsx';
 // Tesseract sera importé dynamiquement pour éviter les problèmes de build
 
 // Initialiser OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
 
 // Initialiser Supabase avec service role
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabaseClient = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +29,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const supabase = getSupabaseClient();
 
     // 1. Télécharger le fichier depuis Supabase Storage
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -472,6 +478,11 @@ Si tu vois:
 - "Ampoule LED E27 12W" avec quantité 100 → Matériau valide
 
 RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
+
+    const openai = getOpenAIClient();
+    if (!openai) {
+      throw new Error('OpenAI client not initialized');
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",

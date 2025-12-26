@@ -6,13 +6,17 @@ import Replicate from 'replicate';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+const getReplicateClient = () => {
+  const auth = process.env.REPLICATE_API_TOKEN;
+  if (!auth) return null;
+  return new Replicate({ auth });
+};
 
 // Fonction pour découper le texte en chunks intelligents
 function splitTextIntoChunks(text: string, maxChunkSize: number = 8000): string[] {
@@ -270,13 +274,17 @@ async function extractFromText(content: string, sector: string, fileType: string
   const allSuppliers = new Set<string>();
   
   // Détecter la devise globale du document
-  const globalCurrency = detectCurrency(content.substring(0, 5000));
+  let globalCurrency = detectCurrency(content.substring(0, 5000));
   
   console.log(`📄 Processing ${fileType}: ${chunks.length} chunks, ${content.length} chars total, currency: ${globalCurrency || 'unknown'}`);
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     
+    // Déterminer quel modèle utiliser
+    const replicate = getReplicateClient();
+    const useGemini = !!replicate;
+
     const prompt = `Tu es un expert en extraction de données BTP pour le secteur "${sector}".
 
 CONTEXTE: Fichier ${fileType.toUpperCase()}, partie ${i + 1}/${chunks.length}
@@ -288,85 +296,103 @@ ${chunk}
 """
 
 MISSION CHIRURGICALE - EXTRACTION COMPLÈTE:
-1. Identifie CHAQUE matériau, article, équipement ou produit mentionné
-2. Extrais les quantités si présentes (même approximatives)
-3. Détecte les unités (m, m², m³, kg, L, U, pièce, lot, etc.)
-4. **PRIX**: Extrais le prix unitaire si mentionné (nombre uniquement)
-5. **DEVISE**: Identifie la devise (EUR, USD, XAF/FCFA, GBP, CNY, MAD, etc.)
-6. **FOURNISSEUR**: Identifie le fournisseur, fabricant ou marque si mentionné
-7. Catégorise selon les standards BTP:
-   - Gros œuvre (béton, ciment, parpaings, ferraillage...)
-   - Second œuvre (plâtre, cloisons, isolation...)
-   - Électricité (câbles, prises, disjoncteurs...)
-   - Plomberie (tuyaux, raccords, sanitaires...)
-   - Menuiserie (portes, fenêtres, bois...)
-   - Revêtements (carrelage, peinture, parquet...)
-   - Quincaillerie (vis, boulons, fixations...)
-   - Outillage
-   - Divers
 
-RÈGLES:
-- Ignore les en-têtes, titres de sections, numéros de page
-- Ignore les totaux et sous-totaux
-- Si un article apparaît plusieurs fois, garde chaque occurrence
-- Sois exhaustif: mieux vaut extraire trop que pas assez
-- Pour les prix: extrais le prix UNITAIRE de préférence, sinon le prix total
-- Pour la devise: utilise le code ISO (EUR, USD, XAF, etc.)
-
-FORMAT JSON STRICT (sans markdown):
+FORMAT JSON ATTENDU:
 {
   "items": [
     {
-      "name": "Nom exact du matériau",
-      "description": "Détails additionnels ou null",
-      "category": "Catégorie BTP",
-      "quantity": 10.5,
-      "unit": "m²",
-      "price": 150.00,
+      "name": "Nom précis",
+      "description": "Détails techniques",
+      "category": "Catégorie",
+      "quantity": 123.5,
+      "unit": "m2",
+      "price": 45.00,
       "currency": "EUR",
-      "supplier": "Nom du fournisseur ou null"
+      "supplier": "Nom fournisseur"
     }
   ],
-  "categories": ["Liste des catégories trouvées"],
-  "suppliers": ["Liste des fournisseurs trouvés"],
-  "detectedCurrency": "EUR"
-}`;
+  "categories": ["Catégorie 1", "Catégorie 2"],
+  "suppliers": ["Fournisseur A"]
+}
 
-    try {
-      // Utiliser GPT-4o-mini pour une extraction précise
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'Tu es un expert extraction BTP ultra-précis. Tu extrais TOUS les matériaux mentionnés. Réponds UNIQUEMENT en JSON valide.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.1,
-        max_tokens: 4000,
-        response_format: { type: "json_object" }
-      });
+RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
 
-      const responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-      
+    let responseText = '';
+    
+    if (useGemini && replicate) {
       try {
-        const result = JSON.parse(responseText);
-        if (result.items && Array.isArray(result.items)) {
-          allItems.push(...result.items);
+        const output = await replicate.run("google/gemini-3-pro", {
+          input: {
+            prompt: prompt,
+            system_instruction: "Tu es un expert en extraction de données BTP. Tu réponds UNIQUEMENT en JSON valide.",
+            temperature: 0.2,
+            max_output_tokens: 4000
+          }
+        });
+        responseText = Array.isArray(output) ? output.join("") : String(output);
+      } catch (geminiError) {
+        console.error('Gemini error:', geminiError);
+      }
+    }
+    
+    // Fallback OpenAI
+    const openai = getOpenAIClient();
+    if (!responseText && openai) {
+      try {
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'Tu es un expert en extraction de données BTP. Tu réponds UNIQUEMENT en JSON valide.' },
+            { role: 'user', content: prompt }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.2
+        });
+        responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+      } catch (openaiError) {
+        console.error('OpenAI error:', openaiError);
+      }
+    }
+
+    if (!responseText) {
+      console.warn(`⚠️ No AI response for chunk ${i + 1}`);
+      continue;
+    }
+    
+    // Parsing et agrégation...
+    try {
+      // Nettoyage JSON
+      let cleanJson = responseText;
+      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        cleanJson = jsonMatch[1];
+      } else {
+        const startIdx = responseText.indexOf('{');
+        const endIdx = responseText.lastIndexOf('}');
+        if (startIdx !== -1 && endIdx !== -1) {
+          cleanJson = responseText.substring(startIdx, endIdx + 1);
         }
-        if (result.categories && Array.isArray(result.categories)) {
-          result.categories.forEach((cat: string) => allCategories.add(cat));
-        }
-        if (result.suppliers && Array.isArray(result.suppliers)) {
-          result.suppliers.forEach((sup: string) => allSuppliers.add(sup));
-        }
-      } catch (parseError) {
-        console.error(`Parse error for chunk ${i + 1}:`, parseError);
       }
       
-    } catch (error) {
-      console.error(`Error processing chunk ${i + 1}:`, error);
+      const result = JSON.parse(cleanJson);
+      
+      if (result.items && Array.isArray(result.items)) {
+        allItems.push(...result.items);
+        
+        // Détecter la devise majoritaire
+        result.items.forEach((item: any) => {
+          if (item.currency && !globalCurrency) globalCurrency = item.currency;
+        });
+      }
+      
+      if (result.categories && Array.isArray(result.categories)) {
+        result.categories.forEach((cat: string) => allCategories.add(cat));
+      }
+      if (result.suppliers && Array.isArray(result.suppliers)) {
+        result.suppliers.forEach((sup: string) => allSuppliers.add(sup));
+      }
+    } catch (parseError) {
+      console.error(`Parse error for chunk ${i + 1}:`, parseError);
     }
   }
 

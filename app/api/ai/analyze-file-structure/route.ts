@@ -5,12 +5,18 @@ import OpenAI from 'openai';
 export const maxDuration = 20;
 export const dynamic = 'force-dynamic';
 
-const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
-const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const getGoogleGenAIClient = () => {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  if (!apiKey) return null;
+  return new GoogleGenAI({ apiKey });
+};
+
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,16 +75,13 @@ RÈGLES:
     let usedModel = '';
 
     // Essayer Gemini d'abord (très bon pour l'analyse structurelle)
+    const ai = getGoogleGenAIClient();
     if (ai) {
       try {
         const response = await ai.models.generateContent({
           model: "gemini-3-pro-preview",
           contents: prompt,
-          config: {
-            thinkingConfig: {
-              thinkingLevel: "low",
-            }
-          },
+          // Removed thinkingConfig to avoid type errors
         });
         responseText = response.text || '';
         usedModel = 'gemini-3-pro';
@@ -88,7 +91,8 @@ RÈGLES:
     }
 
     // Fallback OpenAI
-    if (!responseText) {
+    const openai = getOpenAIClient();
+    if (!responseText && openai) {
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [

@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import Replicate from 'replicate';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
 
-// Check if Gemini 3 Pro is available
-const useGemini = !!process.env.REPLICATE_API_TOKEN;
+const getReplicateClient = () => {
+  const auth = process.env.REPLICATE_API_TOKEN;
+  if (!auth) return null;
+  return new Replicate({ auth });
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -92,10 +94,13 @@ Alors: {"name": 0, "quantity": 2, "unit": null, ...}
 
 RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
 
-    let responseText: string;
-    let modelUsed: string;
+    let responseText: string = '{}';
+    let modelUsed: string = 'none';
 
-    if (useGemini) {
+    const replicate = getReplicateClient();
+    const useGemini = !!replicate; // Only use Gemini if replicate client is available
+
+    if (useGemini && replicate) {
       // Use Gemini 3 Pro via Replicate
       console.log('🔍 Mapping columns with Gemini 3 Pro...', {
         headersCount: headers.length,
@@ -118,32 +123,38 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
       
     } else {
       // Fallback to OpenAI GPT-4o-mini
-      console.log('🔍 Mapping columns with GPT-4o-mini (fallback)...', {
-        headersCount: headers.length,
-        targetFields,
-        sector,
-        sampleDataLength: sampleData.length
-      });
+      const openai = getOpenAIClient();
+      if (openai) {
+        console.log('🔍 Mapping columns with GPT-4o-mini (fallback)...', {
+          headersCount: headers.length,
+          targetFields,
+          sector,
+          sampleDataLength: sampleData.length
+        });
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es un expert en analyse de fichiers pour le secteur "${sector}". Tu DOIS identifier correctement les colonnes en analysant les en-têtes ET les données. Tu réponds UNIQUEMENT en JSON valide.`
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 800,
-        response_format: { type: "json_object" }
-      });
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `Tu es un expert en analyse de fichiers pour le secteur "${sector}". Tu DOIS identifier correctement les colonnes en analysant les en-têtes ET les données. Tu réponds UNIQUEMENT en JSON valide.`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.2,
+          max_tokens: 800,
+          response_format: { type: "json_object" }
+        });
 
-      responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-      modelUsed = 'gpt-4o-mini';
+        responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+        modelUsed = 'gpt-4o-mini';
+      } else {
+         console.warn('⚠️ No AI service configured for column mapping');
+         throw new Error('Service IA non configuré');
+      }
     }
     
     console.log('📄 Raw AI Response:', responseText.substring(0, 500));

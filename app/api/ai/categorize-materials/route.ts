@@ -2,53 +2,55 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import Replicate from 'replicate';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
-
-const useGemini = !!process.env.REPLICATE_API_TOKEN;
-
-// Catégories BTP détaillées avec mots-clés pour aide à la classification
-const BTP_CATEGORIES_WITH_KEYWORDS: Record<string, string[]> = {
-  'Gros œuvre': ['ciment', 'béton', 'parpaing', 'brique', 'ferraille', 'fer à béton', 'armature', 'coffrage', 'agglo', 'hourdis', 'poutrelle', 'chaînage', 'fondation', 'sable', 'gravier', 'granulat', 'mortier'],
-  'Second œuvre': ['cloison', 'doublage', 'faux plafond', 'rail', 'montant', 'ossature'],
-  'Électricité': ['câble', 'fil électrique', 'gaine', 'icta', 'tableau', 'disjoncteur', 'interrupteur', 'prise', 'douille', 'domino', 'wago', 'boîte', 'encastrement', 'moulure', 'chemin de câble', 'électrique', 'ampère', 'volt', 'fusible', 'différentiel'],
-  'Plomberie': ['tuyau', 'pvc', 'cuivre', 'per', 'multicouche', 'raccord', 'coude', 'té', 'manchon', 'vanne', 'robinet', 'siphon', 'évacuation', 'alimentation', 'plomberie', 'collecteur'],
-  'Menuiserie': ['bois', 'porte', 'fenêtre', 'châssis', 'huisserie', 'plinthe', 'moulure bois', 'lambris', 'parquet', 'contreplaqué', 'mdf', 'osb', 'tasseaux', 'chevron', 'madrier', 'menuiserie', 'chêne', 'sapin', 'hêtre'],
-  'Peinture & Finitions': ['peinture', 'enduit', 'sous-couche', 'primaire', 'vernis', 'lasure', 'mastic', 'joint', 'silicone', 'acrylique', 'glycéro', 'rouleau', 'pinceau', 'white spirit'],
-  'Carrelage & Revêtements': ['carrelage', 'faïence', 'mosaïque', 'colle carrelage', 'joint carrelage', 'croisillon', 'profilé', 'nez de marche', 'sol', 'revêtement', 'lino', 'vinyle', 'moquette', 'grès', 'cérame'],
-  'Isolation': ['isolant', 'laine', 'polystyrène', 'polyuréthane', 'mousse', 'pare-vapeur', 'thermique', 'acoustique', 'rockwool', 'isover', 'styrodur'],
-  'Toiture & Étanchéité': ['tuile', 'ardoise', 'gouttière', 'chéneau', 'descente', 'zinc', 'bac acier', 'étanchéité', 'bitume', 'membrane', 'faîtière', 'closoir', 'couverture'],
-  'Quincaillerie': ['vis', 'clou', 'boulon', 'écrou', 'rondelle', 'cheville', 'équerre', 'platine', 'fixation', 'ancrage', 'tige filetée', 'goujon', 'piton', 'crochet'],
-  'Outillage': ['outil', 'perceuse', 'visseuse', 'meuleuse', 'scie', 'marteau', 'tournevis', 'pince', 'niveau', 'mètre', 'truelle', 'taloche', 'spatule', 'cutter'],
-  'Sécurité & EPI': ['casque', 'gant', 'lunette', 'chaussure', 'gilet', 'harnais', 'protection', 'sécurité', 'epi', 'masque', 'bouchon oreille'],
-  'Plâtrerie': ['plâtre', 'placo', 'ba13', 'ba10', 'placoplatre', 'enduit plâtre', 'bande', 'calicot', 'staff', 'map'],
-  'Serrurerie': ['serrure', 'verrou', 'poignée', 'cylindre', 'gâche', 'paumelle', 'charnière', 'ferme-porte', 'crémone', 'métal', 'acier', 'aluminium', 'inox', 'cornière', 'tube acier', 'profilé alu'],
-  'Climatisation & Ventilation': ['climatisation', 'clim', 'split', 'vmc', 'ventilation', 'gaine ventilation', 'bouche', 'extracteur', 'aération', 'grille'],
-  'Sanitaire': ['wc', 'toilette', 'lavabo', 'vasque', 'baignoire', 'douche', 'receveur', 'mitigeur', 'bonde', 'abattant', 'réservoir', 'chasse', 'sanitaire', 'salle de bain', 'bidet'],
-  'Éclairage': ['lampe', 'ampoule', 'led', 'spot', 'plafonnier', 'applique', 'lustre', 'réglette', 'tube', 'néon', 'projecteur', 'éclairage', 'luminaire', 'downlight'],
-  'Aménagement extérieur': ['terrasse', 'clôture', 'portail', 'grillage', 'pavé', 'dalle extérieure', 'bordure', 'jardin', 'extérieur', 'pergola'],
-  'Divers': []
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
 };
 
-const BTP_CATEGORIES = Object.keys(BTP_CATEGORIES_WITH_KEYWORDS);
+const getReplicateClient = () => {
+  const auth = process.env.REPLICATE_API_TOKEN;
+  if (!auth) return null;
+  return new Replicate({ auth });
+};
 
-// Fonction de pré-catégorisation par mots-clés (fallback rapide)
-function preCategorizeByKeywords(materialName: string): string | null {
-  const nameLower = materialName.toLowerCase();
+const BTP_CATEGORIES = [
+  'Gros œuvre',
+  'Électricité',
+  'Plomberie',
+  'Menuiserie',
+  'Peinture et Décoration',
+  'Carrelage et Revêtements',
+  'Quincaillerie',
+  'Sanitaire',
+  'Éclairage',
+  'Serrurerie',
+  'Plâtrerie et Isolation',
+  'Chauffage et Climatisation',
+  'Outillage',
+  'Sécurité et Protection',
+  'Toiture et Couverture',
+  'Jardin et Extérieurs',
+  'Divers'
+];
+
+// Fonction simple de catégorisation par mots-clés
+function preCategorizeByKeywords(itemName: string): string | null {
+  const name = itemName.toLowerCase();
   
-  for (const [category, keywords] of Object.entries(BTP_CATEGORIES_WITH_KEYWORDS)) {
-    if (category === 'Divers') continue;
-    for (const keyword of keywords) {
-      if (nameLower.includes(keyword.toLowerCase())) {
-        return category;
-      }
-    }
-  }
+  if (name.includes('ciment') || name.includes('béton') || name.includes('brique') || name.includes('parpaing') || name.includes('sable') || name.includes('fer à béton')) return 'Gros œuvre';
+  if (name.includes('câble') || name.includes('fil') || name.includes('disjoncteur') || name.includes('interrupteur') || name.includes('prise') || name.includes('tableau électrique')) return 'Électricité';
+  if (name.includes('tuyau') || name.includes('raccord') || name.includes('vanne') || name.includes('robinet') || name.includes('siphon')) return 'Plomberie';
+  if (name.includes('porte') || name.includes('fenêtre') || name.includes('bois') || name.includes('planche') || name.includes('tasseau')) return 'Menuiserie';
+  if (name.includes('peinture') || name.includes('vernis') || name.includes('enduit') || name.includes('pinceau') || name.includes('rouleau')) return 'Peinture et Décoration';
+  if (name.includes('carrelage') || name.includes('faience') || name.includes('sol') || name.includes('colle carrelage')) return 'Carrelage et Revêtements';
+  if (name.includes('vis') || name.includes('clou') || name.includes('boulon') || name.includes('cheville') || name.includes('écrou')) return 'Quincaillerie';
+  if (name.includes('wc') || name.includes('lavabo') || name.includes('douche') || name.includes('baignoire') || name.includes('évier')) return 'Sanitaire';
+  if (name.includes('lampe') || name.includes('spot') || name.includes('ampoule') || name.includes('led') || name.includes('projecteur')) return 'Éclairage';
+  if (name.includes('serrure') || name.includes('poignée') || name.includes('cylindre') || name.includes('verrou')) return 'Serrurerie';
+  if (name.includes('placo') || name.includes('plâtre') || name.includes('ba13') || name.includes('rail') || name.includes('montant') || name.includes('isolation') || name.includes('laine')) return 'Plâtrerie et Isolation';
+  
   return null;
 }
 
@@ -127,8 +129,10 @@ RÉPONDS EN JSON VALIDE:
 }`;
 
       let responseText = '';
+      const replicate = getReplicateClient();
+      const useGemini = !!replicate;
 
-      if (useGemini) {
+      if (useGemini && replicate) {
         try {
           console.log('🧠 AI Categorizing with Gemini 3 Pro...');
           const output = await replicate.run("google/gemini-3-pro", {
@@ -148,7 +152,8 @@ RÉPONDS EN JSON VALIDE:
       }
 
       // Fallback OpenAI
-      if (!responseText) {
+      const openai = getOpenAIClient();
+      if (!responseText && openai) {
         console.log('🔄 AI Categorizing with OpenAI...');
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o-mini',

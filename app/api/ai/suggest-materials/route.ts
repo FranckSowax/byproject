@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import Replicate from 'replicate';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
 
-const useGemini = !!process.env.REPLICATE_API_TOKEN;
+const getReplicateClient = () => {
+  const auth = process.env.REPLICATE_API_TOKEN;
+  if (!auth) return null;
+  return new Replicate({ auth });
+};
 
 // Règles de complémentarité BTP (si X présent, suggérer Y)
 const COMPLEMENTARY_RULES: Record<string, { requires: string[], suggestions: Array<{ name: string, reason: string, priority: 'high' | 'medium' | 'low' }> }> = {
@@ -190,7 +193,10 @@ RÉPONDS EN JSON avec 10-15 suggestions:
     let responseText = '';
     let modelUsed = '';
 
-    if (useGemini) {
+    const replicate = getReplicateClient();
+    const useGemini = !!replicate;
+
+    if (useGemini && replicate) {
       try {
         console.log('🧠 Generating suggestions with Gemini 3 Pro...');
         const output = await replicate.run("google/gemini-3-pro", {
@@ -210,7 +216,8 @@ RÉPONDS EN JSON avec 10-15 suggestions:
     }
 
     // Fallback OpenAI
-    if (!responseText) {
+    const openai = getOpenAIClient();
+    if (!responseText && openai) {
       console.log('🔄 Generating suggestions with OpenAI...');
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
