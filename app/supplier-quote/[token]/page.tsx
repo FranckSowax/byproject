@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Globe, CheckCircle, AlertCircle, Building2, Package } from 'lucide-react';
+import { Globe, CheckCircle, AlertCircle, Building2, Package, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { MaterialCard } from '@/components/supplier/MaterialCard';
 import { DescriptionModal } from '@/components/supplier/DescriptionModal';
