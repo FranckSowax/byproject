@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { MaterialsToolbar } from "./MaterialsToolbar";
-import { MaterialsDataGrid } from "./MaterialsDataGrid";
 import { CategoryGroup } from "./CategoryGroup";
 import { MaterialsFilter } from "./MaterialsFilter";
 import { AISuggestions } from "@/components/project/AISuggestions";
