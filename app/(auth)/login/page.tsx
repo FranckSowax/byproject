@@ -9,12 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/auth/context";
 import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,29 +24,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Connexion avec Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error("Login error:", error);
-        
-        if (error.message.includes("Invalid login credentials")) {
-          toast.error("Email ou mot de passe incorrect");
-        } else if (error.message.includes("Email not confirmed")) {
-          toast.error("Veuillez confirmer votre email avant de vous connecter");
-        } else {
-          toast.error(`Erreur: ${error.message}`);
-        }
-        return;
-      }
-
-      if (!data.user) {
-        toast.error("Erreur de connexion");
-        return;
-      }
+      // Connexion via le contexte d'authentification
+      await signIn(email, password);
 
       // Succès!
       toast.success("Connexion réussie!");
@@ -55,7 +34,14 @@ export default function LoginPage() {
 
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error("Une erreur est survenue. Veuillez réessayer.");
+      
+      if (error.message?.includes("Invalid login credentials")) {
+        toast.error("Email ou mot de passe incorrect");
+      } else if (error.message?.includes("Email not confirmed")) {
+        toast.error("Veuillez confirmer votre email avant de vous connecter");
+      } else {
+        toast.error(`Erreur: ${error.message || "Une erreur est survenue"}`);
+      }
     } finally {
       setIsLoading(false);
     }

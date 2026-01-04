@@ -30,6 +30,13 @@ export function DashboardNav() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.email) {
         setUserEmail(user.email);
+      } else {
+        // Check for mock user
+        const mockUserStr = localStorage.getItem('mockUser');
+        if (mockUserStr) {
+          const mockUser = JSON.parse(mockUserStr);
+          setUserEmail(mockUser.email || 'admin@compachantier.com');
+        }
       }
     };
     getUser();

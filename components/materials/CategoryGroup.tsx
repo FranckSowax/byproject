@@ -8,15 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { MaterialCard } from "./MaterialCard";
 
-interface Material {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string | null;
-  quantity: number | null;
-  specs: any;
-  images?: string[];
-}
+import { Material } from "./types";
 
 interface CategoryGroupProps {
   category: string;

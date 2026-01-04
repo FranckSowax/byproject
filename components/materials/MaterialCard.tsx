@@ -4,16 +4,7 @@ import { DollarSign, MessageSquare, Package, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ImagePreview } from "./ImagePreview";
 import { cn } from "@/lib/utils";
-
-interface Material {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string | null;
-  quantity: number | null;
-  specs: any;
-  images?: string[];
-}
+import { Material } from "./types";
 
 interface MaterialCardProps {
   material: Material;

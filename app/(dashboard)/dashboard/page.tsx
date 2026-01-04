@@ -40,14 +40,28 @@ export default function DashboardPage() {
         // Si pas d'utilisateur, vérifier le mock user
         const mockUser = localStorage.getItem("mockUser");
         if (mockUser) {
-          setProjects([]);
+          // Mock projects for preview
+          setProjects([
+            {
+              id: 'mock-demo',
+              name: 'Projet de Démonstration',
+              created_at: new Date().toISOString(),
+              image_url: null
+            },
+            {
+              id: 'mock-project-2',
+              name: 'Rénovation Villa',
+              created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+              image_url: null
+            }
+          ]);
         }
         setIsLoading(false);
         return;
       }
 
       // Récupérer l'utilisateur depuis la table users personnalisée
-      const { data: userData, error: userError } = await supabase
+      const { data: userData, error: userError } = await (supabase as any)
         .from('users')
         .select('id, email, role_id')
         .eq('id', session.user.id)
@@ -81,7 +95,7 @@ export default function DashboardPage() {
           .eq('user_id', userData.id);
 
         // 2. Projets où l'utilisateur est collaborateur accepté
-        const { data: collabData, error: collabError } = await supabase
+        const { data: collabData, error: collabError } = await (supabase as any)
           .from('project_collaborators')
           .select('project_id')
           .eq('user_id', userData.id)
@@ -92,7 +106,7 @@ export default function DashboardPage() {
           toast.error("Erreur lors du chargement des projets");
           setProjects([]);
         } else {
-          const collabProjectIds = collabData?.map(c => c.project_id) || [];
+          const collabProjectIds = collabData?.map((c: any) => c.project_id) || [];
           
           // Charger les projets collaborés
           let collabProjects: Project[] = [];
@@ -106,7 +120,7 @@ export default function DashboardPage() {
           }
 
           // Combiner et dédupliquer
-          const allProjects = [...(ownProjects || []), ...collabProjects];
+          const allProjects = [...((ownProjects as unknown as Project[]) || []), ...collabProjects];
           const uniqueProjects = Array.from(
             new Map(allProjects.map(p => [p.id, p])).values()
           );
@@ -116,7 +130,7 @@ export default function DashboardPage() {
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
           
-          setProjects(uniqueProjects as Project[]);
+          setProjects(uniqueProjects);
         }
       }
     } catch (error) {
@@ -187,7 +201,7 @@ export default function DashboardPage() {
         return;
       }
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('projects')
         .update({ image_url: publicUrl })
         .eq('id', editingProjectId);
