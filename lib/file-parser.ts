@@ -190,8 +190,12 @@ export async function parsePDF(file: File): Promise<ParseResult> {
     // Import dynamique de pdfjs-dist
     const pdfjsLib = await import('pdfjs-dist');
 
-    // Configurer le worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    // Configurer le worker - utiliser unpkg qui a toutes les versions
+    // ou désactiver le worker pour un fonctionnement en mode fallback
+    if (typeof window !== 'undefined') {
+      // Utiliser unpkg.com qui héberge toutes les versions npm
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+    }
 
     // Lire le fichier comme ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
