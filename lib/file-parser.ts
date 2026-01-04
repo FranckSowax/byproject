@@ -248,49 +248,31 @@ export async function parsePDF(file: File): Promise<ParseResult> {
 
 /**
  * Extrait les matériaux/éléments d'un texte brut
- * Adapté pour les listes de frais de chantier, devis, etc.
+ * Adapté pour les listes de frais de chantier, devis, BOM (Bill of Materials)
  */
 function extractMaterialsFromText(text: string): ParsedMaterial[] {
   const materials: ParsedMaterial[] = [];
   const seen = new Set<string>();
 
-  // Nettoyer le texte
-  const cleanText = text
-    .replace(/\s+/g, ' ')
-    .replace(/−/g, '-')
-    .replace(/…/g, '...');
-
-  // Patterns pour détecter les éléments de liste
-  const patterns = [
-    // Pattern 1: Tirets avec texte (- Element)
-    /[-−–]\s*([A-ZÀ-Ýa-zà-ÿ][^-−–\n]{3,80})/g,
-
-    // Pattern 2: Numérotation (1.1., 2.3., etc.)
-    /(\d+\.\d+\.?\s*[A-ZÀ-Ý][^0-9\n]{5,100})/g,
-
-    // Pattern 3: Éléments entre parenthèses descriptifs
-    /([A-ZÀ-Ý][a-zà-ÿ\s]{3,50})\s*\([^)]+\)/g,
-
-    // Pattern 4: Mots-clés BTP avec contexte
-    /((?:installation|matériel|équipement|frais|personnel|outillage|transport|levage|chantier|bureau|essai|protection|sécurité|entretien|gardiennage)[s]?\s+[a-zà-ÿA-ZÀ-Ý\s]{3,50})/gi,
-  ];
-
-  // Catégories BTP pour classification
-  const categories: Record<string, string[]> = {
-    'Personnel': ['personnel', 'main d\'œuvre', 'chef', 'équipe', 'maîtrise', 'ouvrier', 'technicien', 'géomètre'],
-    'Matériel': ['matériel', 'équipement', 'outillage', 'machine', 'engin', 'outil'],
-    'Installation': ['installation', 'montage', 'implantation', 'mise en place'],
-    'Transport': ['transport', 'levage', 'manutention', 'grue', 'chariot'],
-    'Sécurité': ['sécurité', 'protection', 'casque', 'gant', 'hygiène', 'EPI'],
-    'Bureau': ['bureau', 'administratif', 'comptabilité', 'papeterie', 'téléphone'],
-    'Essais': ['essai', 'contrôle', 'test', 'analyse', 'laboratoire', 'sondage'],
-    'Frais généraux': ['frais', 'assurance', 'autorisation', 'publicité', 'éclairage', 'chauffage'],
+  // Catégories BTP pour classification automatique
+  const categoryKeywords: Record<string, string[]> = {
+    'Personnel & Main d\'œuvre': ['personnel', 'main d\'œuvre', 'chef', 'équipe', 'maîtrise', 'ouvrier', 'technicien', 'géomètre', 'conducteur', 'pointage', 'paie', 'salaire'],
+    'Matériel & Équipement': ['matériel', 'équipement', 'outillage', 'machine', 'engin', 'outil', 'appareil'],
+    'Installation de chantier': ['installation', 'montage', 'implantation', 'mise en place', 'atelier', 'baraque', 'clôture'],
+    'Transport & Levage': ['transport', 'levage', 'manutention', 'grue', 'chariot', 'camion', 'véhicule'],
+    'Sécurité & Protection': ['sécurité', 'protection', 'casque', 'gant', 'hygiène', 'EPI', 'cirés', 'bottes', 'gilet'],
+    'Bureau & Administration': ['bureau', 'administratif', 'comptabilité', 'papeterie', 'téléphone', 'fax', 'internet', 'courrier', 'timbres', 'dessin'],
+    'Essais & Contrôles': ['essai', 'contrôle', 'test', 'analyse', 'laboratoire', 'sondage', 'éprouvette', 'mortier', 'béton'],
+    'Frais généraux': ['frais', 'assurance', 'autorisation', 'publicité', 'éclairage', 'chauffage', 'énergie', 'eau'],
+    'Documents & Plans': ['document', 'plan', 'graphique', 'tirage', 'duplication', 'relevé', 'attachement', 'situation', 'mémoire', 'facture'],
+    'Nettoyage & Entretien': ['nettoyage', 'balayage', 'entretien', 'gravois', 'déchet', 'évacuation'],
+    'Divers': ['divers', 'pourboire', 'médecin', 'pharmacie', 'photo', 'film'],
   };
 
   // Fonction pour catégoriser un élément
   const categorize = (name: string): string => {
     const lower = name.toLowerCase();
-    for (const [category, keywords] of Object.entries(categories)) {
+    for (const [category, keywords] of Object.entries(categoryKeywords)) {
       if (keywords.some(kw => lower.includes(kw))) {
         return category;
       }
@@ -298,55 +280,162 @@ function extractMaterialsFromText(text: string): ParsedMaterial[] {
     return 'Autre';
   };
 
-  // Extraire avec chaque pattern
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(cleanText)) !== null) {
-      const rawName = match[1] || match[0];
-      const name = rawName
-        .trim()
-        .replace(/^\d+\.\d+\.?\s*/, '') // Retirer numérotation
-        .replace(/^[-−–]\s*/, '') // Retirer tirets
-        .replace(/\s+/g, ' ')
-        .trim();
+  // Fonction pour ajouter un matériau (avec déduplication)
+  const addMaterial = (name: string, category?: string) => {
+    // Nettoyer le nom
+    let cleanName = name
+      .trim()
+      .replace(/^\d+\.\d*\.?\s*/, '') // Retirer numérotation (1.1., 2.3., etc.)
+      .replace(/^[-−–•]\s*/, '') // Retirer tirets et puces
+      .replace(/\s+/g, ' ')
+      .replace(/[,;:]$/, '') // Retirer ponctuation finale
+      .trim();
 
-      // Filtrer les éléments trop courts ou non pertinents
-      if (name.length < 5 || name.length > 100) continue;
-      if (/^(le|la|les|de|du|des|et|ou|en|à|pour|avec|sans|sur|sous|dans|par|www|http|pdf|doc)/i.test(name)) continue;
+    // Ignorer si trop court ou trop long
+    if (cleanName.length < 3 || cleanName.length > 150) return;
 
-      // Éviter les doublons (normalisation)
-      const normalizedKey = name.toLowerCase().replace(/[^a-zà-ÿ]/g, '');
-      if (seen.has(normalizedKey)) continue;
-      seen.add(normalizedKey);
+    // Ignorer les mots de liaison seuls
+    if (/^(le|la|les|de|du|des|et|ou|en|à|pour|avec|sans|sur|sous|dans|par|un|une|ce|cette|son|sa|ses|leur|www|http|pdf|doc|©|annexe)$/i.test(cleanName)) return;
 
-      materials.push({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        category: categorize(name),
-      });
-    }
-  }
+    // Ignorer si commence par un mot de liaison
+    if (/^(le |la |les |de |du |des |et |ou |en |à |pour |avec )$/i.test(cleanName.substring(0, 4))) return;
 
-  // Extraction supplémentaire: lignes qui commencent par des majuscules
-  const lines = text.split(/[\n\r]+/);
+    // Normaliser pour déduplication
+    const normalizedKey = cleanName.toLowerCase().replace(/[^a-zà-ÿéèêëàâäùûüîïôö]/g, '');
+    if (normalizedKey.length < 3) return;
+    if (seen.has(normalizedKey)) return;
+    seen.add(normalizedKey);
+
+    // Capitaliser la première lettre
+    cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+
+    materials.push({
+      name: cleanName,
+      category: category || categorize(cleanName),
+    });
+  };
+
+  // === EXTRACTION PRINCIPALE ===
+
+  // Normaliser le texte
+  const normalizedText = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/−/g, '-')
+    .replace(/–/g, '-')
+    .replace(/…/g, '...')
+    .replace(/'/g, "'")
+    .replace(/«|»/g, '"');
+
+  // Garder trace de la catégorie courante (pour les listes hiérarchiques)
+  let currentCategory = 'Autre';
+
+  // Traiter ligne par ligne
+  const lines = normalizedText.split('\n');
+
   for (const line of lines) {
     const trimmed = line.trim();
+    if (!trimmed || trimmed.length < 3) continue;
 
-    // Lignes qui ressemblent à des titres de section (ex: "1. Frais d'encadrement...")
-    const sectionMatch = trimmed.match(/^(\d+\.)\s*([A-ZÀ-Ý][^0-9]{10,80})/);
-    if (sectionMatch) {
-      const name = sectionMatch[2].trim();
-      const normalizedKey = name.toLowerCase().replace(/[^a-zà-ÿ]/g, '');
-      if (!seen.has(normalizedKey) && name.length >= 10) {
-        seen.add(normalizedKey);
-        materials.push({
-          name,
-          category: categorize(name),
+    // === Pattern 1: Titres de section principaux (1. Titre, 2. Titre, etc.) ===
+    const mainSectionMatch = trimmed.match(/^(\d+)\.\s*(.+)$/);
+    if (mainSectionMatch) {
+      const sectionTitle = mainSectionMatch[2].trim();
+      // Mettre à jour la catégorie courante basée sur le titre
+      currentCategory = categorize(sectionTitle);
+      // Ajouter le titre comme élément
+      if (sectionTitle.length >= 5) {
+        addMaterial(sectionTitle, currentCategory);
+      }
+      continue;
+    }
+
+    // === Pattern 2: Sous-sections (1.1. Sous-titre, 2.3. Sous-titre, etc.) ===
+    const subSectionMatch = trimmed.match(/^(\d+\.\d+\.?)\s*(.+)$/);
+    if (subSectionMatch) {
+      const subTitle = subSectionMatch[2].trim();
+      if (subTitle.length >= 3) {
+        addMaterial(subTitle, currentCategory);
+      }
+      continue;
+    }
+
+    // === Pattern 3: Éléments avec tiret ou puce (- Element, • Element) ===
+    const bulletMatch = trimmed.match(/^[-−–•]\s*(.+)$/);
+    if (bulletMatch) {
+      const item = bulletMatch[1].trim();
+      if (item.length >= 3) {
+        addMaterial(item, currentCategory);
+      }
+      continue;
+    }
+
+    // === Pattern 4: Éléments entre parenthèses - extraire séparément ===
+    const parenthesesMatches = trimmed.matchAll(/\(([^)]{3,50})\)/g);
+    for (const match of parenthesesMatches) {
+      const content = match[1].trim();
+      // Si contient des éléments séparés par virgule
+      if (content.includes(',')) {
+        content.split(',').forEach(part => {
+          const partTrimmed = part.trim();
+          if (partTrimmed.length >= 3) {
+            addMaterial(partTrimmed, currentCategory);
+          }
         });
+      }
+    }
+
+    // === Pattern 5: Lignes avec mots-clés BTP importants ===
+    const btpKeywords = [
+      'outillage', 'matériel', 'équipement', 'installation', 'transport',
+      'levage', 'protection', 'sécurité', 'essai', 'contrôle', 'bureau',
+      'éclairage', 'chauffage', 'nettoyage', 'gardiennage', 'cantine',
+      'téléphone', 'assurance', 'panneaux', 'signalisation', 'véhicule',
+      'grue', 'chariot', 'atelier', 'comptabilité', 'paie', 'photographie'
+    ];
+
+    const lowerLine = trimmed.toLowerCase();
+    for (const keyword of btpKeywords) {
+      if (lowerLine.includes(keyword)) {
+        // Extraire la phrase/segment contenant le mot-clé
+        addMaterial(trimmed, currentCategory);
+        break;
+      }
+    }
+
+    // === Pattern 6: Éléments séparés par des virgules sur une ligne ===
+    if (trimmed.includes(',') && !trimmed.match(/^\d/) && trimmed.length < 200) {
+      const parts = trimmed.split(',');
+      if (parts.length >= 2 && parts.length <= 10) {
+        let allValid = true;
+        for (const part of parts) {
+          const p = part.trim();
+          if (p.length < 3 || p.length > 60) {
+            allValid = false;
+            break;
+          }
+        }
+        if (allValid) {
+          parts.forEach(part => {
+            addMaterial(part.trim(), currentCategory);
+          });
+        }
       }
     }
   }
 
+  // === POST-TRAITEMENT ===
+
+  // Trier par catégorie puis par nom
+  materials.sort((a, b) => {
+    if (a.category !== b.category) {
+      return (a.category || '').localeCompare(b.category || '');
+    }
+    return a.name.localeCompare(b.name);
+  });
+
   console.log(`📋 ${materials.length} éléments extraits du PDF`);
+  console.log('Catégories trouvées:', [...new Set(materials.map(m => m.category))]);
 
   return materials;
 }
