@@ -435,17 +435,6 @@ export function MaterialsView({
               </Button>
             )}
           </div>
-        ) : viewMode === 'grid' ? (
-          <MaterialsDataGrid
-            materials={filteredMaterials}
-            selectedIds={selectedIds}
-            onSelectChange={setSelectedIds}
-            onEdit={onEditMaterial}
-            onDelete={(id) => onDeleteMaterial(id)}
-            onDuplicate={onDuplicateMaterial}
-            pricesByMaterial={pricesByMaterial}
-            onQuickUpdate={onQuickUpdate}
-          />
         ) : (
           <div className="space-y-4">
             {categories.map(category => (

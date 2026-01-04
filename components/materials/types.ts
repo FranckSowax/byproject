@@ -26,4 +26,4 @@ export interface MaterialPrice {
   };
 }
 
-export type ViewMode = 'grid' | 'list' | 'categories' | 'suggestions';
+export type ViewMode = 'categories' | 'suggestions';

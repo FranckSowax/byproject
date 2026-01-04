@@ -6,8 +6,6 @@ import {
   Search, 
   Filter, 
   LayoutGrid, 
-  List, 
-  LayoutList, 
   Plus, 
   Download, 
   Trash2, 
@@ -157,25 +155,6 @@ export function MaterialsToolbar({
                   <TooltipContent>Vue par catégories</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => onViewModeChange('grid')}
-                      className={cn(
-                        "p-1.5 rounded-md transition-all",
-                        viewMode === 'grid' 
-                          ? "bg-white text-slate-900 shadow-sm" 
-                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-                      )}
-                    >
-                      <TableIcon className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Vue tableau</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
 
               {suggestionsCount > 0 && (
                 <TooltipProvider>
@@ -258,23 +237,3 @@ export function MaterialsToolbar({
   );
 }
 
-function TableIcon({ className }: { className?: string }) {
-  return (
-    <svg 
-      className={className}
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M12 3v18"/>
-      <rect width="18" height="18" x="3" y="3" rx="2"/>
-      <path d="M3 9h18"/>
-    </svg>
-  );
-}
