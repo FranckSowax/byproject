@@ -377,8 +377,11 @@ async function extractTextFromPDF(file: Blob, fileName: string): Promise<string>
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
-    // Gestion robuste de l'import (ESM/CJS interop)
+    // Import dynamique pour éviter les erreurs de build/runtime
+    // @ts-ignore
+    const pdfParseLib = await import('pdf-parse');
     const pdfParse = (pdfParseLib as any).default || pdfParseLib;
+    
     const data = await pdfParse(buffer);
     const text = data.text;
 
