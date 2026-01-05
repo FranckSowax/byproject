@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import * as XLSX from 'xlsx';
 
@@ -7,11 +8,24 @@ import * as XLSX from 'xlsx';
 export const maxDuration = 60; // 60 secondes max
 export const dynamic = 'force-dynamic';
 
-// Initialiser OpenAI
-const getOpenAIClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
+// Timeout pour les appels API
+const API_TIMEOUT_MS = 25000;
+
+// Helper function to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    )
+  ]);
+}
+
+// Client Gemini 2.0 Flash (principal)
+const getGeminiClient = () => {
+  const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
-  return new OpenAI({ apiKey });
+  return new GoogleGenerativeAI(apiKey);
 };
 
 // Initialiser DeepSeek (fallback)
@@ -431,43 +445,48 @@ async function extractTextFromPDFWithVision(file: Blob, fileName: string): Promi
   }
 }
 
-// Analyser une page avec GPT-4o-mini Vision
+// Analyser une page avec Gemini 2.0 Flash Vision
 async function analyzePageWithVision(pdfBuffer: ArrayBuffer, pageIndex: number): Promise<string> {
-  const openai = getOpenAIClient();
-  if (!openai) {
-    return `[OpenAI non configuré - page ${pageIndex + 1}]`;
+  const gemini = getGeminiClient();
+  if (!gemini) {
+    return `[Gemini non configuré - page ${pageIndex + 1}]`;
   }
 
   try {
     // Convertir le buffer en base64
     const base64 = Buffer.from(pdfBuffer).toString('base64');
 
-    // Utiliser GPT-4o-mini Vision pour extraire le texte
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
+    const model = gemini.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 4000,
+      },
+    });
+
+    // Utiliser Gemini Vision pour extraire le texte
+    const result = await withTimeout(
+      model.generateContent({
+        contents: [{
           role: 'user',
-          content: [
+          parts: [
+            { text: `Extrait TOUT le texte de cette page de PDF. Liste CHAQUE élément/matériau sur une ligne séparée. Si c'est un tableau, structure-le en format CSV. Retourne uniquement le texte extrait, sans commentaire.` },
             {
-              type: 'text',
-              text: `Extrait TOUT le texte de cette page de PDF. Liste CHAQUE élément/matériau sur une ligne séparée. Si c'est un tableau, structure-le en format CSV. Retourne uniquement le texte extrait, sans commentaire.`,
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:application/pdf;base64,${base64}`,
+              inlineData: {
+                mimeType: 'application/pdf',
+                data: base64,
               },
             },
           ],
-        },
-      ],
-      max_tokens: 4000,
-    });
+        }],
+      }),
+      API_TIMEOUT_MS,
+      `Gemini Vision timeout`
+    );
 
-    return response.choices[0].message.content || '';
-  } catch (error) {
-    console.error('Vision API error:', error);
+    return result.response.text() || '';
+  } catch (error: any) {
+    console.error('Gemini Vision API error:', error?.message || error);
     return `[Erreur d'extraction pour la page ${pageIndex + 1}]`;
   }
 }
@@ -504,10 +523,12 @@ async function extractTextFromPDFWithTesseract(file: Blob, fileName: string): Pr
   }
 }
 
-// Fonction pour analyser avec l'IA (OpenAI + DeepSeek fallback)
+// Fonction pour analyser avec l'IA (Gemini 2.0 Flash + DeepSeek fallback)
 async function analyzeWithAI(fileContent: string, fileName: string, sectorSlug: string, sectorName: string) {
   // Récupérer les catégories du secteur
   const categories = SECTOR_CATEGORIES[sectorSlug] || SECTOR_CATEGORIES['default'];
+
+  const systemPrompt = `Tu es un expert en extraction de données pour le secteur ${sectorName}. Tu extrais TOUS les éléments/matériaux présents dans les fichiers. Tu réponds UNIQUEMENT en JSON valide.`;
 
   const prompt = `Tu es un EXPERT en extraction de données pour le secteur "${sectorName}".
 
@@ -558,57 +579,64 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE, sans markdown.`;
   let responseText = '';
   let modelUsed = '';
 
-  // Essayer OpenAI d'abord
-  const openai = getOpenAIClient();
-  if (openai) {
+  // 1. Essayer Gemini 2.0 Flash d'abord (rapide et efficace)
+  const gemini = getGeminiClient();
+  if (gemini) {
     try {
-      console.log('🤖 Tentative avec OpenAI gpt-4o-mini...');
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es un expert en extraction de données pour le secteur ${sectorName}. Tu extrais TOUS les éléments/matériaux présents dans les fichiers. Tu réponds UNIQUEMENT en JSON valide.`,
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.1,
-        max_tokens: 8000,
-        response_format: { type: 'json_object' },
+      console.log('🤖 Tentative avec Gemini 2.0 Flash...');
+      const model = gemini.getGenerativeModel({
+        model: 'gemini-2.0-flash-exp',
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 8000,
+          responseMimeType: 'application/json',
+        },
       });
 
-      responseText = completion.choices[0]?.message?.content?.trim() || '';
-      modelUsed = 'gpt-4o-mini';
-      console.log(`✅ OpenAI réponse reçue: ${responseText.length} caractères`);
-    } catch (error) {
-      console.error('❌ OpenAI error:', error);
+      const result = await withTimeout(
+        model.generateContent({
+          contents: [{
+            role: 'user',
+            parts: [{ text: `${systemPrompt}\n\n${prompt}` }]
+          }],
+        }),
+        API_TIMEOUT_MS,
+        `Gemini timeout after ${API_TIMEOUT_MS / 1000}s`
+      );
+
+      responseText = result.response.text()?.trim() || '';
+      modelUsed = 'gemini-2.0-flash';
+      console.log(`✅ Gemini réponse reçue: ${responseText.length} caractères`);
+    } catch (error: any) {
+      console.error('❌ Gemini error:', error?.message || error);
     }
   }
 
-  // Fallback DeepSeek si OpenAI échoue
+  // 2. Fallback DeepSeek si Gemini échoue
   if (!responseText) {
     const deepseek = getDeepSeekClient();
     if (deepseek) {
       try {
         console.log('🔄 Fallback vers DeepSeek...');
-        const completion = await deepseek.chat.completions.create({
-          model: 'deepseek-chat',
-          messages: [
-            {
-              role: 'system',
-              content: `Tu es un expert en extraction de données pour le secteur ${sectorName}. Tu extrais TOUS les éléments/matériaux présents dans les fichiers. Tu réponds UNIQUEMENT en JSON valide.`,
-            },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0.1,
-          max_tokens: 8000,
-        });
+        const completion = await withTimeout(
+          deepseek.chat.completions.create({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.1,
+            max_tokens: 8000,
+          }),
+          API_TIMEOUT_MS,
+          `DeepSeek timeout after ${API_TIMEOUT_MS / 1000}s`
+        );
 
         responseText = completion.choices[0]?.message?.content?.trim() || '';
         modelUsed = 'deepseek-chat';
         console.log(`✅ DeepSeek réponse reçue: ${responseText.length} caractères`);
-      } catch (error) {
-        console.error('❌ DeepSeek error:', error);
+      } catch (error: any) {
+        console.error('❌ DeepSeek error:', error?.message || error);
       }
     }
   }
