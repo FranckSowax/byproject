@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import * as XLSX from 'xlsx';
 // @ts-ignore
-import pdfParse from 'pdf-parse';
+import * as pdfParseLib from 'pdf-parse';
 import { Buffer } from 'buffer';
 
 // Configuration
@@ -376,6 +376,9 @@ async function extractTextFromPDF(file: Blob, fileName: string): Promise<string>
     console.log('🔄 Tentative extraction PDF native (pdf-parse)...');
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    
+    // Gestion robuste de l'import (ESM/CJS interop)
+    const pdfParse = (pdfParseLib as any).default || pdfParseLib;
     const data = await pdfParse(buffer);
     const text = data.text;
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 // @ts-ignore
-import pdfParse from 'pdf-parse';
+import * as pdfParseLib from 'pdf-parse';
 import { Buffer } from 'buffer';
 
 // Configuration pour Netlify - timeout étendu pour les gros fichiers
@@ -21,6 +21,8 @@ async function extractTextFromPdfServer(buffer: Buffer): Promise<string> {
   // Outil 1: pdf-parse (Extraction de texte native)
   try {
     console.log('🛠️ Outil 1: pdf-parse');
+    // Gestion robuste de l'import (ESM/CJS interop)
+    const pdfParse = (pdfParseLib as any).default || pdfParseLib;
     const data = await pdfParse(buffer);
     const text = data.text;
     
