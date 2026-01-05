@@ -2,13 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import * as XLSX from 'xlsx';
-// Tesseract sera importé dynamiquement pour éviter les problèmes de build
+
+// Configuration
+export const maxDuration = 60; // 60 secondes max
+export const dynamic = 'force-dynamic';
 
 // Initialiser OpenAI
 const getOpenAIClient = () => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   return new OpenAI({ apiKey });
+};
+
+// Initialiser DeepSeek (fallback)
+const getDeepSeekClient = () => {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({
+    apiKey,
+    baseURL: 'https://api.deepseek.com/v1',
+  });
 };
 
 // Initialiser Supabase avec service role
@@ -19,9 +32,60 @@ const getSupabaseClient = () => {
   );
 };
 
+// Catégories par secteur
+const SECTOR_CATEGORIES: Record<string, string[]> = {
+  'btp': [
+    'Gros œuvre & Matériaux',
+    'Électricité',
+    'Plomberie & Sanitaire',
+    'Menuiserie & Bois',
+    'Peinture & Finitions',
+    'Carrelage & Revêtements',
+    'Quincaillerie & Fixations',
+    'Outillage & Équipement',
+    'Sécurité & Protection (EPI)',
+    'Transport & Levage',
+    'Installation de chantier',
+    'Divers',
+  ],
+  'import': [
+    'Électronique & High-Tech',
+    'Textile & Habillement',
+    'Mobilier & Décoration',
+    'Équipement industriel',
+    'Pièces détachées',
+    'Matières premières',
+    'Accessoires',
+    'Divers',
+  ],
+  'commerce': [
+    'Produits alimentaires',
+    'Cosmétiques & Hygiène',
+    'Électroménager',
+    'Mobilier',
+    'Textile',
+    'Papeterie & Bureau',
+    'Divers',
+  ],
+  'default': [
+    'Équipement',
+    'Matériaux',
+    'Fournitures',
+    'Services',
+    'Divers',
+  ],
+};
+
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { projectId, filePath, fileName } = await request.json();
+
+    console.log('📂 === ANALYSE FICHIER DÉMARRÉE ===');
+    console.log(`📁 Projet: ${projectId}`);
+    console.log(`📄 Fichier: ${fileName}`);
+    console.log(`📍 Chemin: ${filePath}`);
 
     if (!projectId || !filePath) {
       return NextResponse.json(
@@ -32,40 +96,74 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseClient();
 
+    // 0. Récupérer les infos du projet (secteur)
+    const { data: projectData, error: projectError } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        sector:sectors(id, name, slug)
+      `)
+      .eq('id', projectId)
+      .single();
+
+    if (projectError) {
+      console.error('❌ Project fetch error:', projectError);
+    }
+
+    const sectorSlug = projectData?.sector?.slug || 'default';
+    const sectorName = projectData?.sector?.name || 'Général';
+    console.log(`🏭 Secteur détecté: ${sectorName} (${sectorSlug})`);
+
     // 1. Télécharger le fichier depuis Supabase Storage
+    console.log('📥 Téléchargement du fichier...');
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('project-files')
       .download(filePath);
 
     if (downloadError) {
-      console.error('Download error:', downloadError);
+      console.error('❌ Download error:', downloadError);
       return NextResponse.json(
         { error: 'Failed to download file' },
         { status: 500 }
       );
     }
 
+    console.log(`✅ Fichier téléchargé: ${fileData.size} bytes`);
+
     // 2. Convertir le fichier en texte (selon le type)
+    console.log('📝 Extraction du texte...');
     const fileText = await extractTextFromFile(fileData, fileName);
 
     if (!fileText) {
+      console.error('❌ Échec extraction texte');
       return NextResponse.json(
         { error: 'Failed to extract text from file' },
         { status: 500 }
       );
     }
 
-    // 3. Analyser avec l'IA
-    const analysis = await analyzeWithGPT4(fileText, fileName);
+    console.log(`✅ Texte extrait: ${fileText.length} caractères`);
+    console.log('📄 Aperçu du texte:');
+    console.log(fileText.substring(0, 500));
+    console.log('...');
+
+    // 3. Analyser avec l'IA (en passant le secteur)
+    console.log('🤖 Analyse IA en cours...');
+    const analysis = await analyzeWithAI(fileText, fileName, sectorSlug, sectorName);
 
     if (!analysis) {
+      console.error('❌ Échec analyse IA');
       return NextResponse.json(
         { error: 'Failed to analyze file with AI' },
         { status: 500 }
       );
     }
 
+    console.log(`✅ Analyse IA terminée: ${analysis.materials?.length || 0} matériaux détectés`);
+    console.log('📊 Catégories détectées:', [...new Set(analysis.materials?.map((m: any) => m.category) || [])]);
+
     // 4. Sauvegarder le mapping dans la base de données
+    console.log('💾 Sauvegarde du mapping...');
     const { error: mappingError } = await supabase
       .from('column_mappings')
       .insert({
@@ -75,7 +173,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (mappingError) {
-      console.error('Mapping save error:', mappingError);
+      console.error('❌ Mapping save error:', mappingError);
       return NextResponse.json(
         { error: 'Failed to save mapping' },
         { status: 500 }
@@ -87,15 +185,15 @@ export async function POST(request: NextRequest) {
       const materialsToInsert = analysis.materials.map((material: any) => {
         // Enrichir les specs avec l'unité et la description si présentes
         const specs = material.specs || {};
-        
+
         if (material.description) {
           specs.description = material.description;
         }
-        
+
         if (material.unit) {
           specs.unit = material.unit;
         }
-        
+
         return {
           project_id: projectId,
           name: material.name,
@@ -105,21 +203,20 @@ export async function POST(request: NextRequest) {
         };
       });
 
-      console.log(`Inserting ${materialsToInsert.length} materials into database`);
+      console.log(`💾 Insertion de ${materialsToInsert.length} matériaux...`);
 
       const { error: materialsError } = await supabase
         .from('materials')
         .insert(materialsToInsert);
 
       if (materialsError) {
-        console.error('Materials insert error:', materialsError);
-        // Ne pas échouer complètement si l'insertion échoue
-        console.log('Continuing despite materials insert error...');
+        console.error('❌ Materials insert error:', materialsError);
+        console.log('⚠️ Continuing despite materials insert error...');
       } else {
-        console.log(`Successfully inserted ${materialsToInsert.length} materials`);
+        console.log(`✅ ${materialsToInsert.length} matériaux insérés avec succès`);
       }
     } else {
-      console.warn('No materials detected by AI analysis');
+      console.warn('⚠️ Aucun matériau détecté par l\'IA');
     }
 
     // 6. Mettre à jour le statut du projet
@@ -129,20 +226,27 @@ export async function POST(request: NextRequest) {
       .eq('id', projectId);
 
     if (updateError) {
-      console.error('Project update error:', updateError);
+      console.error('❌ Project update error:', updateError);
     }
+
+    const duration = Date.now() - startTime;
+    console.log(`✅ === ANALYSE TERMINÉE en ${duration}ms ===`);
+    console.log(`📊 Résumé: ${analysis.materials?.length || 0} matériaux, modèle: ${analysis.model || 'gpt-4o-mini'}`);
 
     return NextResponse.json({
       success: true,
       mapping: analysis.mapping,
       materialsCount: analysis.materials?.length || 0,
+      categories: [...new Set(analysis.materials?.map((m: any) => m.category) || [])],
+      model: analysis.model,
+      durationMs: duration,
       message: 'File analyzed successfully',
     });
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('❌ API Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown' },
       { status: 500 }
     );
   }
@@ -329,35 +433,39 @@ async function extractTextFromPDFWithVision(file: Blob, fileName: string): Promi
 
 // Analyser une page avec GPT-4o-mini Vision
 async function analyzePageWithVision(pdfBuffer: ArrayBuffer, pageIndex: number): Promise<string> {
+  const openai = getOpenAIClient();
+  if (!openai) {
+    return `[OpenAI non configuré - page ${pageIndex + 1}]`;
+  }
+
   try {
     // Convertir le buffer en base64
     const base64 = Buffer.from(pdfBuffer).toString('base64');
-    
+
     // Utiliser GPT-4o-mini Vision pour extraire le texte
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: 'gpt-4o-mini',
       messages: [
         {
-          role: "user",
+          role: 'user',
           content: [
             {
-              type: "text",
-              text: `Extrait tout le texte de cette page de PDF. Si c'est un tableau de matériaux de construction, structure-le en format CSV avec les colonnes détectées. Retourne uniquement le texte extrait, sans commentaire.`
+              type: 'text',
+              text: `Extrait TOUT le texte de cette page de PDF. Liste CHAQUE élément/matériau sur une ligne séparée. Si c'est un tableau, structure-le en format CSV. Retourne uniquement le texte extrait, sans commentaire.`,
             },
             {
-              type: "image_url",
+              type: 'image_url',
               image_url: {
                 url: `data:application/pdf;base64,${base64}`,
-              }
-            }
-          ]
-        }
+              },
+            },
+          ],
+        },
       ],
-      max_tokens: 2000,
+      max_tokens: 4000,
     });
-    
+
     return response.choices[0].message.content || '';
-    
   } catch (error) {
     console.error('Vision API error:', error);
     return `[Erreur d'extraction pour la page ${pageIndex + 1}]`;
@@ -396,128 +504,150 @@ async function extractTextFromPDFWithTesseract(file: Blob, fileName: string): Pr
   }
 }
 
-// Fonction pour analyser avec l'IA
-async function analyzeWithGPT4(fileContent: string, fileName: string) {
-  try {
-    const prompt = `Tu es un expert en analyse de fichiers de matériaux de construction et d'équipements. 
+// Fonction pour analyser avec l'IA (OpenAI + DeepSeek fallback)
+async function analyzeWithAI(fileContent: string, fileName: string, sectorSlug: string, sectorName: string) {
+  // Récupérer les catégories du secteur
+  const categories = SECTOR_CATEGORIES[sectorSlug] || SECTOR_CATEGORIES['default'];
 
-**MISSION CRITIQUE**: Tu dois TOUJOURS extraire TOUS les matériaux présents dans le fichier, même si les données sont incomplètes.
+  const prompt = `Tu es un EXPERT en extraction de données pour le secteur "${sectorName}".
 
-**RÈGLES IMPORTANTES**:
-1. Si une ligne contient un nom de matériau ET une quantité → C'EST UN MATÉRIAU VALIDE
-2. Si une ligne contient uniquement un nom → C'EST QUAND MÊME UN MATÉRIAU (quantité = null)
-3. Ne rejette JAMAIS un matériau sous prétexte qu'il manque des informations
-4. Accepte tous types de matériaux: ciment, fer, câbles, peinture, luminaires, interrupteurs, etc.
-5. Les colonnes de prix (Fournisseur A, B, C) ne sont PAS obligatoires pour détecter un matériau
+**MISSION CRITIQUE**: Extrais TOUS les éléments/matériaux/articles du fichier ci-dessous.
 
-**TYPES DE MATÉRIAUX À DÉTECTER**:
-- Matériaux de construction (ciment, fer, sable, gravier, etc.)
-- Équipements électriques (câbles, interrupteurs, prises, LED, etc.)
-- Peinture et finitions
-- Plomberie
-- Menuiserie
-- Tous autres équipements de chantier
+**CATÉGORIES À UTILISER (EXACTEMENT ces noms)**:
+${categories.map(c => `• ${c}`).join('\n')}
 
-Fichier: ${fileName}
+**RÈGLES D'EXTRACTION**:
+1. Extrais CHAQUE ligne qui contient un élément/matériau/article
+2. Un nom seul = élément valide (quantité peut être null)
+3. Ignore: en-têtes, totaux, numéros de page, métadonnées
+4. Sépare les éléments listés ensemble (ex: "gants, bottes, casques" = 3 items)
+5. Corrige les fautes d'orthographe évidentes
+6. Catégorise selon le secteur ${sectorName}
 
-Contenu:
-${fileContent.substring(0, 8000)}
+**Fichier**: ${fileName}
 
-**FORMAT DE RÉPONSE JSON**:
+**Contenu** (${fileContent.length} caractères):
+\`\`\`
+${fileContent.substring(0, 15000)}
+\`\`\`
+
+**FORMAT JSON STRICT**:
 {
   "mapping": {
-    "columns": [
-      {"original": "nom exact de la colonne", "mapped": "name|quantity|price|unit|category|supplier", "confidence": 0.95}
-    ],
-    "detected_format": "csv|excel|pdf",
-    "has_headers": true|false,
-    "total_rows": nombre_de_lignes
+    "columns": [{"original": "colonne", "mapped": "name|quantity|unit", "confidence": 0.9}],
+    "detected_format": "pdf|csv|excel",
+    "total_rows": 0
   },
   "materials": [
     {
-      "name": "Nom court du matériau (OBLIGATOIRE)",
-      "description": "Description détaillée extraite du nom ou null",
-      "category": "Catégorie déduite (électricité, construction, peinture, etc.) ou null",
-      "quantity": nombre ou null,
-      "unit": "unité (Sac, Barre, m², Pièce, etc.) ou null",
-      "specs": {
-        "autres_infos": "valeur"
-      }
+      "name": "Nom court (OBLIGATOIRE)",
+      "description": "Détails/specs ou null",
+      "category": "Une des catégories listées",
+      "quantity": 10,
+      "unit": "unité ou null"
     }
   ],
   "statistics": {
-    "total_materials_found": nombre,
-    "materials_with_quantity": nombre,
-    "materials_without_quantity": nombre
-  },
-  "suggestions": ["Conseil 1", "Conseil 2"]
+    "total_materials_found": 0,
+    "by_category": {}
+  }
 }
 
-**EXTRACTION DU NOM ET DESCRIPTION**:
-Sépare intelligemment le nom court de la description détaillée:
+RÉPONDS UNIQUEMENT EN JSON VALIDE, sans markdown.`;
 
-Exemples:
-1. "Ciment CPI 35" → name: "Ciment", description: "CPI 35"
-2. "Fer à béton Ø8" → name: "Fer à béton", description: "Diamètre 8mm"
-3. "Peinture acrylique 20L blanc mat" → name: "Peinture acrylique", description: "20L blanc mat"
-4. "Ampoule LED E27 12W blanc chaud" → name: "Ampoule LED", description: "E27 12W blanc chaud"
-5. "Interrupteur va-et-vient" → name: "Interrupteur", description: "va-et-vient"
-6. "Câble électrique 3x2.5mm²" → name: "Câble électrique", description: "3x2.5mm²"
-7. "Carreaux 60x60 grès cérame" → name: "Carreaux", description: "60x60 grès cérame"
+  let responseText = '';
+  let modelUsed = '';
 
-**RÈGLES**:
-- name = Type de matériau (court, générique)
-- description = Spécifications techniques, dimensions, modèle, couleur, etc.
-- Si pas de détails → description: null
+  // Essayer OpenAI d'abord
+  const openai = getOpenAIClient();
+  if (openai) {
+    try {
+      console.log('🤖 Tentative avec OpenAI gpt-4o-mini...');
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `Tu es un expert en extraction de données pour le secteur ${sectorName}. Tu extrais TOUS les éléments/matériaux présents dans les fichiers. Tu réponds UNIQUEMENT en JSON valide.`,
+          },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.1,
+        max_tokens: 8000,
+        response_format: { type: 'json_object' },
+      });
 
-**EXEMPLE DE DÉTECTION**:
-Si tu vois:
-- "Ciment CPI 35" avec quantité 100 → Matériau valide
-- "Fer à béton Ø8" avec quantité 200 → Matériau valide  
-- "Peinture acrylique" sans quantité → TOUJOURS UN MATÉRIAU VALIDE (quantité: null)
-- "Ampoule LED E27 12W" avec quantité 100 → Matériau valide
+      responseText = completion.choices[0]?.message?.content?.trim() || '';
+      modelUsed = 'gpt-4o-mini';
+      console.log(`✅ OpenAI réponse reçue: ${responseText.length} caractères`);
+    } catch (error) {
+      console.error('❌ OpenAI error:', error);
+    }
+  }
 
-RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
+  // Fallback DeepSeek si OpenAI échoue
+  if (!responseText) {
+    const deepseek = getDeepSeekClient();
+    if (deepseek) {
+      try {
+        console.log('🔄 Fallback vers DeepSeek...');
+        const completion = await deepseek.chat.completions.create({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: `Tu es un expert en extraction de données pour le secteur ${sectorName}. Tu extrais TOUS les éléments/matériaux présents dans les fichiers. Tu réponds UNIQUEMENT en JSON valide.`,
+            },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.1,
+          max_tokens: 8000,
+        });
 
-    const openai = getOpenAIClient();
-    if (!openai) {
-      throw new Error('OpenAI client not initialized');
+        responseText = completion.choices[0]?.message?.content?.trim() || '';
+        modelUsed = 'deepseek-chat';
+        console.log(`✅ DeepSeek réponse reçue: ${responseText.length} caractères`);
+      } catch (error) {
+        console.error('❌ DeepSeek error:', error);
+      }
+    }
+  }
+
+  if (!responseText) {
+    console.error('❌ Aucun modèle IA disponible');
+    return null;
+  }
+
+  // Nettoyage et parsing JSON
+  try {
+    // Retirer les éventuels blocs markdown
+    let cleanJson = responseText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '');
+
+    // Trouver le JSON
+    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('❌ Pas de JSON trouvé dans la réponse');
+      console.log('Réponse brute:', responseText.substring(0, 500));
+      return null;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "Tu es un assistant expert en analyse de fichiers de matériaux de construction et d'équipements. Tu DOIS extraire TOUS les matériaux présents, même avec des données incomplètes. Un nom + quantité = matériau valide. Un nom seul = matériau valide aussi. Tu réponds TOUJOURS en JSON valide."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.2, // Plus bas pour plus de précision
-      response_format: { type: "json_object" }
-    });
+    const parsedResponse = JSON.parse(jsonMatch[0]);
 
-    const response = completion.choices[0].message.content;
-    if (!response) {
-      throw new Error('No response from OpenAI');
-    }
+    // Ajouter le modèle utilisé
+    parsedResponse.model = modelUsed;
 
-    const parsedResponse = JSON.parse(response);
-    
-    // Log pour debug
-    console.log('AI Analysis Results:', {
+    console.log('📊 Résultats analyse:', {
       materialsFound: parsedResponse.materials?.length || 0,
-      fileName,
-      statistics: parsedResponse.statistics
+      model: modelUsed,
+      categories: [...new Set(parsedResponse.materials?.map((m: any) => m.category) || [])],
     });
 
     return parsedResponse;
-
-  } catch (error) {
-    console.error('AI analysis error:', error);
+  } catch (parseError) {
+    console.error('❌ JSON parse error:', parseError);
+    console.log('Réponse brute:', responseText.substring(0, 1000));
     return null;
   }
 }
