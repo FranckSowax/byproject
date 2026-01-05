@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import * as XLSX from 'xlsx';
+// @ts-ignore
+import pdfParse from 'pdf-parse';
+import { Buffer } from 'buffer';
 
 // Configuration
 export const maxDuration = 60; // 60 secondes max
@@ -368,17 +371,34 @@ ${csvText}
 
 // Fonction pour extraire le texte d'un fichier PDF avec OCR
 async function extractTextFromPDF(file: Blob, fileName: string): Promise<string> {
+  // 1. Tentative pdf-parse (rapide & texte natif)
+  try {
+    console.log('🔄 Tentative extraction PDF native (pdf-parse)...');
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const data = await pdfParse(buffer);
+    const text = data.text;
+
+    if (text && text.trim().length > 50) {
+      console.log(`✅ pdf-parse succès: ${text.length} caractères`);
+      return text;
+    }
+    console.log('⚠️ pdf-parse: texte insuffisant, bascule sur Vision...');
+  } catch (e) {
+    console.warn('❌ Erreur pdf-parse:', e);
+  }
+
   try {
     console.log(`PDF OCR processing started for: ${fileName}`);
     
-    // Méthode 1: Utiliser GPT-4 Vision (RECOMMANDÉ - Plus précis)
+    // Méthode 2: Utiliser GPT-4 Vision (RECOMMANDÉ - Plus précis)
     return await extractTextFromPDFWithVision(file, fileName);
     
   } catch (visionError) {
     console.error('GPT-4 Vision failed, trying Tesseract OCR:', visionError);
     
     try {
-      // Méthode 2: Fallback vers Tesseract OCR
+      // Méthode 3: Fallback vers Tesseract OCR
       return await extractTextFromPDFWithTesseract(file, fileName);
     } catch (tesseractError) {
       console.error('Tesseract OCR failed:', tesseractError);
