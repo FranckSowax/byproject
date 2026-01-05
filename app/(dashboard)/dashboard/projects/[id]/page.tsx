@@ -278,7 +278,10 @@ export default function ProjectPage() {
 
       const { data, error } = await supabase
         .from('projects')
-        .select('*')
+        .select(`
+          *,
+          sector:sectors(id, name, slug)
+        `)
         .eq('id', projectId)
         .single();
 
@@ -289,7 +292,12 @@ export default function ProjectPage() {
         return;
       }
 
-      setProject(data as any);
+      // Transformer les données pour inclure le nom du secteur
+      const projectWithSector = {
+        ...data,
+        sector: data.sector?.slug || data.sector?.name || 'btp'
+      };
+      setProject(projectWithSector as any);
     } catch (error) {
       console.error("Error:", error);
       toast.error("Une erreur est survenue");
@@ -642,10 +650,14 @@ export default function ProjectPage() {
         setImportStatus('🧠 Extraction IA des matériaux...');
 
         // Appel à l'API d'extraction
+        const sectorForExtraction = project?.sector || 'btp';
+        console.log(`📂 Sector for extraction: "${sectorForExtraction}"`);
+        console.log(`📄 Text content length: ${textContent.length} chars`);
+
         const formData = new FormData();
         formData.append('textContent', textContent);
         formData.append('fileType', isPDF ? 'pdf' : isCSV ? 'csv' : isTXT ? 'txt' : 'doc');
-        formData.append('sector', project?.sector || 'Construction BTP');
+        formData.append('sector', sectorForExtraction);
 
         const extractResponse = await fetch('/api/ai/extract-from-file', {
           method: 'POST',

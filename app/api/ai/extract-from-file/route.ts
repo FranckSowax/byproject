@@ -6,10 +6,123 @@ import Replicate from 'replicate';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
+/**
+ * Catégories par secteur d'activité - DOIT correspondre aux catégories utilisées dans l'app
+ */
+const SECTOR_CATEGORIES: Record<string, string[]> = {
+  'btp': [
+    'Gros œuvre & Maçonnerie',
+    'Second œuvre',
+    'Électricité & Câblage',
+    'Plomberie & Sanitaire',
+    'Menuiserie & Bois',
+    'Peinture & Revêtements',
+    'Carrelage & Sols',
+    'Quincaillerie & Fixations',
+    'Outillage & Machines',
+    'Sécurité & EPI',
+    'Isolation & Étanchéité',
+    'Toiture & Couverture',
+    'Ferronnerie & Métallerie',
+    'Climatisation & Ventilation',
+    'Matériaux de construction',
+    'Transport & Levage',
+    'Équipement de chantier',
+    'Divers BTP',
+  ],
+  'import': [
+    'Électronique & High-Tech',
+    'Textile & Habillement',
+    'Mobilier & Décoration',
+    'Équipement industriel',
+    'Pièces détachées',
+    'Emballage & Conditionnement',
+    'Matières premières',
+    'Produits finis',
+    'Accessoires',
+    'Échantillons',
+    'Divers Import',
+  ],
+  'commerce': [
+    'Produits alimentaires',
+    'Boissons',
+    'Cosmétiques & Hygiène',
+    'Électroménager',
+    'Mobilier',
+    'Textile',
+    'Papeterie & Bureau',
+    'Jouets & Loisirs',
+    'Sports & Outdoor',
+    'Auto & Moto',
+    'Divers Commerce',
+  ],
+  'hotellerie': [
+    'Literie & Linge',
+    'Mobilier hôtelier',
+    'Équipement cuisine',
+    'Décoration & Ambiance',
+    'Électroménager',
+    'Sanitaire & Salle de bain',
+    'Équipement piscine & spa',
+    'Signalétique',
+    'Entretien & Nettoyage',
+    'Divers Hôtellerie',
+  ],
+  'restauration': [
+    'Équipement cuisine professionnelle',
+    'Ustensiles & Accessoires',
+    'Vaisselle & Couverts',
+    'Mobilier restaurant',
+    'Électroménager pro',
+    'Stockage & Conservation',
+    'Hygiène & Nettoyage',
+    'Décoration & Ambiance',
+    'Divers Restauration',
+  ],
+  'default': [
+    'Équipement',
+    'Matériaux',
+    'Fournitures',
+    'Outillage',
+    'Consommables',
+    'Transport',
+    'Services',
+    'Divers',
+  ],
+};
+
+/**
+ * Obtenir les catégories pour un secteur donné
+ */
+function getCategoriesForSector(sector: string): string[] {
+  const sectorLower = sector.toLowerCase()
+    .replace(/construction\s*/i, '')
+    .replace(/secteur\s*/i, '')
+    .trim();
+
+  // Chercher une correspondance partielle
+  for (const [key, categories] of Object.entries(SECTOR_CATEGORIES)) {
+    if (sectorLower.includes(key) || key.includes(sectorLower)) {
+      return categories;
+    }
+  }
+
+  return SECTOR_CATEGORIES['default'];
+}
+
 const getOpenAIClient = () => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   return new OpenAI({ apiKey });
+};
+
+const getDeepSeekClient = () => {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({
+    apiKey,
+    baseURL: 'https://api.deepseek.com/v1',
+  });
 };
 
 const getReplicateClient = () => {
@@ -272,93 +385,143 @@ async function extractFromText(content: string, sector: string, fileType: string
   const allItems: any[] = [];
   const allCategories = new Set<string>();
   const allSuppliers = new Set<string>();
-  
+
   // Détecter la devise globale du document
   let globalCurrency = detectCurrency(content.substring(0, 5000));
-  
-  console.log(`📄 Processing ${fileType}: ${chunks.length} chunks, ${content.length} chars total, currency: ${globalCurrency || 'unknown'}`);
+
+  // Obtenir les catégories pour ce secteur
+  const sectorCategories = getCategoriesForSector(sector);
+
+  console.log(`📄 Processing ${fileType}: ${chunks.length} chunks, ${content.length} chars total`);
+  console.log(`📂 Sector: "${sector}" → Categories: ${sectorCategories.length}`);
+  console.log(`💰 Currency detected: ${globalCurrency || 'unknown'}`);
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
-    
-    // Déterminer quel modèle utiliser
-    const replicate = getReplicateClient();
-    const useGemini = !!replicate;
 
-    const prompt = `Tu es un expert en extraction de données BTP pour le secteur "${sector}".
+    // Prompt amélioré avec catégories sectorielles
+    const systemPrompt = `Tu es un EXPERT en extraction de données pour le secteur "${sector}".
 
-CONTEXTE: Fichier ${fileType.toUpperCase()}, partie ${i + 1}/${chunks.length}
-${globalCurrency ? `DEVISE DÉTECTÉE: ${globalCurrency}` : ''}
+TON OBJECTIF CRITIQUE: Extraire ABSOLUMENT TOUS les éléments, matériaux, produits, articles ou items mentionnés dans le document.
+Chaque ligne du document qui contient un article/produit/matériau = 1 item à extraire.
 
-CONTENU À ANALYSER:
+CATÉGORIES À UTILISER (choisis parmi celles-ci UNIQUEMENT):
+${sectorCategories.map(c => `• ${c}`).join('\n')}
+
+RÈGLES D'EXTRACTION STRICTES:
+1. Extrais CHAQUE élément individuellement - NE REGROUPE JAMAIS plusieurs items
+2. Une ligne = un item séparé (même si similaires)
+3. Détecte les quantités et unités (u, kg, m, m², m³, L, pce, etc.)
+4. Catégorise INTELLIGEMMENT selon le type de produit
+5. IGNORE: en-têtes, totaux, sous-totaux, numéros de page, mentions légales
+6. Corrige les fautes d'orthographe évidentes
+7. Si tu vois "10 sacs de ciment, 20 barres de fer" = 2 items séparés
+
+Tu réponds UNIQUEMENT en JSON valide, sans markdown, sans explication.`;
+
+    const userPrompt = `DOCUMENT À ANALYSER (Partie ${i + 1}/${chunks.length}):
+${globalCurrency ? `[Devise détectée: ${globalCurrency}]` : ''}
+
 """
 ${chunk}
 """
 
-MISSION CHIRURGICALE - EXTRACTION COMPLÈTE:
+Extrais TOUS les articles/matériaux/produits de ce texte.
 
-FORMAT JSON ATTENDU:
+FORMAT JSON STRICT:
 {
   "items": [
     {
-      "name": "Nom précis",
-      "description": "Détails techniques",
-      "category": "Catégorie",
+      "name": "Nom précis du produit/matériau",
+      "description": "Détails techniques ou spécifications si présents",
+      "category": "Une des catégories de la liste",
       "quantity": 123.5,
-      "unit": "m2",
+      "unit": "unité (u, kg, m, m², L, etc.)",
       "price": 45.00,
-      "currency": "EUR",
-      "supplier": "Nom fournisseur"
+      "currency": "${globalCurrency || 'EUR'}",
+      "supplier": "Fournisseur si mentionné"
     }
   ],
-  "categories": ["Catégorie 1", "Catégorie 2"],
-  "suppliers": ["Fournisseur A"]
-}
-
-RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
+  "totalExtracted": 15
+}`;
 
     let responseText = '';
-    
-    if (useGemini && replicate) {
-      try {
-        const output = await replicate.run("google/gemini-3-pro", {
-          input: {
-            prompt: prompt,
-            system_instruction: "Tu es un expert en extraction de données BTP. Tu réponds UNIQUEMENT en JSON valide.",
-            temperature: 0.2,
-            max_output_tokens: 4000
-          }
-        });
-        responseText = Array.isArray(output) ? output.join("") : String(output);
-      } catch (geminiError) {
-        console.error('Gemini error:', geminiError);
-      }
-    }
-    
-    // Fallback OpenAI
+    let modelUsed = '';
+
+    // 1. Essayer OpenAI d'abord (plus fiable pour JSON)
     const openai = getOpenAIClient();
-    if (!responseText && openai) {
+    if (openai) {
       try {
+        console.log(`🤖 OpenAI: Processing chunk ${i + 1}/${chunks.length}...`);
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'Tu es un expert en extraction de données BTP. Tu réponds UNIQUEMENT en JSON valide.' },
-            { role: 'user', content: prompt }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.2
+          temperature: 0.1,
+          max_tokens: 8000
         });
         responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+        modelUsed = 'gpt-4o-mini';
+        console.log(`✅ OpenAI response received (${responseText.length} chars)`);
       } catch (openaiError) {
-        console.error('OpenAI error:', openaiError);
+        console.error('❌ OpenAI error:', openaiError);
       }
     }
 
-    if (!responseText) {
+    // 2. Fallback DeepSeek
+    if (!responseText || responseText === '{}') {
+      const deepseek = getDeepSeekClient();
+      if (deepseek) {
+        try {
+          console.log(`🔄 DeepSeek fallback: Processing chunk ${i + 1}/${chunks.length}...`);
+          const completion = await deepseek.chat.completions.create({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.1,
+            max_tokens: 8000
+          });
+          responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+          modelUsed = 'deepseek-chat';
+          console.log(`✅ DeepSeek response received (${responseText.length} chars)`);
+        } catch (deepseekError) {
+          console.error('❌ DeepSeek error:', deepseekError);
+        }
+      }
+    }
+
+    // 3. Fallback Replicate/Gemini (dernier recours)
+    if (!responseText || responseText === '{}') {
+      const replicate = getReplicateClient();
+      if (replicate) {
+        try {
+          console.log(`🔄 Replicate/Gemini fallback: Processing chunk ${i + 1}/${chunks.length}...`);
+          const output = await replicate.run("google/gemini-3-pro", {
+            input: {
+              prompt: userPrompt,
+              system_instruction: systemPrompt,
+              temperature: 0.1,
+              max_output_tokens: 8000
+            }
+          });
+          responseText = Array.isArray(output) ? output.join("") : String(output);
+          modelUsed = 'gemini-3-pro';
+        } catch (geminiError) {
+          console.error('❌ Gemini error:', geminiError);
+        }
+      }
+    }
+
+    if (!responseText || responseText === '{}') {
       console.warn(`⚠️ No AI response for chunk ${i + 1}`);
       continue;
     }
-    
+
     // Parsing et agrégation...
     try {
       // Nettoyage JSON
@@ -373,18 +536,19 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
           cleanJson = responseText.substring(startIdx, endIdx + 1);
         }
       }
-      
+
       const result = JSON.parse(cleanJson);
-      
+
       if (result.items && Array.isArray(result.items)) {
+        console.log(`📦 Chunk ${i + 1}: ${result.items.length} items extracted via ${modelUsed}`);
         allItems.push(...result.items);
-        
+
         // Détecter la devise majoritaire
         result.items.forEach((item: any) => {
           if (item.currency && !globalCurrency) globalCurrency = item.currency;
         });
       }
-      
+
       if (result.categories && Array.isArray(result.categories)) {
         result.categories.forEach((cat: string) => allCategories.add(cat));
       }
@@ -392,16 +556,24 @@ RÉPONDS UNIQUEMENT EN JSON VALIDE.`;
         result.suppliers.forEach((sup: string) => allSuppliers.add(sup));
       }
     } catch (parseError) {
-      console.error(`Parse error for chunk ${i + 1}:`, parseError);
+      console.error(`❌ Parse error for chunk ${i + 1}:`, parseError);
+      console.log(`Raw response (first 500 chars):`, responseText.substring(0, 500));
     }
   }
 
   // Dédupliquer les items similaires
   const uniqueItems = deduplicateItems(allItems);
 
+  console.log(`🔄 Deduplication: ${allItems.length} raw → ${uniqueItems.length} unique items`);
+
   // Collecter les fournisseurs depuis les items
   uniqueItems.forEach(item => {
     if (item.supplier) allSuppliers.add(item.supplier);
+  });
+
+  // Ajouter les catégories utilisées
+  uniqueItems.forEach(item => {
+    if (item.category) allCategories.add(item.category);
   });
 
   return {
@@ -468,12 +640,16 @@ function deduplicateItems(items: any[]): any[] {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('📂 === EXTRACT-FROM-FILE API CALLED ===');
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const textContent = formData.get('textContent') as string | null;
     const fileType = formData.get('fileType') as string || 'unknown';
-    const sector = formData.get('sector') as string || 'Construction BTP';
+    const sector = formData.get('sector') as string || 'btp';
+
+    console.log(`📋 Received: fileType=${fileType}, sector="${sector}", textLength=${textContent?.length || 0}`);
 
     let content = textContent || '';
     let detectedType = fileType.toLowerCase();
