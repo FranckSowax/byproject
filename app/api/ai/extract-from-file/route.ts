@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
+// @ts-ignore
 import pdfParse from 'pdf-parse';
+import { Buffer } from 'buffer';
 
 // Configuration pour Netlify - timeout étendu pour les gros fichiers
 export const maxDuration = 60;
