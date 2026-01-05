@@ -3,8 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import * as XLSX from 'xlsx';
-// @ts-ignore
-import * as pdfParseLib from 'pdf-parse';
 import { Buffer } from 'buffer';
 
 // Configuration
