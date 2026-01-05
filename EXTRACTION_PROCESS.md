@@ -178,28 +178,52 @@ const categorizeResponse = await fetch('/api/ai/categorize-materials', {
 
 ## Processus PDF
 
-### Étape 1 : Extraction du texte (côté client)
+### Stratégie Hybride Robuste
+
+Le système utilise une approche en cascade pour garantir l'extraction même sur des fichiers difficiles (scans, images).
+
+1. **Tentative Client (Rapide)** : Extraction via `pdfjs-dist` dans le navigateur.
+2. **Tentative Serveur (Native)** : Si échec client, essai avec `pdf-parse` sur le serveur.
+3. **Tentative Vision (IA)** : Si échec ou texte insuffisant (scan), utilisation de **Gemini 2.0 Flash Vision** pour lire le document comme une image.
+
+### Étape 1 : Extraction du texte (Côté Client)
 
 ```typescript
 const pdfjsLib = await import('pdfjs-dist');
-pdfjsLib.GlobalWorkerOptions.workerSrc = 
-  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-
-const arrayBuffer = await file.arrayBuffer();
+// ... configuration worker ...
 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-const textParts: string[] = [];
-for (let i = 1; i <= pdf.numPages; i++) {
-  const page = await pdf.getPage(i);
-  const content = await page.getTextContent();
-  const pageText = content.items.map((item: any) => item.str).join(' ');
-  textParts.push(pageText);
-}
-
-const textContent = textParts.join('\n\n');
+// Extraction page par page...
 ```
 
-### Étape 2 : Découpage en chunks
+### Étape 2 : Fallback Serveur (Côté API)
+
+Si le client n'envoie pas de texte, l'API prend le relais :
+
+```typescript
+// 1. Essai pdf-parse (Rapide et léger)
+try {
+  const data = await pdfParse(buffer);
+  if (data.text.length > 50) return data.text;
+} catch (e) { ... }
+
+// 2. Essai Gemini 2.0 Flash Vision (Puissant pour les scans)
+const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+const result = await model.generateContent({
+  contents: [{
+    role: 'user',
+    parts: [
+      { text: "Tu es un moteur OCR haute précision..." },
+      { inlineData: { data: base64, mimeType: 'application/pdf' } }
+    ]
+  }]
+});
+```
+
+### Étape 3 : Découpage et Analyse
+
+Une fois le texte récupéré (quelle que soit la méthode), il est traité par l'IA générative (Gemini 2.0 Flash ou DeepSeek) pour structurer les données.
+
+```typescript
 
 Pour les longs PDF, le texte est découpé en morceaux de 6000 caractères :
 
