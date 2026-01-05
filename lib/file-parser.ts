@@ -16,6 +16,25 @@ export interface ParseResult {
   totalItems: number;
   chunks: number;
   errors: string[];
+  rawText?: string; // Texte brut pour analyse IA
+}
+
+export interface AIParseResult {
+  items: Array<{
+    name: string;
+    description?: string;
+    category: string;
+    quantity?: number;
+    unit?: string;
+  }>;
+  categories: string[];
+  stats: {
+    rawItemCount: number;
+    uniqueItemCount: number;
+    chunksProcessed: number;
+    durationMs: number;
+    model: string;
+  };
 }
 
 // Taille maximale par chunk (en nombre de lignes)
@@ -533,7 +552,7 @@ export function chunkMaterials(materials: ParsedMaterial[], chunkSize: number = 
  */
 export async function parseFile(file: File): Promise<ParseResult> {
   const extension = file.name.split('.').pop()?.toLowerCase();
-  
+
   switch (extension) {
     case 'csv':
       return parseCSV(file);
@@ -545,4 +564,196 @@ export async function parseFile(file: File): Promise<ParseResult> {
     default:
       throw new Error(`Format de fichier non supporté: ${extension}`);
   }
+}
+
+/**
+ * Extrait le texte brut d'un fichier pour analyse IA
+ * Retourne uniquement le texte, sans parsing regex
+ */
+export async function extractRawText(file: File): Promise<string> {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+
+  switch (extension) {
+    case 'csv': {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string || '');
+        reader.onerror = () => reject(new Error('Erreur de lecture CSV'));
+        reader.readAsText(file);
+      });
+    }
+
+    case 'xlsx':
+    case 'xls': {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = e.target?.result;
+            const workbook = XLSX.read(data, { type: 'binary' });
+            let fullText = '';
+
+            // Extraire le texte de toutes les feuilles
+            for (const sheetName of workbook.SheetNames) {
+              const sheet = workbook.Sheets[sheetName];
+              const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+
+              for (const row of jsonData) {
+                if (row && row.length > 0) {
+                  fullText += row.filter(Boolean).join(' | ') + '\n';
+                }
+              }
+              fullText += '\n';
+            }
+
+            resolve(fullText);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('Erreur de lecture Excel'));
+        reader.readAsBinaryString(file);
+      });
+    }
+
+    case 'pdf': {
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+
+        if (typeof window !== 'undefined') {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+
+        let fullText = '';
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+
+          // Collecter tous les items avec leur position Y
+          const items = (textContent.items as any[])
+            .filter(item => item.str && item.str.trim())
+            .map(item => ({
+              text: item.str,
+              y: item.transform[5],
+              x: item.transform[4],
+            }));
+
+          // Trier par Y décroissant puis X croissant
+          items.sort((a, b) => {
+            if (Math.abs(a.y - b.y) > 3) return b.y - a.y;
+            return a.x - b.x;
+          });
+
+          // Reconstruire le texte
+          let lastY: number | null = null;
+          let pageText = '';
+
+          for (const item of items) {
+            if (lastY !== null && Math.abs(item.y - lastY) > 3) {
+              pageText += '\n';
+            } else if (lastY !== null) {
+              pageText += ' ';
+            }
+            pageText += item.text;
+            lastY = item.y;
+          }
+
+          fullText += pageText + '\n\n';
+        }
+
+        return fullText;
+      } catch (err) {
+        console.error('Erreur extraction texte PDF:', err);
+        throw new Error(`Erreur lors de l'extraction du texte PDF: ${err}`);
+      }
+    }
+
+    default:
+      throw new Error(`Format de fichier non supporté: ${extension}`);
+  }
+}
+
+/**
+ * Parse un fichier avec l'IA (extraction intelligente)
+ * Utilise l'API /api/ai/parse-materials
+ */
+export async function parseFileWithAI(
+  file: File,
+  sector: string = 'BTP',
+  projectName?: string
+): Promise<AIParseResult> {
+  console.log(`🤖 Parsing file with AI: ${file.name} (sector: ${sector})`);
+
+  // Étape 1: Extraire le texte brut
+  const rawText = await extractRawText(file);
+  console.log(`📄 Extracted ${rawText.length} characters of raw text`);
+
+  if (!rawText.trim()) {
+    return {
+      items: [],
+      categories: [],
+      stats: {
+        rawItemCount: 0,
+        uniqueItemCount: 0,
+        chunksProcessed: 0,
+        durationMs: 0,
+        model: 'none',
+      },
+    };
+  }
+
+  // Étape 2: Envoyer à l'API IA
+  const response = await fetch('/api/ai/parse-materials', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: rawText,
+      sector,
+      projectName,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Erreur API: ${response.status}`);
+  }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || 'Erreur lors de l\'analyse IA');
+  }
+
+  console.log(`✅ AI extracted ${result.items.length} items in ${result.stats.durationMs}ms`);
+
+  return {
+    items: result.items,
+    categories: result.categories,
+    stats: result.stats,
+  };
+}
+
+/**
+ * Convertit le résultat IA en ParseResult standard
+ */
+export function aiResultToParseResult(aiResult: AIParseResult): ParseResult {
+  const materials: ParsedMaterial[] = aiResult.items.map(item => ({
+    name: item.name,
+    category: item.category,
+    quantity: item.quantity,
+    specs: item.description ? { description: item.description, unit: item.unit } : undefined,
+  }));
+
+  return {
+    materials,
+    totalItems: materials.length,
+    chunks: Math.ceil(materials.length / MAX_CHUNK_SIZE),
+    errors: [],
+    rawText: undefined,
+  };
 }
