@@ -1,0 +1,15 @@
+# BTP PDF Extractor - Dépendances Python
+
+# Extraction PDF
+pdfplumber>=0.10.0
+
+# API Gemini
+google-generativeai>=0.8.0
+
+# API FastAPI (optionnel)
+fastapi>=0.109.0
+uvicorn>=0.25.0
+python-multipart>=0.0.6
+
+# Utilitaires
+python-dotenv>=1.0.0
