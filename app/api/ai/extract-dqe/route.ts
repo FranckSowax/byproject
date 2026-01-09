@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import * as XLSX from 'xlsx';
 
 // Configuration pour Netlify/Vercel
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-// Timeout plus court pour éviter les 504
-const API_TIMEOUT_MS = 25000;
-const GEMINI_TIMEOUT_MS = 20000;
+// Timeout pour les appels IA
+const AI_TIMEOUT_MS = 20000;
 
 // Helper function to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
@@ -20,7 +20,28 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
   ]);
 }
 
-// Client Gemini
+// ============================================================================
+// CLIENTS IA (DeepSeek > OpenAI > Gemini)
+// ============================================================================
+
+// Client DeepSeek (prioritaire - moins cher et performant)
+const getDeepSeekClient = () => {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({
+    baseURL: 'https://api.deepseek.com',
+    apiKey,
+  });
+};
+
+// Client OpenAI (fallback 1)
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
+
+// Client Gemini (fallback 2)
 const getGeminiClient = () => {
   const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -455,30 +476,11 @@ function extractSheetLocal(worksheet: XLSX.WorkSheet, sheetName: string, sheetTy
 }
 
 // ============================================================================
-// EXTRACTION AVEC GEMINI (IA)
+// AMÉLIORATION DES CATÉGORIES AVEC IA (DeepSeek > OpenAI > Gemini)
 // ============================================================================
 
-// ============================================================================
-// AMÉLIORATION DES CATÉGORIES AVEC GEMINI (post-extraction locale)
-// ============================================================================
-
-async function improveCategoriesWithGemini(
-  items: { designation: string; category?: string }[]
-): Promise<Record<number, string>> {
-  const gemini = getGeminiClient();
-  if (!gemini || items.length === 0) {
-    return {};
-  }
-
-  // Limiter à 50 items pour éviter timeout
-  const itemsToProcess = items.slice(0, 50);
-
-  // Créer une liste simple des désignations
-  const itemsList = itemsToProcess.map((item, idx) =>
-    `${idx}: ${item.designation.substring(0, 80)}`
-  ).join('\n');
-
-  const prompt = `Expert BTP. Catégorise ces ${itemsToProcess.length} matériaux de construction.
+function buildCategorizationPrompt(itemsList: string, count: number): string {
+  return `Expert BTP. Catégorise ces ${count} matériaux de construction.
 
 MATÉRIAUX:
 ${itemsList}
@@ -490,52 +492,169 @@ Retourne un JSON avec l'index et la catégorie:
 {"0":"Béton & Gros œuvre","1":"Maçonnerie","2":"Peinture & Finitions"}
 
 UNIQUEMENT le JSON, pas de commentaire.`;
+}
 
-  try {
-    console.log(`🏷️ Gemini catégorisation de ${itemsToProcess.length} items...`);
-
-    const model = gemini.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2000,
-        responseMimeType: 'application/json',
-      },
-    });
-
-    const result = await withTimeout(
-      model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      }),
-      GEMINI_TIMEOUT_MS,
-      `Gemini catégorisation timeout`
-    );
-
-    const responseText = result.response.text()?.trim() || '';
-
-    let cleanJson = responseText;
-    if (cleanJson.startsWith('```')) {
-      cleanJson = cleanJson.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
-    }
-
-    const categoryMap = JSON.parse(cleanJson);
-    console.log(`✅ Gemini a catégorisé ${Object.keys(categoryMap).length} items`);
-
-    // Convertir les clés string en number
-    const result_map: Record<number, string> = {};
-    for (const [key, value] of Object.entries(categoryMap)) {
-      const idx = parseInt(key, 10);
-      if (!isNaN(idx) && typeof value === 'string' && CATEGORIES_BTP.includes(value)) {
-        result_map[idx] = value;
-      }
-    }
-
-    return result_map;
-
-  } catch (error: any) {
-    console.error(`❌ Erreur Gemini catégorisation:`, error?.message || error);
-    return {};
+function parseCategorizationResponse(responseText: string): Record<number, string> {
+  let cleanJson = responseText.trim();
+  if (cleanJson.startsWith('```')) {
+    cleanJson = cleanJson.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
   }
+
+  const categoryMap = JSON.parse(cleanJson);
+  const result_map: Record<number, string> = {};
+
+  for (const [key, value] of Object.entries(categoryMap)) {
+    const idx = parseInt(key, 10);
+    if (!isNaN(idx) && typeof value === 'string' && CATEGORIES_BTP.includes(value)) {
+      result_map[idx] = value;
+    }
+  }
+
+  return result_map;
+}
+
+// Catégorisation avec DeepSeek
+async function categorizeWithDeepSeek(
+  items: { designation: string; category?: string }[]
+): Promise<Record<number, string>> {
+  const client = getDeepSeekClient();
+  if (!client) throw new Error('DeepSeek non configuré');
+
+  const itemsList = items.map((item, idx) =>
+    `${idx}: ${item.designation.substring(0, 80)}`
+  ).join('\n');
+
+  const prompt = buildCategorizationPrompt(itemsList, items.length);
+
+  console.log(`🔵 DeepSeek catégorisation de ${items.length} items...`);
+
+  const response = await withTimeout(
+    client.chat.completions.create({
+      model: 'deepseek-chat',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+      max_tokens: 2000,
+      response_format: { type: 'json_object' },
+    }),
+    AI_TIMEOUT_MS,
+    'DeepSeek timeout'
+  );
+
+  const responseText = response.choices[0]?.message?.content || '';
+  const result = parseCategorizationResponse(responseText);
+  console.log(`✅ DeepSeek a catégorisé ${Object.keys(result).length} items`);
+  return result;
+}
+
+// Catégorisation avec OpenAI
+async function categorizeWithOpenAI(
+  items: { designation: string; category?: string }[]
+): Promise<Record<number, string>> {
+  const client = getOpenAIClient();
+  if (!client) throw new Error('OpenAI non configuré');
+
+  const itemsList = items.map((item, idx) =>
+    `${idx}: ${item.designation.substring(0, 80)}`
+  ).join('\n');
+
+  const prompt = buildCategorizationPrompt(itemsList, items.length);
+
+  console.log(`🟢 OpenAI catégorisation de ${items.length} items...`);
+
+  const response = await withTimeout(
+    client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+      max_tokens: 2000,
+      response_format: { type: 'json_object' },
+    }),
+    AI_TIMEOUT_MS,
+    'OpenAI timeout'
+  );
+
+  const responseText = response.choices[0]?.message?.content || '';
+  const result = parseCategorizationResponse(responseText);
+  console.log(`✅ OpenAI a catégorisé ${Object.keys(result).length} items`);
+  return result;
+}
+
+// Catégorisation avec Gemini
+async function categorizeWithGemini(
+  items: { designation: string; category?: string }[]
+): Promise<Record<number, string>> {
+  const gemini = getGeminiClient();
+  if (!gemini) throw new Error('Gemini non configuré');
+
+  const itemsList = items.map((item, idx) =>
+    `${idx}: ${item.designation.substring(0, 80)}`
+  ).join('\n');
+
+  const prompt = buildCategorizationPrompt(itemsList, items.length);
+
+  console.log(`🟡 Gemini catégorisation de ${items.length} items...`);
+
+  const model = gemini.getGenerativeModel({
+    model: 'gemini-2.0-flash-exp',
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 2000,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const response = await withTimeout(
+    model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    }),
+    AI_TIMEOUT_MS,
+    'Gemini timeout'
+  );
+
+  const responseText = response.response.text()?.trim() || '';
+  const result = parseCategorizationResponse(responseText);
+  console.log(`✅ Gemini a catégorisé ${Object.keys(result).length} items`);
+  return result;
+}
+
+// Fonction principale avec fallback: DeepSeek > OpenAI > Gemini
+async function improveCategoriesWithAI(
+  items: { designation: string; category?: string }[]
+): Promise<Record<number, string>> {
+  if (items.length === 0) return {};
+
+  // Limiter à 50 items pour éviter timeout
+  const itemsToProcess = items.slice(0, 50);
+
+  // Essayer DeepSeek d'abord
+  if (getDeepSeekClient()) {
+    try {
+      return await categorizeWithDeepSeek(itemsToProcess);
+    } catch (error: any) {
+      console.warn(`⚠️ DeepSeek échec: ${error.message}`);
+    }
+  }
+
+  // Fallback OpenAI
+  if (getOpenAIClient()) {
+    try {
+      return await categorizeWithOpenAI(itemsToProcess);
+    } catch (error: any) {
+      console.warn(`⚠️ OpenAI échec: ${error.message}`);
+    }
+  }
+
+  // Fallback Gemini
+  if (getGeminiClient()) {
+    try {
+      return await categorizeWithGemini(itemsToProcess);
+    } catch (error: any) {
+      console.warn(`⚠️ Gemini échec: ${error.message}`);
+    }
+  }
+
+  console.error('❌ Aucune API IA disponible pour la catégorisation');
+  return {};
 }
 
 // ============================================================================
@@ -636,9 +755,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // ÉTAPE 2: Amélioration des catégories avec Gemini (si activé)
+      // ÉTAPE 2: Amélioration des catégories avec IA (DeepSeek > OpenAI > Gemini)
       if (useAI && results.length > 0) {
-        console.log(`🏷️ Amélioration des catégories avec Gemini...`);
+        console.log(`🏷️ Amélioration des catégories avec IA...`);
 
         // Collecter tous les items avec catégorie "Divers" ou mal catégorisés
         const allItems: { sheetIdx: number; catIdx: number; itemIdx: number; designation: string; category?: string }[] = [];
@@ -663,8 +782,8 @@ export async function POST(request: NextRequest) {
         if (allItems.length > 0) {
           console.log(`📝 ${allItems.length} items à améliorer`);
 
-          // Appeler Gemini pour améliorer les catégories
-          const improvedCategories = await improveCategoriesWithGemini(
+          // Appeler l'IA pour améliorer les catégories (DeepSeek > OpenAI > Gemini)
+          const improvedCategories = await improveCategoriesWithAI(
             allItems.map(i => ({ designation: i.designation, category: i.category }))
           );
 
@@ -679,7 +798,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          console.log(`✅ ${improved} catégories améliorées par Gemini`);
+          console.log(`✅ ${improved} catégories améliorées par IA`);
         }
       }
 
