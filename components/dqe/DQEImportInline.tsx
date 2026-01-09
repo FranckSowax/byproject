@@ -151,22 +151,46 @@ export default function DQEImportInline({
     formData.append('selected_sheets', JSON.stringify(selectedSheetNames));
     formData.append('use_ai', useAI ? 'true' : 'false');
 
+    // Timeout côté client de 55 secondes
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55000);
+
     try {
       const response = await fetch('/api/ai/extract-dqe?action=extract', {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      // Vérifier si la réponse est du JSON valide
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        const text = await response.text();
+        console.error('Réponse non-JSON:', text.substring(0, 200));
+        throw new Error('Le serveur a renvoyé une erreur. Essayez le mode Local.');
+      }
 
       const data: ExtractionResult = await response.json();
 
       if (!data.success) {
-        throw new Error((data as any).error || 'Erreur lors de l\'extraction');
+        throw new Error((data as any).error || (data as any).details || 'Erreur lors de l\'extraction');
       }
 
       onProgress?.(100, 'Extraction terminée !');
       onComplete(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+
+      let errorMessage = 'Erreur inconnue';
+      if (err.name === 'AbortError') {
+        errorMessage = 'Timeout - Essayez le mode Local (plus rapide)';
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
       setStep('select');
     }
   };

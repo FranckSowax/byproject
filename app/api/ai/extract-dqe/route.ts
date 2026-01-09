@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 
-// Configuration pour Netlify
+// Configuration pour Netlify/Vercel
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-// Timeout pour les appels API
-const API_TIMEOUT_MS = 45000;
+// Timeout plus court pour éviter les 504
+const API_TIMEOUT_MS = 25000;
+const GEMINI_TIMEOUT_MS = 20000;
 
 // Helper function to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
@@ -464,71 +465,33 @@ async function extractSheetWithGemini(
 ): Promise<DQESheet> {
   const gemini = getGeminiClient();
   if (!gemini) {
-    // Fallback sur extraction locale
+    console.log(`⚠️ Gemini non configuré, fallback local pour ${sheetName}`);
     return extractSheetLocal(worksheet, sheetName, sheetType);
   }
 
-  // Convertir en CSV pour Gemini
+  // Convertir en CSV pour Gemini - LIMITER à 8000 chars pour éviter timeout
   const csvContent = XLSX.utils.sheet_to_csv(worksheet, { FS: ';', RS: '\n' });
+  const truncatedCsv = csvContent.substring(0, 8000);
 
-  const prompt = `Tu es un expert en extraction de données de DQE (Devis Quantitatif Estimatif) BTP.
+  const prompt = `Expert DQE BTP. Extrait les items de cet onglet Excel.
 
-ONGLET: "${sheetName}" (type: ${sheetType})
+ONGLET: "${sheetName}"
+CSV (tronqué):
+${truncatedCsv}
 
-CONTENU CSV:
-\`\`\`
-${csvContent.substring(0, 15000)}
-\`\`\`
+CATÉGORIES: ${CATEGORIES_BTP.slice(0, 10).join(', ')}
 
-CATÉGORIES BTP VALIDES:
-${CATEGORIES_BTP.map(c => `• ${c}`).join('\n')}
-
-MISSION: Extrais TOUS les éléments/postes de cet onglet DQE.
-
-RÈGLES:
-1. Chaque ligne numérotée avec désignation + unité + quantité = un item
-2. Détecte les catégories parentes (NETTOYAGE, MACONNERIES, etc.)
-3. Catégorise chaque item selon les catégories BTP
-4. Ignore les totaux, sous-totaux, en-têtes
-5. Format monétaire FCFA: espaces = milliers
-
-FORMAT JSON:
-{
-  "sheet_name": "${sheetName}",
-  "sheet_type": "${sheetType}",
-  "building_ref": "référence bâtiment ou null",
-  "date": "date ou null",
-  "categories": [
-    {
-      "name": "Nom de la catégorie DQE",
-      "items": [
-        {
-          "numero": "1.1",
-          "designation": "Description complète",
-          "unite": "M2",
-          "quantite": 45.5,
-          "prix_unitaire": 12500,
-          "prix_total": 568750,
-          "category": "Catégorie BTP",
-          "subcategory": "Sous-catégorie ou null",
-          "lot_numero": "1",
-          "lot_nom": "Gros œuvre"
-        }
-      ],
-      "subtotal": 568750
-    }
-  ],
-  "total_items": 0
-}
-
-Retourne UNIQUEMENT le JSON, sans commentaire.`;
+Retourne JSON:
+{"sheet_name":"${sheetName}","sheet_type":"${sheetType}","categories":[{"name":"Cat","items":[{"designation":"Nom","unite":"M2","quantite":10,"category":"Béton & Gros œuvre"}]}],"total_items":0}`;
 
   try {
+    console.log(`🤖 Gemini extraction pour ${sheetName}...`);
+
     const model = gemini.getGenerativeModel({
       model: 'gemini-2.0-flash-exp',
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 16000,
+        maxOutputTokens: 8000, // Réduit pour accélérer
         responseMimeType: 'application/json',
       },
     });
@@ -537,11 +500,12 @@ Retourne UNIQUEMENT le JSON, sans commentaire.`;
       model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
       }),
-      API_TIMEOUT_MS,
-      `Gemini timeout`
+      GEMINI_TIMEOUT_MS,
+      `Gemini timeout après ${GEMINI_TIMEOUT_MS / 1000}s`
     );
 
     const responseText = result.response.text()?.trim() || '';
+    console.log(`✅ Gemini réponse: ${responseText.length} chars`);
 
     // Parser le JSON
     let cleanJson = responseText;
@@ -559,9 +523,10 @@ Retourne UNIQUEMENT le JSON, sans commentaire.`;
 
     return data as DQESheet;
 
-  } catch (error) {
-    console.error(`Erreur Gemini pour ${sheetName}:`, error);
+  } catch (error: any) {
+    console.error(`❌ Erreur Gemini pour ${sheetName}:`, error?.message || error);
     // Fallback sur extraction locale
+    console.log(`🔄 Fallback extraction locale pour ${sheetName}`);
     return extractSheetLocal(worksheet, sheetName, sheetType);
   }
 }
