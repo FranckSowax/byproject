@@ -77,7 +77,7 @@ export default function DQEImportInline({
   const [summary, setSummary] = useState<AnalysisResult['summary'] | null>(null);
   const [expandedSheet, setExpandedSheet] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [useAI, setUseAI] = useState(true);
+  const [useAI, setUseAI] = useState(true); // true = Local + amélioration catégories Gemini
 
   // Analyser le fichier au montage
   React.useEffect(() => {

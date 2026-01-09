@@ -458,40 +458,47 @@ function extractSheetLocal(worksheet: XLSX.WorkSheet, sheetName: string, sheetTy
 // EXTRACTION AVEC GEMINI (IA)
 // ============================================================================
 
-async function extractSheetWithGemini(
-  worksheet: XLSX.WorkSheet,
-  sheetName: string,
-  sheetType: string
-): Promise<DQESheet> {
+// ============================================================================
+// AMÉLIORATION DES CATÉGORIES AVEC GEMINI (post-extraction locale)
+// ============================================================================
+
+async function improveCategoriesWithGemini(
+  items: { designation: string; category?: string }[]
+): Promise<Record<number, string>> {
   const gemini = getGeminiClient();
-  if (!gemini) {
-    console.log(`⚠️ Gemini non configuré, fallback local pour ${sheetName}`);
-    return extractSheetLocal(worksheet, sheetName, sheetType);
+  if (!gemini || items.length === 0) {
+    return {};
   }
 
-  // Convertir en CSV pour Gemini - LIMITER à 8000 chars pour éviter timeout
-  const csvContent = XLSX.utils.sheet_to_csv(worksheet, { FS: ';', RS: '\n' });
-  const truncatedCsv = csvContent.substring(0, 8000);
+  // Limiter à 50 items pour éviter timeout
+  const itemsToProcess = items.slice(0, 50);
 
-  const prompt = `Expert DQE BTP. Extrait les items de cet onglet Excel.
+  // Créer une liste simple des désignations
+  const itemsList = itemsToProcess.map((item, idx) =>
+    `${idx}: ${item.designation.substring(0, 80)}`
+  ).join('\n');
 
-ONGLET: "${sheetName}"
-CSV (tronqué):
-${truncatedCsv}
+  const prompt = `Expert BTP. Catégorise ces ${itemsToProcess.length} matériaux de construction.
 
-CATÉGORIES: ${CATEGORIES_BTP.slice(0, 10).join(', ')}
+MATÉRIAUX:
+${itemsList}
 
-Retourne JSON:
-{"sheet_name":"${sheetName}","sheet_type":"${sheetType}","categories":[{"name":"Cat","items":[{"designation":"Nom","unite":"M2","quantite":10,"category":"Béton & Gros œuvre"}]}],"total_items":0}`;
+CATÉGORIES VALIDES:
+${CATEGORIES_BTP.join(', ')}
+
+Retourne un JSON avec l'index et la catégorie:
+{"0":"Béton & Gros œuvre","1":"Maçonnerie","2":"Peinture & Finitions"}
+
+UNIQUEMENT le JSON, pas de commentaire.`;
 
   try {
-    console.log(`🤖 Gemini extraction pour ${sheetName}...`);
+    console.log(`🏷️ Gemini catégorisation de ${itemsToProcess.length} items...`);
 
     const model = gemini.getGenerativeModel({
       model: 'gemini-2.0-flash-exp',
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 8000, // Réduit pour accélérer
+        maxOutputTokens: 2000,
         responseMimeType: 'application/json',
       },
     });
@@ -501,33 +508,33 @@ Retourne JSON:
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
       }),
       GEMINI_TIMEOUT_MS,
-      `Gemini timeout après ${GEMINI_TIMEOUT_MS / 1000}s`
+      `Gemini catégorisation timeout`
     );
 
     const responseText = result.response.text()?.trim() || '';
-    console.log(`✅ Gemini réponse: ${responseText.length} chars`);
 
-    // Parser le JSON
     let cleanJson = responseText;
     if (cleanJson.startsWith('```')) {
       cleanJson = cleanJson.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
     }
 
-    const data = JSON.parse(cleanJson);
+    const categoryMap = JSON.parse(cleanJson);
+    console.log(`✅ Gemini a catégorisé ${Object.keys(categoryMap).length} items`);
 
-    // Calculer total_items
-    data.total_items = data.categories?.reduce(
-      (sum: number, cat: any) => sum + (cat.items?.length || 0),
-      0
-    ) || 0;
+    // Convertir les clés string en number
+    const result_map: Record<number, string> = {};
+    for (const [key, value] of Object.entries(categoryMap)) {
+      const idx = parseInt(key, 10);
+      if (!isNaN(idx) && typeof value === 'string' && CATEGORIES_BTP.includes(value)) {
+        result_map[idx] = value;
+      }
+    }
 
-    return data as DQESheet;
+    return result_map;
 
   } catch (error: any) {
-    console.error(`❌ Erreur Gemini pour ${sheetName}:`, error?.message || error);
-    // Fallback sur extraction locale
-    console.log(`🔄 Fallback extraction locale pour ${sheetName}`);
-    return extractSheetLocal(worksheet, sheetName, sheetType);
+    console.error(`❌ Erreur Gemini catégorisation:`, error?.message || error);
+    return {};
   }
 }
 
@@ -600,11 +607,12 @@ export async function POST(request: NextRequest) {
         selectedSheets = workbook.SheetNames;
       }
 
-      console.log(`📋 Extraction de ${selectedSheets.length} onglets (AI: ${useAI})`);
+      console.log(`📋 Extraction LOCALE de ${selectedSheets.length} onglets`);
 
       const results: DQESheet[] = [];
       const errors: { sheet: string; error: string }[] = [];
 
+      // ÉTAPE 1: Extraction locale (rapide et fiable)
       for (const sheetName of selectedSheets) {
         if (!workbook.SheetNames.includes(sheetName)) {
           errors.push({ sheet: sheetName, error: 'Onglet non trouvé' });
@@ -617,16 +625,10 @@ export async function POST(request: NextRequest) {
           const contentStr = rows.slice(0, 50).flat().filter(Boolean).join(' ');
           const sheetType = detectSheetType(sheetName, contentStr);
 
-          let sheetData: DQESheet;
-
-          if (useAI) {
-            sheetData = await extractSheetWithGemini(worksheet, sheetName, sheetType);
-          } else {
-            sheetData = extractSheetLocal(worksheet, sheetName, sheetType);
-          }
-
+          // Toujours extraction locale d'abord
+          const sheetData = extractSheetLocal(worksheet, sheetName, sheetType);
           results.push(sheetData);
-          console.log(`✅ ${sheetName}: ${sheetData.total_items} items`);
+          console.log(`✅ ${sheetName}: ${sheetData.total_items} items (local)`);
 
         } catch (error: any) {
           console.error(`❌ Erreur ${sheetName}:`, error);
@@ -634,13 +636,60 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ÉTAPE 2: Amélioration des catégories avec Gemini (si activé)
+      if (useAI && results.length > 0) {
+        console.log(`🏷️ Amélioration des catégories avec Gemini...`);
+
+        // Collecter tous les items avec catégorie "Divers" ou mal catégorisés
+        const allItems: { sheetIdx: number; catIdx: number; itemIdx: number; designation: string; category?: string }[] = [];
+
+        results.forEach((sheet, sheetIdx) => {
+          sheet.categories.forEach((cat, catIdx) => {
+            cat.items.forEach((item, itemIdx) => {
+              // Prioriser les items mal catégorisés
+              if (!item.category || item.category === 'Divers & Imprévus') {
+                allItems.push({
+                  sheetIdx,
+                  catIdx,
+                  itemIdx,
+                  designation: item.designation,
+                  category: item.category
+                });
+              }
+            });
+          });
+        });
+
+        if (allItems.length > 0) {
+          console.log(`📝 ${allItems.length} items à améliorer`);
+
+          // Appeler Gemini pour améliorer les catégories
+          const improvedCategories = await improveCategoriesWithGemini(
+            allItems.map(i => ({ designation: i.designation, category: i.category }))
+          );
+
+          // Appliquer les améliorations
+          let improved = 0;
+          for (const [idxStr, newCategory] of Object.entries(improvedCategories)) {
+            const idx = parseInt(idxStr, 10);
+            if (idx < allItems.length) {
+              const { sheetIdx, catIdx, itemIdx } = allItems[idx];
+              results[sheetIdx].categories[catIdx].items[itemIdx].category = newCategory;
+              improved++;
+            }
+          }
+
+          console.log(`✅ ${improved} catégories améliorées par Gemini`);
+        }
+      }
+
       // Calculer les statistiques
       const totalItems = results.reduce((sum, s) => sum + s.total_items, 0);
-      const allItems = results.flatMap(s => s.categories.flatMap(c => c.items));
+      const extractedItems = results.flatMap(s => s.categories.flatMap(c => c.items));
 
       // Résumé par catégorie BTP
       const resumeCategories: Record<string, { nombre: number; total: number }> = {};
-      for (const item of allItems) {
+      for (const item of extractedItems) {
         const cat = item.category || 'Divers & Imprévus';
         if (!resumeCategories[cat]) {
           resumeCategories[cat] = { nombre: 0, total: 0 };
