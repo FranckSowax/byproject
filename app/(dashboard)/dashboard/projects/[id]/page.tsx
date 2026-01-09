@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings, Users, History, Send, Clock, Trash2, Edit, Plus, Upload, BarChart3, FileText, Shield, CheckCircle2, Package } from "lucide-react";
+import { ArrowLeft, Settings, Users, History, Send, Clock, Trash2, Edit, Plus, Upload, BarChart3, FileText, Shield, CheckCircle2, Package, Merge } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import { ImageUpload } from "@/components/project/ImageUpload";
 import { MaterialsView } from "@/components/materials/MaterialsView";
 import { Material } from "@/components/materials/types";
 import DQEImportInline from "@/components/dqe/DQEImportInline";
+import DuplicatesHandler from "@/components/dqe/DuplicatesHandler";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +83,9 @@ export default function ProjectPage() {
   const [importStatus, setImportStatus] = useState<string>('');
   const [importedCount, setImportedCount] = useState(0);
   const [importMode, setImportMode] = useState<'standard' | 'dqe' | null>(null);
+
+  // État pour le traitement des doublons
+  const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
 
   // États pour la collaboration
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -1467,15 +1471,25 @@ export default function ProjectPage() {
               Uploadez une liste de matériaux (PDF, CSV, Excel)
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button 
-              className="w-full border-2 border-[#E0E4FF] hover:border-[#38B2AC] hover:bg-[#38B2AC] hover:text-white text-[#38B2AC] font-semibold rounded-xl py-6 transition-all" 
+          <CardContent className="space-y-2">
+            <Button
+              className="w-full border-2 border-[#E0E4FF] hover:border-[#38B2AC] hover:bg-[#38B2AC] hover:text-white text-[#38B2AC] font-semibold rounded-xl py-6 transition-all"
               variant="outline"
               onClick={() => setIsImportDialogOpen(true)}
             >
               <Upload className="mr-2 h-4 w-4" />
               Importer
             </Button>
+            {materials.length > 0 && (
+              <Button
+                className="w-full border-2 border-[#ED8936]/30 hover:border-[#ED8936] hover:bg-[#ED8936] hover:text-white text-[#ED8936] font-semibold rounded-xl py-3 transition-all text-sm"
+                variant="outline"
+                onClick={() => setIsDuplicatesDialogOpen(true)}
+              >
+                <Merge className="mr-2 h-4 w-4" />
+                Traiter les doublons
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -2119,6 +2133,31 @@ export default function ProjectPage() {
           toast.success("Collaborateur invité avec succès");
         }}
       />
+
+      {/* Dialog de traitement des doublons */}
+      <Dialog open={isDuplicatesDialogOpen} onOpenChange={setIsDuplicatesDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Merge className="h-5 w-5 text-[#ED8936]" />
+              Traitement des doublons
+            </DialogTitle>
+            <DialogDescription>
+              Fusionnez les matériaux identiques et additionnez leurs quantités
+            </DialogDescription>
+          </DialogHeader>
+          <DuplicatesHandler
+            projectId={projectId}
+            materials={materials}
+            onComplete={() => {
+              setIsDuplicatesDialogOpen(false);
+              loadMaterials();
+              toast.success("Doublons fusionnés avec succès !");
+            }}
+            onCancel={() => setIsDuplicatesDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog des commentaires */}
       <Dialog open={showComments} onOpenChange={setShowComments}>
