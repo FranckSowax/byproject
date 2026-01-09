@@ -696,23 +696,22 @@ export default function SupplierQuotePage() {
       setIsSaving(true);
       
       // Filter materials: only those with prices OR marked as unavailable
-      const quotedMaterials = materials.filter(m => 
+      const quotedMaterials = materials.filter(m =>
         (m.prices && m.prices.length > 0) || m.unavailable
       );
 
-      // Prepare payload
+      // Prepare payload - must match API expected structure
       const payload = {
-        supplier_request_id: request?.id,
-        supplier_name: supplierInfo.contactName,
-        supplier_email: supplierInfo.email,
-        supplier_company: supplierInfo.companyName,
-        supplier_country: supplierInfo.country,
-        supplier_phone: supplierInfo.whatsapp || supplierInfo.wechat,
-        quoted_materials: quotedMaterials,
+        supplierInfo: {
+          contactName: supplierInfo.contactName,
+          email: supplierInfo.email,
+          companyName: supplierInfo.companyName,
+          country: supplierInfo.country,
+        },
+        materials: quotedMaterials,
         status: 'draft',
         currency: materials.find(m => m.prices?.length)?.prices?.[0]?.currency || 'CNY',
         notes: '',
-        saved_at: new Date().toISOString(),
       };
 
       const response = await fetch(`/api/supplier-quote/${token}`, {
