@@ -67,62 +67,75 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadNotifications();
-    
-    // Subscribe to new notifications
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-        },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          
-          // Show toast for new notification
-          toast.info(newNotification.title, {
-            description: newNotification.message,
-          });
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+
+    const initNotifications = async () => {
+      // Get current user first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setLoading(false);
+        return;
+      }
+
+      const userId = session.user.id;
+      setCurrentUserId(userId);
+
+      // Load notifications
+      await loadNotifications(userId);
+
+      // Subscribe to new notifications ONLY for this user
+      channel = supabase
+        .channel(`notifications:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const newNotification = payload.new as Notification;
+            setNotifications(prev => [newNotification, ...prev]);
+            setUnreadCount(prev => prev + 1);
+
+            // Show toast for new notification
+            toast.info(newNotification.title, {
+              description: newNotification.message,
+            });
+          }
+        )
+        .subscribe();
+    };
+
+    initNotifications();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (userId?: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      // Vérifier si l'utilisateur est admin
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role_id')
-        .eq('id', session.user.id)
-        .single();
-
-      const isAdmin = userData?.role_id === 1;
-
-      // Si admin, charger toutes les notifications, sinon uniquement celles de l'utilisateur
-      let query = supabase
-        .from('notifications')
-        .select('*');
-
-      if (!isAdmin) {
-        query = query.eq('user_id', session.user.id);
+      // Use provided userId or get from session
+      let targetUserId = userId;
+      if (!targetUserId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        targetUserId = session.user.id;
       }
 
-      const { data, error } = await query
+      // Each user only sees their own notifications
+      // Admins have a separate admin panel to see all notifications if needed
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', targetUserId)
         .order('created_at', { ascending: false })
         .limit(20);
 
