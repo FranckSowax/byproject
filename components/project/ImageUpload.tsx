@@ -28,8 +28,14 @@ export function ImageUpload({
   const inputId = useId();
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleFileSelect called');
     const files = event.target.files;
-    if (!files || files.length === 0) return;
+    console.log('Files selected:', files?.length);
+
+    if (!files || files.length === 0) {
+      console.log('No files selected, returning');
+      return;
+    }
 
     if (images.length + files.length > maxImages) {
       toast.error(`Maximum ${maxImages} images autorisées`);
@@ -37,11 +43,14 @@ export function ImageUpload({
     }
 
     setUploading(true);
+    toast.info('Upload en cours...');
     const newImages: string[] = [];
 
     try {
       // Get user ID from session
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Getting session...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Session result:', { hasSession: !!session, userId: session?.user?.id, error: sessionError });
       const userId = session?.user?.id || 'anonymous';
 
       for (let i = 0; i < files.length; i++) {
@@ -60,29 +69,37 @@ export function ImageUpload({
         }
 
         // Upload via API route (contourne RLS)
+        console.log('Preparing upload for:', file.name);
         const formData = new FormData();
         formData.append('file', file);
         formData.append('userId', userId);
         formData.append('bucket', bucket);
 
+        console.log('Sending to /api/upload-image...');
         const response = await fetch('/api/upload-image', {
           method: 'POST',
           body: formData
         });
+        console.log('Response status:', response.status);
 
         if (!response.ok) {
           const error = await response.json();
+          console.error('Upload error response:', error);
           toast.error(`Erreur upload ${file.name}: ${error.error}`);
           continue;
         }
 
         const data = await response.json();
+        console.log('Upload success:', data);
         newImages.push(data.publicUrl);
       }
 
       if (newImages.length > 0) {
+        console.log('Calling onImagesChange with:', [...images, ...newImages]);
         onImagesChange([...images, ...newImages]);
         toast.success(`${newImages.length} image(s) uploadée(s)`);
+      } else {
+        console.log('No new images to add');
       }
     } catch (error) {
       console.error('Upload error:', error);
