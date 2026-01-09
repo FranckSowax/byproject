@@ -1208,51 +1208,22 @@ export default function ProjectPage() {
     }
 
     try {
-      // 1. Supprimer l'historique du projet
-      await supabase
-        .from('project_history' as any)
-        .delete()
-        .eq('project_id', projectId);
+      // Use server-side API to delete project (bypasses RLS and handles triggers properly)
+      const response = await fetch(`/api/projects/${projectId}/delete`, {
+        method: 'DELETE',
+      });
 
-      // 2. Supprimer les collaborateurs du projet
-      await supabase
-        .from('project_collaborators' as any)
-        .delete()
-        .eq('project_id', projectId);
+      const data = await response.json();
 
-      // 3. Supprimer les prix des matériaux du projet
-      const { data: materialIds } = await supabase
-        .from('materials')
-        .select('id')
-        .eq('project_id', projectId);
-
-      if (materialIds && materialIds.length > 0) {
-        const ids = materialIds.map(m => m.id);
-        await supabase
-          .from('prices')
-          .delete()
-          .in('material_id', ids);
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression');
       }
-
-      // 4. Supprimer les matériaux du projet
-      await supabase
-        .from('materials')
-        .delete()
-        .eq('project_id', projectId);
-
-      // 5. Supprimer le projet
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
-
-      if (error) throw error;
 
       toast.success("Projet supprimé");
       router.push('/dashboard');
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Erreur lors de la suppression");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la suppression");
     }
   };
 
