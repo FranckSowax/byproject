@@ -16,6 +16,7 @@ import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
 import { ImageUpload } from "@/components/project/ImageUpload";
 import { MaterialsView } from "@/components/materials/MaterialsView";
 import { Material } from "@/components/materials/types";
+import DQEImportInline from "@/components/dqe/DQEImportInline";
 import {
   Dialog,
   DialogContent,
@@ -80,6 +81,7 @@ export default function ProjectPage() {
   const [importProgress, setImportProgress] = useState(0);
   const [importStatus, setImportStatus] = useState<string>('');
   const [importedCount, setImportedCount] = useState(0);
+  const [importMode, setImportMode] = useState<'standard' | 'dqe' | null>(null);
 
   // États pour la collaboration
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -1849,20 +1851,92 @@ export default function ProjectPage() {
       </Dialog>
 
       {/* Modal Import de Fichier */}
-      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+        setIsImportDialogOpen(open);
+        if (!open) {
+          setImportFile(null);
+          setImportMode(null);
+          setIsImporting(false);
+          setImportProgress(0);
+          setImportStatus('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-[#38B2AC]" />
               Importer un fichier
             </DialogTitle>
             <DialogDescription>
-              Uploadez une liste de matériaux (CSV, Excel)
+              Uploadez une liste de matériaux (CSV, Excel, PDF) ou un DQE BTP
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
-            {!isImporting ? (
+            {/* Mode DQE actif */}
+            {importMode === 'dqe' && importFile && (
+              <DQEImportInline
+                file={importFile}
+                projectId={projectId}
+                onProgress={(progress, status) => {
+                  setImportProgress(progress);
+                  setImportStatus(status);
+                }}
+                onComplete={async (result) => {
+                  // Sauvegarder les matériaux extraits dans Supabase
+                  const allItems = result.data.sheets.flatMap(sheet =>
+                    sheet.categories.flatMap((cat: any) =>
+                      cat.items.map((item: any) => ({
+                        project_id: projectId,
+                        name: item.designation,
+                        description: item.dosage || item.dimensions || null,
+                        category: item.category || cat.name || 'Non catégorisé',
+                        quantity: item.quantite,
+                        specs: {
+                          unit: item.unite,
+                          numero: item.numero,
+                          prix_unitaire: item.prix_unitaire,
+                          prix_total: item.prix_total,
+                          lot_numero: item.lot_numero,
+                          lot_nom: item.lot_nom,
+                          subcategory: item.subcategory,
+                          extracted_by: 'dqe-extractor',
+                          source_sheet: sheet.sheet_name
+                        }
+                      }))
+                    )
+                  );
+
+                  if (allItems.length > 0) {
+                    const INSERT_BATCH_SIZE = 50;
+                    for (let i = 0; i < allItems.length; i += INSERT_BATCH_SIZE) {
+                      const batch = allItems.slice(i, i + INSERT_BATCH_SIZE);
+                      const { error } = await supabase.from('materials').insert(batch);
+                      if (error) console.error('Error inserting batch:', error);
+                    }
+
+                    // Mettre à jour le statut du projet
+                    await supabase
+                      .from('projects')
+                      .update({ mapping_status: 'completed' } as any)
+                      .eq('id', projectId);
+                  }
+
+                  toast.success(`${result.extraction_info.total_items} éléments importés depuis DQE`);
+                  setIsImportDialogOpen(false);
+                  setImportFile(null);
+                  setImportMode(null);
+                  loadMaterials();
+                }}
+                onCancel={() => {
+                  setImportMode(null);
+                  setImportFile(null);
+                }}
+              />
+            )}
+
+            {/* Sélection du fichier (mode normal) */}
+            {!importMode && !isImporting && (
               <>
                 {/* Zone de drop */}
                 <div className="border-2 border-dashed border-[#E0E4FF] hover:border-[#38B2AC] rounded-xl p-8 text-center transition-colors">
@@ -1890,54 +1964,112 @@ export default function ProjectPage() {
                   </label>
                 </div>
 
-                {/* Info format */}
-                <div className="bg-[#38B2AC]/10 border border-[#38B2AC]/20 rounded-xl p-4">
-                  <p className="text-sm text-[#4A5568] font-semibold mb-2">
-                    📋 Formats supportés:
-                  </p>
-                  <ul className="text-sm text-[#718096] space-y-1">
-                    <li>• <strong>Excel</strong> (.xlsx, .xls) - Extraction déterministe</li>
-                    <li>• <strong>CSV</strong> (.csv) - Extraction déterministe</li>
-                    <li>• <strong>PDF</strong> (.pdf) - Extraction IA chirurgicale</li>
-                    <li>• <strong>Word</strong> (.doc, .docx) - Extraction IA chirurgicale</li>
-                    <li>• <strong>Texte</strong> (.txt) - Extraction IA chirurgicale</li>
-                  </ul>
-                  <p className="text-xs text-[#A0AEC0] mt-2">
-                    L'IA extrait automatiquement les matériaux, quantités et catégories
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Progression */}
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="w-20 h-20 border-4 border-[#38B2AC]/20 border-t-[#38B2AC] rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-lg font-semibold text-[#4A5568] mb-2">
-                      {importStatus}
+                {/* Choix du mode si fichier Excel sélectionné */}
+                {importFile && importFile.name.match(/\.xlsx?$/i) && (
+                  <div className="bg-gradient-to-r from-[#5B5FC7]/5 to-[#7B7FE8]/5 border border-[#5B5FC7]/20 rounded-xl p-4">
+                    <p className="text-sm font-semibold text-[#4A5568] mb-3">
+                      🏗️ Fichier Excel détecté - Choisissez le mode d&apos;import:
                     </p>
-                    <p className="text-sm text-[#718096]">
-                      {importedCount} matériaux importés
-                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setImportMode('dqe')}
+                        className="p-4 border-2 border-[#5B5FC7]/30 hover:border-[#5B5FC7] bg-white rounded-xl text-left transition-all hover:shadow-lg group"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-5 w-5 text-[#5B5FC7]" />
+                          <span className="font-semibold text-[#4A5568] group-hover:text-[#5B5FC7]">Mode DQE</span>
+                        </div>
+                        <p className="text-xs text-[#718096]">
+                          Devis Quantitatif Estimatif BTP avec sélection d&apos;onglets et catégorisation IA
+                        </p>
+                      </button>
+                      <button
+                        onClick={() => setImportMode('standard')}
+                        className="p-4 border-2 border-[#38B2AC]/30 hover:border-[#38B2AC] bg-white rounded-xl text-left transition-all hover:shadow-lg group"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Upload className="h-5 w-5 text-[#38B2AC]" />
+                          <span className="font-semibold text-[#4A5568] group-hover:text-[#38B2AC]">Mode Standard</span>
+                        </div>
+                        <p className="text-xs text-[#718096]">
+                          Import classique avec détection automatique des colonnes
+                        </p>
+                      </button>
+                    </div>
                   </div>
+                )}
 
-                  {/* Barre de progression */}
-                  <div className="w-full bg-[#E0E4FF] rounded-full h-3 overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-[#38B2AC] to-[#319795] transition-all duration-300"
-                      style={{ width: `${importProgress}%` }}
-                    />
+                {/* Info format */}
+                {!importFile && (
+                  <div className="bg-[#38B2AC]/10 border border-[#38B2AC]/20 rounded-xl p-4">
+                    <p className="text-sm text-[#4A5568] font-semibold mb-2">
+                      📋 Formats supportés:
+                    </p>
+                    <ul className="text-sm text-[#718096] space-y-1">
+                      <li>• <strong>Excel DQE</strong> (.xlsx) - Sélection d&apos;onglets + IA BTP</li>
+                      <li>• <strong>Excel/CSV</strong> - Extraction déterministe</li>
+                      <li>• <strong>PDF</strong> (.pdf) - Extraction IA</li>
+                      <li>• <strong>Word</strong> (.doc, .docx) - Extraction IA</li>
+                    </ul>
                   </div>
-                  <p className="text-center text-sm font-semibold text-[#38B2AC]">
-                    {importProgress}%
+                )}
+              </>
+            )}
+
+            {/* Mode standard - import classique */}
+            {importMode === 'standard' && !isImporting && (
+              <div className="text-center py-4">
+                <p className="text-[#4A5568] mb-4">
+                  Fichier: <strong>{importFile?.name}</strong>
+                </p>
+                <Button
+                  onClick={() => {
+                    setImportMode(null);
+                    setImportFile(null);
+                  }}
+                  variant="outline"
+                  className="mr-2"
+                >
+                  Retour
+                </Button>
+                <Button
+                  onClick={handleImportFile}
+                  className="bg-gradient-to-r from-[#38B2AC] to-[#319795] hover:from-[#319795] hover:to-[#2C7A7B] text-white"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Lancer l&apos;import standard
+                </Button>
+              </div>
+            )}
+
+            {/* Progression import standard */}
+            {isImporting && (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="w-20 h-20 border-4 border-[#38B2AC]/20 border-t-[#38B2AC] rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-lg font-semibold text-[#4A5568] mb-2">
+                    {importStatus}
+                  </p>
+                  <p className="text-sm text-[#718096]">
+                    {importedCount} matériaux importés
                   </p>
                 </div>
-              </>
+
+                <div className="w-full bg-[#E0E4FF] rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#38B2AC] to-[#319795] transition-all duration-300"
+                    style={{ width: `${importProgress}%` }}
+                  />
+                </div>
+                <p className="text-center text-sm font-semibold text-[#38B2AC]">
+                  {importProgress}%
+                </p>
+              </div>
             )}
           </div>
 
           <DialogFooter>
-            {!isImporting ? (
+            {!importMode && !isImporting && (
               <>
                 <Button
                   variant="outline"
@@ -1948,16 +2080,18 @@ export default function ProjectPage() {
                 >
                   Annuler
                 </Button>
-                <Button
-                  onClick={handleImportFile}
-                  disabled={!importFile}
-                  className="bg-gradient-to-r from-[#38B2AC] to-[#319795] hover:from-[#319795] hover:to-[#2C7A7B] text-white"
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Importer
-                </Button>
+                {importFile && !importFile.name.match(/\.xlsx?$/i) && (
+                  <Button
+                    onClick={handleImportFile}
+                    className="bg-gradient-to-r from-[#38B2AC] to-[#319795] hover:from-[#319795] hover:to-[#2C7A7B] text-white"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importer
+                  </Button>
+                )}
               </>
-            ) : (
+            )}
+            {isImporting && (
               <Button
                 variant="outline"
                 onClick={() => {
@@ -1965,6 +2099,7 @@ export default function ProjectPage() {
                   setImportProgress(0);
                   setImportStatus('');
                   setImportedCount(0);
+                  setImportMode(null);
                 }}
               >
                 Fermer
