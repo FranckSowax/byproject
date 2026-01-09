@@ -52,6 +52,13 @@ const getGeminiClient = () => {
 // TYPES
 // ============================================================================
 
+interface ColumnInfo {
+  index: number;
+  name: string;
+  sample_values: string[];
+  detected_type: 'text' | 'number' | 'unit' | 'unknown';
+}
+
 interface SheetPreview {
   index: number;
   name: string;
@@ -65,6 +72,8 @@ interface SheetPreview {
   sample_categories: string[];
   sample_items: string[];
   is_selected: boolean;
+  detected_columns: ColumnInfo[];
+  quantity_columns: { index: number; name: string; sample: string }[];
 }
 
 interface DQEItem {
@@ -244,6 +253,101 @@ function getSamples(rows: any[][]): { categories: string[]; items: string[] } {
   return { categories, items };
 }
 
+// Détecte les colonnes et identifie celles contenant des quantités numériques
+function detectColumns(rows: any[][], headerRowIdx: number): {
+  columns: ColumnInfo[];
+  quantityColumns: { index: number; name: string; sample: string }[]
+} {
+  const columns: ColumnInfo[] = [];
+  const quantityColumns: { index: number; name: string; sample: string }[] = [];
+
+  if (rows.length === 0) return { columns, quantityColumns };
+
+  // Trouver la ligne d'en-tête
+  const headerRow = headerRowIdx >= 0 ? rows[headerRowIdx] : rows[0];
+  const dataStartRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 1;
+
+  // Patterns pour identifier les colonnes de quantité
+  const quantityPatterns = [
+    /quantit[eé]/i,
+    /qte/i,
+    /qtité/i,
+    /total\s*m[2²³3]/i,
+    /surface/i,
+    /volume/i,
+    /longueur/i,
+    /m[2²]\s*total/i,
+    /m[3³]\s*total/i,
+    /nb\.?/i,
+    /nombre/i
+  ];
+
+  const maxCols = Math.max(...rows.slice(0, 50).map(r => r?.length || 0));
+
+  for (let colIdx = 0; colIdx < maxCols; colIdx++) {
+    const headerValue = String(headerRow?.[colIdx] || `Colonne ${colIdx + 1}`).trim();
+    const sampleValues: string[] = [];
+    let numericCount = 0;
+    let totalValues = 0;
+
+    // Collecter des échantillons de données
+    for (let rowIdx = dataStartRow; rowIdx < Math.min(dataStartRow + 30, rows.length); rowIdx++) {
+      const cellValue = rows[rowIdx]?.[colIdx];
+      if (cellValue !== undefined && cellValue !== null && cellValue !== '') {
+        const strValue = String(cellValue).trim();
+        if (sampleValues.length < 5 && strValue.length > 0) {
+          sampleValues.push(strValue.substring(0, 30));
+        }
+        totalValues++;
+
+        // Vérifier si c'est numérique
+        const numValue = Number(cellValue);
+        if (!isNaN(numValue) && numValue !== 0) {
+          numericCount++;
+        }
+      }
+    }
+
+    // Déterminer le type de colonne
+    let detectedType: ColumnInfo['detected_type'] = 'unknown';
+    const numericRatio = totalValues > 0 ? numericCount / totalValues : 0;
+
+    if (numericRatio > 0.6) {
+      detectedType = 'number';
+    } else if (sampleValues.some(v => VALID_UNITS.has(v.toUpperCase()))) {
+      detectedType = 'unit';
+    } else if (sampleValues.length > 0) {
+      detectedType = 'text';
+    }
+
+    columns.push({
+      index: colIdx,
+      name: headerValue,
+      sample_values: sampleValues,
+      detected_type: detectedType
+    });
+
+    // Identifier les colonnes de quantité potentielles
+    const headerLower = headerValue.toLowerCase();
+    const isQuantityByName = quantityPatterns.some(p => p.test(headerLower));
+    const isQuantityByData = detectedType === 'number' && numericRatio > 0.5;
+
+    if (isQuantityByName || (isQuantityByData && headerLower.length > 0)) {
+      // Exclure les colonnes de prix
+      const isPriceColumn = /prix|p\.?u\.?|montant|cout|coût|ht|ttc/i.test(headerLower);
+      if (!isPriceColumn) {
+        quantityColumns.push({
+          index: colIdx,
+          name: headerValue,
+          sample: sampleValues[0] || ''
+        });
+      }
+    }
+  }
+
+  return { columns, quantityColumns };
+}
+
 function findHeaderRow(rows: any[][]): number {
   for (let i = 0; i < Math.min(50, rows.length); i++) {
     const rowStr = rows[i].filter(Boolean).join(' ').toUpperCase();
@@ -359,6 +463,10 @@ async function analyzeExcelFile(fileBuffer: ArrayBuffer): Promise<{ sheets: Shee
     const metadata = extractMetadata(rows, 30);
     const samples = getSamples(rows);
 
+    // Détecter les colonnes et identifier les colonnes de quantité
+    const headerRowIdx = findHeaderRow(rows);
+    const { columns, quantityColumns } = detectColumns(rows, headerRowIdx);
+
     sheets.push({
       index: i,
       name: sheetName,
@@ -371,7 +479,9 @@ async function analyzeExcelFile(fileBuffer: ArrayBuffer): Promise<{ sheets: Shee
       devis_ref: metadata.devis_ref,
       sample_categories: samples.categories,
       sample_items: samples.items,
-      is_selected: true
+      is_selected: true,
+      detected_columns: columns,
+      quantity_columns: quantityColumns
     });
   }
 
@@ -390,18 +500,29 @@ async function analyzeExcelFile(fileBuffer: ArrayBuffer): Promise<{ sheets: Shee
 // EXTRACTION LOCALE (sans IA)
 // ============================================================================
 
-function extractSheetLocal(worksheet: XLSX.WorkSheet, sheetName: string, sheetType: string): DQESheet {
+function extractSheetLocal(
+  worksheet: XLSX.WorkSheet,
+  sheetName: string,
+  sheetType: string,
+  quantityColumnIndex?: number
+): DQESheet {
   const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
   const headerRow = findHeaderRow(rows);
 
+  // Mapping par défaut des colonnes
   const colMapping = {
     code: 0,
     designation: 1,
     unite: 2,
-    quantite: 3,
+    quantite: quantityColumnIndex ?? 3, // Utiliser la colonne sélectionnée ou 3 par défaut
     pu: 4,
     montant: 5
   };
+
+  // Si une colonne de quantité personnalisée est spécifiée, ajuster les autres colonnes
+  if (quantityColumnIndex !== undefined && quantityColumnIndex !== 3) {
+    console.log(`📊 Utilisation de la colonne ${quantityColumnIndex} pour les quantités`);
+  }
 
   const metadata = extractMetadata(rows, headerRow > 0 ? headerRow : 30);
   const categories: DQECategory[] = [];
@@ -709,6 +830,17 @@ export async function POST(request: NextRequest) {
     if (action === 'extract') {
       const selectedSheetsParam = formData.get('selected_sheets') as string | null;
       const useAI = formData.get('use_ai') !== 'false'; // Par défaut: true
+      const quantityColumnParam = formData.get('quantity_column') as string | null;
+
+      // Parser l'index de la colonne de quantité sélectionnée
+      let quantityColumnIndex: number | undefined;
+      if (quantityColumnParam) {
+        const parsed = parseInt(quantityColumnParam, 10);
+        if (!isNaN(parsed) && parsed >= 0) {
+          quantityColumnIndex = parsed;
+          console.log(`📊 Colonne de quantité sélectionnée: index ${quantityColumnIndex}`);
+        }
+      }
 
       let selectedSheets: string[] = [];
       if (selectedSheetsParam) {
@@ -744,8 +876,8 @@ export async function POST(request: NextRequest) {
           const contentStr = rows.slice(0, 50).flat().filter(Boolean).join(' ');
           const sheetType = detectSheetType(sheetName, contentStr);
 
-          // Toujours extraction locale d'abord
-          const sheetData = extractSheetLocal(worksheet, sheetName, sheetType);
+          // Toujours extraction locale d'abord, avec la colonne de quantité sélectionnée
+          const sheetData = extractSheetLocal(worksheet, sheetName, sheetType, quantityColumnIndex);
           results.push(sheetData);
           console.log(`✅ ${sheetName}: ${sheetData.total_items} items (local)`);
 

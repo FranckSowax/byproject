@@ -8,6 +8,12 @@ import {
 import { Button } from '@/components/ui/button';
 
 // Types
+interface QuantityColumn {
+  index: number;
+  name: string;
+  sample: string;
+}
+
 interface SheetPreview {
   index: number;
   name: string;
@@ -21,6 +27,7 @@ interface SheetPreview {
   sample_categories: string[];
   sample_items: string[];
   is_selected: boolean;
+  quantity_columns?: QuantityColumn[];
 }
 
 interface AnalysisResult {
@@ -78,6 +85,8 @@ export default function DQEImportInline({
   const [expandedSheet, setExpandedSheet] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [useAI, setUseAI] = useState(true); // true = Local + amélioration catégories Gemini
+  const [availableQuantityColumns, setAvailableQuantityColumns] = useState<QuantityColumn[]>([]);
+  const [selectedQuantityColumn, setSelectedQuantityColumn] = useState<number | null>(null);
 
   // Analyser le fichier au montage
   React.useEffect(() => {
@@ -105,6 +114,36 @@ export default function DQEImportInline({
 
       setSheets(data.sheets);
       setSummary(data.summary);
+
+      // Collecter toutes les colonnes de quantité disponibles de tous les onglets
+      const allQuantityColumns: QuantityColumn[] = [];
+      const seenColumns = new Set<string>();
+
+      data.sheets.forEach((sheet: SheetPreview) => {
+        if (sheet.quantity_columns) {
+          sheet.quantity_columns.forEach((col: QuantityColumn) => {
+            const key = `${col.index}-${col.name}`;
+            if (!seenColumns.has(key)) {
+              seenColumns.add(key);
+              allQuantityColumns.push(col);
+            }
+          });
+        }
+      });
+
+      setAvailableQuantityColumns(allQuantityColumns);
+
+      // Sélectionner par défaut la première colonne qui ressemble à "Total m2" ou similaire
+      const totalM2Col = allQuantityColumns.find(c =>
+        /total\s*m[2²]/i.test(c.name) || /m[2²]\s*total/i.test(c.name)
+      );
+      if (totalM2Col) {
+        setSelectedQuantityColumn(totalM2Col.index);
+      } else if (allQuantityColumns.length > 0) {
+        // Sinon prendre la première colonne détectée
+        setSelectedQuantityColumn(allQuantityColumns[0].index);
+      }
+
       setStep('select');
       onProgress?.(30, 'Sélectionnez les onglets à extraire');
     } catch (err) {
@@ -150,6 +189,11 @@ export default function DQEImportInline({
     formData.append('file', file);
     formData.append('selected_sheets', JSON.stringify(selectedSheetNames));
     formData.append('use_ai', useAI ? 'true' : 'false');
+
+    // Envoyer la colonne de quantité sélectionnée
+    if (selectedQuantityColumn !== null) {
+      formData.append('quantity_column', selectedQuantityColumn.toString());
+    }
 
     // Timeout côté client de 55 secondes
     const controller = new AbortController();
@@ -318,6 +362,37 @@ export default function DQEImportInline({
           </button>
         </div>
       </div>
+
+      {/* Sélecteur de colonne de quantité */}
+      {availableQuantityColumns.length > 0 && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-blue-800">
+              Colonne de quantité
+            </span>
+            <span className="text-xs text-blue-600">
+              {availableQuantityColumns.length} colonne(s) détectée(s)
+            </span>
+          </div>
+          <select
+            value={selectedQuantityColumn ?? ''}
+            onChange={(e) => setSelectedQuantityColumn(
+              e.target.value ? parseInt(e.target.value, 10) : null
+            )}
+            className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">-- Colonne par défaut --</option>
+            {availableQuantityColumns.map((col) => (
+              <option key={col.index} value={col.index}>
+                {col.name} {col.sample ? `(ex: ${col.sample})` : ''}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-blue-600">
+            Sélectionnez la colonne contenant les quantités totales (ex: &quot;Total m²&quot;, &quot;Quantité&quot;)
+          </p>
+        </div>
+      )}
 
       {/* Actions rapides */}
       <div className="flex flex-wrap gap-1">
