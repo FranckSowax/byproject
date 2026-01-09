@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings, Users, History, Send, Clock, Trash2, Edit, Plus, Upload, BarChart3, FileText, Shield, CheckCircle2, Package, Merge, RefreshCw } from "lucide-react";
+import { ArrowLeft, Settings, Users, History, Send, Clock, Trash2, Edit, Plus, Upload, BarChart3, FileText, Shield, CheckCircle2, Package, Merge, RefreshCw, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -1737,6 +1737,51 @@ export default function ProjectPage() {
           
           {editingMaterial && (
             <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-6">
+              {/* Clarification Request Banner */}
+              {editingMaterial.clarification_request && !editingMaterial.clarification_request.resolved_at && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-orange-800 text-sm">Demande de précision</h4>
+                      <p className="text-sm text-orange-700 mt-1">
+                        {editingMaterial.clarification_request.message}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {editingMaterial.clarification_request.needs_description && (
+                          <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
+                            editingMaterial.description && editingMaterial.description.trim().length > 0
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {editingMaterial.description && editingMaterial.description.trim().length > 0 ? (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            ) : (
+                              <AlertCircle className="h-3.5 w-3.5" />
+                            )}
+                            Description {editingMaterial.description && editingMaterial.description.trim().length > 0 ? '✓' : 'requise'}
+                          </div>
+                        )}
+                        {editingMaterial.clarification_request.needs_images && (
+                          <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
+                            editingMaterial.images && editingMaterial.images.length > 0
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {editingMaterial.images && editingMaterial.images.length > 0 ? (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            ) : (
+                              <AlertCircle className="h-3.5 w-3.5" />
+                            )}
+                            Images {editingMaterial.images && editingMaterial.images.length > 0 ? '✓' : 'requises'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-2">
                 <Label htmlFor="name">Nom *</Label>
                 <Input
@@ -1748,11 +1793,25 @@ export default function ProjectPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">
+                  Description
+                  {editingMaterial.clarification_request &&
+                   !editingMaterial.clarification_request.resolved_at &&
+                   editingMaterial.clarification_request.needs_description && (
+                    <span className="text-orange-500 ml-1">*</span>
+                  )}
+                </Label>
                 <Textarea
                   id="description"
                   value={editingMaterial.description || ''}
                   onChange={(e) => setEditingMaterial({ ...editingMaterial, description: e.target.value || null })}
+                  className={editingMaterial.clarification_request &&
+                    !editingMaterial.clarification_request.resolved_at &&
+                    editingMaterial.clarification_request.needs_description &&
+                    (!editingMaterial.description || editingMaterial.description.trim().length === 0)
+                      ? 'border-orange-300 focus:border-orange-400 focus:ring-orange-200'
+                      : ''
+                  }
                   placeholder="Spécifications, caractéristiques, notes..."
                   rows={3}
                 />
@@ -1817,8 +1876,22 @@ export default function ProjectPage() {
               </div>
 
               {/* Images Upload */}
-              <div className="space-y-2">
-                <Label>Images</Label>
+              <div className={`space-y-2 p-3 rounded-lg ${
+                editingMaterial.clarification_request &&
+                !editingMaterial.clarification_request.resolved_at &&
+                editingMaterial.clarification_request.needs_images &&
+                (!editingMaterial.images || editingMaterial.images.length === 0)
+                  ? 'bg-orange-50 border border-orange-200'
+                  : ''
+              }`}>
+                <Label>
+                  Images
+                  {editingMaterial.clarification_request &&
+                   !editingMaterial.clarification_request.resolved_at &&
+                   editingMaterial.clarification_request.needs_images && (
+                    <span className="text-orange-500 ml-1">*</span>
+                  )}
+                </Label>
                 <ImageUpload
                   images={editingMaterial.images || []}
                   onImagesChange={(images) => setEditingMaterial({ ...editingMaterial, images })}
