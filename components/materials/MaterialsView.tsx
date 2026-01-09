@@ -25,9 +25,10 @@ interface MaterialsViewProps {
   onExportMaterials: () => void;
   onQuickUpdate?: (id: string, field: string, value: any) => Promise<void>;
   onCategoryRename: (oldName: string, newName: string) => Promise<void>;
+  onMergeDuplicates?: () => void;
   // onMaterialClick removed/internalized
   projectId: string;
-  
+
   // Suggestions AI
   suggestions?: any[];
   isLoadingSuggestions?: boolean;
@@ -49,6 +50,7 @@ export function MaterialsView({
   onExportMaterials,
   onQuickUpdate,
   onCategoryRename,
+  onMergeDuplicates,
   // onMaterialClick, -> Internalized
   projectId,
   suggestions = [],
@@ -319,7 +321,7 @@ export function MaterialsView({
 
   return (
     <div className="space-y-4">
-      <MaterialsToolbar 
+      <MaterialsToolbar
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         searchQuery={searchQuery}
@@ -333,6 +335,7 @@ export function MaterialsView({
         activeFiltersCount={showFilters ? 1 : 0}
         onToggleFilters={() => setShowFilters(!showFilters)}
         suggestionsCount={totalSuggestions}
+        onMergeDuplicates={onMergeDuplicates}
       />
 
       <AnimatePresence>

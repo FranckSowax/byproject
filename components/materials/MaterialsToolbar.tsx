@@ -2,17 +2,18 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Search, 
-  Filter, 
-  LayoutGrid, 
-  Plus, 
-  Download, 
-  Trash2, 
+import {
+  Search,
+  Filter,
+  LayoutGrid,
+  Plus,
+  Download,
+  Trash2,
   MoreVertical,
   SlidersHorizontal,
   X,
-  Sparkles
+  Sparkles,
+  Merge
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,6 +48,7 @@ interface MaterialsToolbarProps {
   activeFiltersCount: number;
   onToggleFilters: () => void;
   suggestionsCount?: number;
+  onMergeDuplicates?: () => void;
 }
 
 export function MaterialsToolbar({
@@ -62,7 +64,8 @@ export function MaterialsToolbar({
   onExport,
   activeFiltersCount,
   onToggleFilters,
-  suggestionsCount = 0
+  suggestionsCount = 0,
+  onMergeDuplicates
 }: MaterialsToolbarProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-4">
@@ -89,9 +92,9 @@ export function MaterialsToolbar({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={onToggleFilters}
                 className={cn(
                   "flex-shrink-0 border-slate-200",
@@ -107,6 +110,25 @@ export function MaterialsToolbar({
             <TooltipContent>Filtres avancés</TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
+        {onMergeDuplicates && totalCount > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onMergeDuplicates}
+                  className="flex-shrink-0 border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
+                >
+                  <Merge className="h-4 w-4 mr-1.5" />
+                  <span className="hidden sm:inline">Doublons</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Traiter les doublons</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
 
       {/* Actions and View Switcher */}

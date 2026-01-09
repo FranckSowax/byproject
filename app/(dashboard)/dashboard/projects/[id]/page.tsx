@@ -1471,7 +1471,7 @@ export default function ProjectPage() {
               Uploadez une liste de matériaux (PDF, CSV, Excel)
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent>
             <Button
               className="w-full border-2 border-[#E0E4FF] hover:border-[#38B2AC] hover:bg-[#38B2AC] hover:text-white text-[#38B2AC] font-semibold rounded-xl py-6 transition-all"
               variant="outline"
@@ -1480,16 +1480,6 @@ export default function ProjectPage() {
               <Upload className="mr-2 h-4 w-4" />
               Importer
             </Button>
-            {materials.length > 0 && (
-              <Button
-                className="w-full border-2 border-[#ED8936]/30 hover:border-[#ED8936] hover:bg-[#ED8936] hover:text-white text-[#ED8936] font-semibold rounded-xl py-3 transition-all text-sm"
-                variant="outline"
-                onClick={() => setIsDuplicatesDialogOpen(true)}
-              >
-                <Merge className="mr-2 h-4 w-4" />
-                Traiter les doublons
-              </Button>
-            )}
           </CardContent>
         </Card>
 
@@ -1533,6 +1523,7 @@ export default function ProjectPage() {
         onExportMaterials={handleExportMaterials}
         onQuickUpdate={handleQuickUpdate}
         onCategoryRename={handleCategoryRename}
+        onMergeDuplicates={() => setIsDuplicatesDialogOpen(true)}
         projectId={projectId}
         suggestions={materialSuggestions.reduce((acc: any[], curr) => {
           const existing = acc.find(g => g.category === curr.category);
