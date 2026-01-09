@@ -409,13 +409,14 @@ export default function EditSupplierRequestPage() {
                 <TableBody>
                   {request.materials_data.map((material) => {
                     const hasClarificationRequest = material.clarification_request && !material.clarification_request.resolved_at;
+                    const hasResolvedClarification = material.clarification_request && material.clarification_request.resolved_at;
                     const hasImages = material.images && material.images.length > 0;
                     const hasDescription = material.description && material.description.trim().length > 0;
 
                     return (
                       <TableRow
                         key={material.id}
-                        className={`hover:bg-slate-50 ${hasClarificationRequest ? 'bg-orange-50' : ''}`}
+                        className={`hover:bg-slate-50 ${hasClarificationRequest ? 'bg-orange-50' : hasResolvedClarification ? 'bg-emerald-50' : ''}`}
                       >
                         <TableCell>
                           <Checkbox
@@ -451,6 +452,11 @@ export default function EditSupplierRequestPage() {
                             <Badge className="bg-orange-100 text-orange-700 border-orange-200">
                               <AlertCircle className="h-3 w-3 mr-1" />
                               En attente
+                            </Badge>
+                          ) : hasResolvedClarification ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Modifié
                             </Badge>
                           ) : !hasImages || !hasDescription ? (
                             <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">

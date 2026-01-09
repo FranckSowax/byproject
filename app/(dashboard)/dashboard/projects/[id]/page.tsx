@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings, Users, History, Send, Clock, Trash2, Edit, Plus, Upload, BarChart3, FileText, Shield, CheckCircle2, Package, Merge } from "lucide-react";
+import { ArrowLeft, Settings, Users, History, Send, Clock, Trash2, Edit, Plus, Upload, BarChart3, FileText, Shield, CheckCircle2, Package, Merge, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -127,14 +127,30 @@ export default function ProjectPage() {
   // État pour la création de cotation
   const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
 
+  // État pour les demandes de cotation existantes
+  const [existingRequest, setExistingRequest] = useState<{
+    id: string;
+    request_number: string;
+    status: string;
+  } | null>(null);
+  const [isUpdatingRequest, setIsUpdatingRequest] = useState(false);
+  const [hasModifiedMaterials, setHasModifiedMaterials] = useState(false);
+
   useEffect(() => {
     if (projectId) {
       loadProject();
       loadMaterials();
       loadAllPrices();
       checkPermissions();
+      loadExistingRequest();
     }
   }, [projectId]);
+
+  // Check for modified materials when materials change
+  useEffect(() => {
+    const modified = materials.some(m => m.clarification_request?.resolved_at);
+    setHasModifiedMaterials(modified);
+  }, [materials]);
 
   // Vérifier les permissions de l'utilisateur
   const checkPermissions = async () => {
@@ -235,6 +251,64 @@ export default function ProjectPage() {
       });
     } finally {
       setIsLoadingPermissions(false);
+    }
+  };
+
+  // Load existing supplier request for this project
+  const loadExistingRequest = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('supplier_requests')
+        .select('id, request_number, status')
+        .eq('project_id', projectId)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!error && data) {
+        setExistingRequest(data);
+      }
+    } catch (error) {
+      // No existing request, that's fine
+    }
+  };
+
+  // Update existing supplier request with modified materials
+  const handleUpdateRequest = async () => {
+    if (!existingRequest) return;
+
+    try {
+      setIsUpdatingRequest(true);
+
+      const response = await fetch(`/api/supplier-requests/${existingRequest.id}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update request');
+      }
+
+      const result = await response.json();
+      toast.success("Demande mise à jour !", {
+        description: result.message,
+      });
+
+      // Reload materials to clear modification flags visually
+      loadMaterials();
+      loadExistingRequest();
+    } catch (error: any) {
+      console.error("Error updating request:", error);
+      toast.error("Erreur lors de la mise à jour", {
+        description: error.message || "Veuillez réessayer"
+      });
+    } finally {
+      setIsUpdatingRequest(false);
     }
   };
 
@@ -1396,9 +1470,30 @@ export default function ProjectPage() {
               </Badge>
             )}
             
+            {/* Bouton Mettre à jour la demande (si matériaux modifiés et demande existante) */}
+            {permissions.canManage && existingRequest && hasModifiedMaterials && (
+              <Button
+                onClick={handleUpdateRequest}
+                disabled={isUpdatingRequest}
+                className="flex-shrink-0 gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all rounded-xl text-sm px-3 py-2 animate-pulse"
+              >
+                {isUpdatingRequest ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span className="hidden sm:inline">Mise à jour...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    <span className="hidden sm:inline">Mettre à jour la demande</span>
+                  </>
+                )}
+              </Button>
+            )}
+
             {/* Bouton Demander une cotation */}
-            {permissions.canManage && materials.length > 0 && (
-              <Button 
+            {permissions.canManage && materials.length > 0 && !existingRequest && (
+              <Button
                 onClick={handleCreateQuotation}
                 disabled={isCreatingQuotation}
                 className="flex-shrink-0 gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all rounded-xl text-sm px-3 py-2"

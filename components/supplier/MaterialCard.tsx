@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler, ChevronDown, ChevronUp, XCircle, User, Calendar } from 'lucide-react';
+import { MessageSquare, DollarSign, Edit, Image as ImageIcon, Package, Ruler, ChevronDown, ChevronUp, XCircle, User, Calendar, CheckCircle2 } from 'lucide-react';
 import { formatCommentDate } from '@/lib/comments';
 
 interface PriceVariation {
@@ -48,6 +48,10 @@ interface Material {
   prices?: Price[];
   unavailable?: boolean;
   comments?: MaterialComment[];
+  was_modified?: boolean;
+  clarification_request?: {
+    resolved_at: string | null;
+  } | null;
 }
 
 interface MaterialCardProps {
@@ -77,6 +81,7 @@ export function MaterialCard({
   const mainPrice = hasPrice ? material.prices![0] : null;
   const hasVariations = mainPrice && mainPrice.variations && mainPrice.variations.length > 0;
   const isUnavailable = material.unavailable;
+  const wasModified = material.was_modified || material.clarification_request?.resolved_at;
 
   return (
     <div className={`group border-2 rounded-xl p-4 transition-all duration-200 ${
@@ -120,6 +125,13 @@ export function MaterialCard({
               </p>
             )}
             <div className="flex flex-wrap gap-2">
+              {/* Modified badge - shown first for visibility */}
+              {wasModified && (
+                <Badge className="text-[10px] px-2 py-0 bg-emerald-500 text-white border-0">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  {language === 'fr' ? 'Modifié' : language === 'en' ? 'Updated' : '已更新'}
+                </Badge>
+              )}
               {material.category && (
                 <Badge variant="secondary" className="text-[10px] px-2 py-0">
                   {material.category}
