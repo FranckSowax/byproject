@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
@@ -24,6 +24,8 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const supabase = createClient();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = useId();
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -120,29 +122,42 @@ export function ImageUpload({
     }
   };
 
+  const handleClick = () => {
+    if (!uploading && images.length < maxImages && inputRef.current) {
+      inputRef.current.click();
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Upload Zone - Clickable Dashed Border */}
-      <div className={`border-2 border-dashed rounded-lg p-4 transition-colors ${
-        uploading || images.length >= maxImages 
-          ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
-          : 'border-gray-400 hover:border-gray-500 cursor-pointer'
-      }`}>
+      <div
+        className={`border-2 border-dashed rounded-lg p-4 transition-colors ${
+          uploading || images.length >= maxImages
+            ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+            : 'border-gray-400 hover:border-gray-500 hover:bg-gray-50 cursor-pointer'
+        }`}
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
+      >
         <input
+          ref={inputRef}
           type="file"
-          id="image-upload"
+          id={inputId}
           className="hidden"
           accept="image/*"
           multiple
           onChange={handleFileSelect}
           disabled={uploading || images.length >= maxImages}
         />
-        <label
-          htmlFor="image-upload"
-          className={`flex flex-col items-center ${
-            uploading || images.length >= maxImages ? 'cursor-not-allowed' : 'cursor-pointer'
-          }`}
-        >
+        <div className="flex flex-col items-center">
           {uploading ? (
             <>
               <Loader2 className="h-12 w-12 text-gray-400 mb-2 animate-spin" />
@@ -152,8 +167,8 @@ export function ImageUpload({
             <>
               <ImageIcon className="h-12 w-12 text-gray-400 mb-2" />
               <span className="text-sm text-gray-600">
-                {images.length >= maxImages 
-                  ? `Maximum ${maxImages} images atteint` 
+                {images.length >= maxImages
+                  ? `Maximum ${maxImages} images atteint`
                   : 'Cliquez pour ajouter des images'}
               </span>
               <span className="text-xs text-gray-500 mt-1">
@@ -161,7 +176,7 @@ export function ImageUpload({
               </span>
             </>
           )}
-        </label>
+        </div>
       </div>
 
       {/* Images Grid */}

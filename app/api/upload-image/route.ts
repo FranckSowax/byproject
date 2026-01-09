@@ -3,16 +3,20 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Utiliser le service role key pour contourner RLS
 const getSupabaseClient = () => {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    console.error('Missing Supabase config:', { url: !!url, key: !!key });
+    throw new Error('Missing Supabase configuration');
+  }
+
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
     }
-  );
+  });
 };
 
 export async function POST(request: NextRequest) {
@@ -22,7 +26,14 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
     const userId = formData.get('userId') as string;
     const bucket = formData.get('bucket') as string || 'project-images';
-    
+
+    console.log('Upload request:', {
+      fileName: file?.name,
+      fileSize: file?.size,
+      userId,
+      bucket
+    });
+
     if (!file) {
       return NextResponse.json(
         { error: 'No file provided' },
@@ -30,10 +41,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!userId) {
+    if (!userId || userId === 'anonymous') {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { error: 'User must be authenticated to upload images' },
+        { status: 401 }
       );
     }
 
@@ -55,12 +66,19 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
-      console.error('Upload error:', error);
+      console.error('Upload error:', {
+        message: error.message,
+        name: error.name,
+        bucket,
+        fileName
+      });
       return NextResponse.json(
-        { error: error.message },
+        { error: `Upload failed: ${error.message}` },
         { status: 500 }
       );
     }
+
+    console.log('Upload success:', { fileName, bucket });
 
     // Obtenir l'URL publique
     const { data: { publicUrl } } = supabase.storage
