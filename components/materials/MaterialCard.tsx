@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, MessageSquare, Package, ChevronRight, AlertCircle } from "lucide-react";
+import { DollarSign, MessageSquare, Package, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ImagePreview } from "./ImagePreview";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ export function MaterialCard({
   className
 }: MaterialCardProps) {
   const hasClarificationRequest = material.clarification_request && !material.clarification_request.resolved_at;
+  const hasResolvedClarification = material.clarification_request && material.clarification_request.resolved_at;
 
   return (
     <div
@@ -80,8 +81,15 @@ export function MaterialCard({
                   : "Détails requis"}
               </Badge>
             )}
+            {/* Resolved clarification badge */}
+            {hasResolvedClarification && (
+              <Badge className="bg-emerald-500 text-white border-0 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0 sm:py-0.5">
+                <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                Modifié
+              </Badge>
+            )}
             {/* Category badge - hidden on very small screens if too long */}
-            {material.category && !hasClarificationRequest && (
+            {material.category && !hasClarificationRequest && !hasResolvedClarification && (
               <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0 sm:py-0.5 max-w-[100px] sm:max-w-none truncate">
                 {material.category}
               </Badge>

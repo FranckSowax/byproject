@@ -475,6 +475,28 @@ export default function ProjectPage() {
     try {
       setIsSaving(true);
 
+      // Check if we need to resolve a clarification request
+      let updatedClarificationRequest = editingMaterial.clarification_request;
+
+      if (editingMaterial.clarification_request && !editingMaterial.clarification_request.resolved_at) {
+        const needsImages = editingMaterial.clarification_request.needs_images;
+        const needsDescription = editingMaterial.clarification_request.needs_description;
+        const hasImages = editingMaterial.images && editingMaterial.images.length > 0;
+        const hasDescription = editingMaterial.description && editingMaterial.description.trim().length > 0;
+
+        // Check if all required info has been provided
+        const imagesOk = !needsImages || hasImages;
+        const descriptionOk = !needsDescription || hasDescription;
+
+        if (imagesOk && descriptionOk) {
+          // Mark clarification as resolved
+          updatedClarificationRequest = {
+            ...editingMaterial.clarification_request,
+            resolved_at: new Date().toISOString(),
+          };
+        }
+      }
+
       const { error } = await supabase
         .from('materials')
         .update({
@@ -487,12 +509,21 @@ export default function ProjectPage() {
           volume: editingMaterial.volume,
           specs: editingMaterial.specs,
           images: editingMaterial.images || [],
+          clarification_request: updatedClarificationRequest,
         })
         .eq('id', editingMaterial.id);
 
       if (error) throw error;
 
-      toast.success("Matériau mis à jour");
+      // Show appropriate message based on whether clarification was resolved
+      if (updatedClarificationRequest?.resolved_at &&
+          editingMaterial.clarification_request &&
+          !editingMaterial.clarification_request.resolved_at) {
+        toast.success("Matériau mis à jour - Demande de précision résolue ✓");
+      } else {
+        toast.success("Matériau mis à jour");
+      }
+
       setIsEditDialogOpen(false);
       setEditingMaterial(null);
       loadMaterials();
