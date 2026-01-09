@@ -13,15 +13,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Bell, 
-  CheckCircle2, 
-  Package, 
-  Send, 
-  DollarSign, 
+import {
+  Bell,
+  CheckCircle2,
+  Package,
+  Send,
+  DollarSign,
   FolderKanban,
   X,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -48,6 +49,7 @@ const iconMap: Record<string, any> = {
   DollarSign,
   FolderKanban,
   Bell,
+  AlertCircle,
 };
 
 const colorMap: Record<string, string> = {

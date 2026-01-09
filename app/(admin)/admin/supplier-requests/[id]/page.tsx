@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -15,6 +16,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   ArrowLeft,
   Save,
@@ -28,8 +45,28 @@ import {
   Users,
   Building2,
   ExternalLink,
+  MessageSquarePlus,
+  ImagePlus,
+  AlertCircle,
+  FileQuestion,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface Material {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  quantity: number | null;
+  images: string[];
+  clarification_request?: {
+    requested_at: string;
+    message: string;
+    needs_images: boolean;
+    needs_description: boolean;
+    resolved_at: string | null;
+  } | null;
+}
 
 interface SupplierRequest {
   id: string;
@@ -39,6 +76,7 @@ interface SupplierRequest {
   status: string;
   num_suppliers: number;
   total_materials: number;
+  materials_data: Material[];
   metadata: any;
   public_token: string;
   created_at: string;
@@ -70,7 +108,13 @@ export default function EditSupplierRequestPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingClarification, setSendingClarification] = useState(false);
   const [request, setRequest] = useState<SupplierRequest | null>(null);
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [clarificationDialogOpen, setClarificationDialogOpen] = useState(false);
+  const [clarificationMessage, setClarificationMessage] = useState('');
+  const [needsImages, setNeedsImages] = useState(true);
+  const [needsDescription, setNeedsDescription] = useState(true);
   const [formData, setFormData] = useState({
     status: '',
     num_suppliers: 3,
@@ -135,6 +179,67 @@ export default function EditSupplierRequestPage() {
       toast.error('Erreur lors de la mise à jour');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleMaterialSelection = (materialId: string) => {
+    setSelectedMaterials(prev =>
+      prev.includes(materialId)
+        ? prev.filter(id => id !== materialId)
+        : [...prev, materialId]
+    );
+  };
+
+  const selectAllMaterials = () => {
+    if (!request?.materials_data) return;
+    if (selectedMaterials.length === request.materials_data.length) {
+      setSelectedMaterials([]);
+    } else {
+      setSelectedMaterials(request.materials_data.map(m => m.id));
+    }
+  };
+
+  const openClarificationDialog = () => {
+    if (selectedMaterials.length === 0) {
+      toast.error('Veuillez sélectionner au moins un matériau');
+      return;
+    }
+    setClarificationMessage('Veuillez fournir plus de détails et/ou des images pour ce matériau.');
+    setClarificationDialogOpen(true);
+  };
+
+  const handleSendClarificationRequest = async () => {
+    if (selectedMaterials.length === 0) return;
+
+    setSendingClarification(true);
+    try {
+      const response = await fetch('/api/admin/clarification-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supplierRequestId: requestId,
+          materialIds: selectedMaterials,
+          message: clarificationMessage,
+          needsImages,
+          needsDescription,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send clarification request');
+      }
+
+      const result = await response.json();
+      toast.success(result.message);
+      setClarificationDialogOpen(false);
+      setSelectedMaterials([]);
+      loadRequest(); // Reload to see updated status
+    } catch (error: any) {
+      console.error('Error sending clarification request:', error);
+      toast.error(error.message || 'Erreur lors de l\'envoi de la demande');
+    } finally {
+      setSendingClarification(false);
     }
   };
 
@@ -256,6 +361,132 @@ export default function EditSupplierRequestPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Materials List */}
+      {request.materials_data && request.materials_data.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Liste des Matériaux
+                </CardTitle>
+                <CardDescription>
+                  Sélectionnez les matériaux nécessitant des précisions
+                </CardDescription>
+              </div>
+              {selectedMaterials.length > 0 && (
+                <Button
+                  onClick={openClarificationDialog}
+                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                >
+                  <MessageSquarePlus className="h-4 w-4 mr-2" />
+                  Demander des précisions ({selectedMaterials.length})
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedMaterials.length === request.materials_data.length}
+                        onCheckedChange={selectAllMaterials}
+                      />
+                    </TableHead>
+                    <TableHead>Matériau</TableHead>
+                    <TableHead>Catégorie</TableHead>
+                    <TableHead>Quantité</TableHead>
+                    <TableHead>Images</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="w-16">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {request.materials_data.map((material) => {
+                    const hasClarificationRequest = material.clarification_request && !material.clarification_request.resolved_at;
+                    const hasImages = material.images && material.images.length > 0;
+                    const hasDescription = material.description && material.description.trim().length > 0;
+
+                    return (
+                      <TableRow
+                        key={material.id}
+                        className={`hover:bg-slate-50 ${hasClarificationRequest ? 'bg-orange-50' : ''}`}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedMaterials.includes(material.id)}
+                            onCheckedChange={() => toggleMaterialSelection(material.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{material.name}</div>
+                          {material.description && (
+                            <div className="text-xs text-gray-500 truncate max-w-[200px]">
+                              {material.description}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{material.category || 'Non défini'}</Badge>
+                        </TableCell>
+                        <TableCell>{material.quantity || '-'}</TableCell>
+                        <TableCell>
+                          {hasImages ? (
+                            <Badge className="bg-green-100 text-green-700">
+                              {material.images.length} image(s)
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-red-100 text-red-700">
+                              Aucune image
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {hasClarificationRequest ? (
+                            <Badge className="bg-orange-100 text-orange-700 border-orange-200">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              En attente
+                            </Badge>
+                          ) : !hasImages || !hasDescription ? (
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+                              <FileQuestion className="h-3 w-3 mr-1" />
+                              Incomplet
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-700 border-green-200">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Complet
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedMaterials([material.id]);
+                              openClarificationDialog();
+                            }}
+                            title="Demander des précisions"
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            <MessageSquarePlus className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Edit Form */}
       <Card className="mb-6">
@@ -387,6 +618,116 @@ export default function EditSupplierRequestPage() {
           {saving ? 'Enregistrement...' : 'Enregistrer les Modifications'}
         </Button>
       </div>
+
+      {/* Clarification Dialog */}
+      <Dialog open={clarificationDialogOpen} onOpenChange={setClarificationDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquarePlus className="h-5 w-5 text-orange-500" />
+              Demander des précisions
+            </DialogTitle>
+            <DialogDescription>
+              Envoyez une notification au client pour demander plus d'informations
+              sur {selectedMaterials.length} matériau(x) sélectionné(s).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Message */}
+            <div>
+              <Label htmlFor="clarificationMessage">Message au client</Label>
+              <Textarea
+                id="clarificationMessage"
+                value={clarificationMessage}
+                onChange={(e) => setClarificationMessage(e.target.value)}
+                rows={3}
+                placeholder="Décrivez les informations supplémentaires nécessaires..."
+                className="mt-2"
+              />
+            </div>
+
+            {/* Options */}
+            <div className="space-y-3">
+              <Label>Type de précisions demandées</Label>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="needsImages"
+                  checked={needsImages}
+                  onCheckedChange={(checked) => setNeedsImages(checked as boolean)}
+                />
+                <label
+                  htmlFor="needsImages"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                >
+                  <ImagePlus className="h-4 w-4 text-blue-500" />
+                  Images supplémentaires requises
+                </label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="needsDescription"
+                  checked={needsDescription}
+                  onCheckedChange={(checked) => setNeedsDescription(checked as boolean)}
+                />
+                <label
+                  htmlFor="needsDescription"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                >
+                  <FileQuestion className="h-4 w-4 text-purple-500" />
+                  Description plus détaillée requise
+                </label>
+              </div>
+            </div>
+
+            {/* Selected Materials Preview */}
+            <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+              <Label className="text-sm text-orange-700 mb-2 block">
+                Matériaux concernés:
+              </Label>
+              <div className="flex flex-wrap gap-1">
+                {selectedMaterials.map(id => {
+                  const material = request?.materials_data?.find(m => m.id === id);
+                  return material ? (
+                    <Badge key={id} variant="outline" className="bg-white">
+                      {material.name}
+                    </Badge>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setClarificationDialogOpen(false)}
+              disabled={sendingClarification}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSendClarificationRequest}
+              disabled={sendingClarification || (!needsImages && !needsDescription)}
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+            >
+              {sendingClarification ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Envoi...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Envoyer la demande
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

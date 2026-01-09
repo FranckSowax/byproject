@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, MessageSquare, Package, ChevronRight } from "lucide-react";
+import { DollarSign, MessageSquare, Package, ChevronRight, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ImagePreview } from "./ImagePreview";
 import { cn } from "@/lib/utils";
@@ -14,18 +14,22 @@ interface MaterialCardProps {
   className?: string;
 }
 
-export function MaterialCard({ 
-  material, 
-  pricesCount, 
-  commentsCount, 
+export function MaterialCard({
+  material,
+  pricesCount,
+  commentsCount,
   onClick,
-  className 
+  className
 }: MaterialCardProps) {
+  const hasClarificationRequest = material.clarification_request && !material.clarification_request.resolved_at;
+
   return (
-    <div 
+    <div
       className={cn(
-        "group relative bg-white border border-slate-200 rounded-lg sm:rounded-xl p-2.5 sm:p-4 cursor-pointer transition-all duration-200",
-        "hover:border-violet-300 hover:shadow-lg hover:shadow-violet-100/50",
+        "group relative bg-white border rounded-lg sm:rounded-xl p-2.5 sm:p-4 cursor-pointer transition-all duration-200",
+        hasClarificationRequest
+          ? "border-orange-300 bg-orange-50/50 hover:border-orange-400 hover:shadow-lg hover:shadow-orange-100/50"
+          : "border-slate-200 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-100/50",
         "active:scale-[0.98] active:bg-slate-50",
         "touch-manipulation", // Better touch handling
         className
@@ -65,8 +69,19 @@ export function MaterialCard({
 
           {/* Tags and stats - responsive */}
           <div className="flex items-center gap-1 sm:gap-2 mt-1.5 sm:mt-2 flex-wrap">
+            {/* Clarification request badge - prominent display */}
+            {hasClarificationRequest && (
+              <Badge className="bg-orange-500 text-white border-0 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0 sm:py-0.5 animate-pulse">
+                <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                {material.clarification_request?.needs_images && material.clarification_request?.needs_description
+                  ? "Images + Détails requis"
+                  : material.clarification_request?.needs_images
+                  ? "Images requises"
+                  : "Détails requis"}
+              </Badge>
+            )}
             {/* Category badge - hidden on very small screens if too long */}
-            {material.category && (
+            {material.category && !hasClarificationRequest && (
               <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0 sm:py-0.5 max-w-[100px] sm:max-w-none truncate">
                 {material.category}
               </Badge>

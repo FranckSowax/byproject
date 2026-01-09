@@ -1,3 +1,11 @@
+export interface ClarificationRequest {
+  requested_at: string;
+  message: string;
+  needs_images: boolean;
+  needs_description: boolean;
+  resolved_at: string | null;
+}
+
 export interface Material {
   id: string;
   name: string;
@@ -12,6 +20,7 @@ export interface Material {
   project_id?: string;
   created_at?: string;
   updated_at?: string;
+  clarification_request?: ClarificationRequest | null;
 }
 
 export interface MaterialPrice {
