@@ -16,6 +16,7 @@ import { ProjectHistory } from "@/components/collaboration/ProjectHistory";
 import { ImageUpload } from "@/components/project/ImageUpload";
 import { MaterialsView } from "@/components/materials/MaterialsView";
 import { Material } from "@/components/materials/types";
+import { MaterialEditDialog } from "@/components/materials/MaterialEditDialog";
 import DQEImportInline from "@/components/dqe/DQEImportInline";
 import DuplicatesHandler from "@/components/dqe/DuplicatesHandler";
 import {
@@ -543,20 +544,21 @@ export default function ProjectPage() {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveMaterial = async () => {
-    if (!editingMaterial) return;
+  const handleSaveMaterial = async (materialToSave?: Material) => {
+    const material = materialToSave || editingMaterial;
+    if (!material) return;
 
     try {
       setIsSaving(true);
 
       // Check if we need to resolve a clarification request
-      let updatedClarificationRequest = editingMaterial.clarification_request;
+      let updatedClarificationRequest = material.clarification_request;
 
-      if (editingMaterial.clarification_request && !editingMaterial.clarification_request.resolved_at) {
-        const needsImages = editingMaterial.clarification_request.needs_images;
-        const needsDescription = editingMaterial.clarification_request.needs_description;
-        const hasImages = editingMaterial.images && editingMaterial.images.length > 0;
-        const hasDescription = editingMaterial.description && editingMaterial.description.trim().length > 0;
+      if (material.clarification_request && !material.clarification_request.resolved_at) {
+        const needsImages = material.clarification_request.needs_images;
+        const needsDescription = material.clarification_request.needs_description;
+        const hasImages = material.images && material.images.length > 0;
+        const hasDescription = material.description && material.description.trim().length > 0;
 
         // Check if all required info has been provided
         const imagesOk = !needsImages || hasImages;
@@ -565,7 +567,7 @@ export default function ProjectPage() {
         if (imagesOk && descriptionOk) {
           // Mark clarification as resolved
           updatedClarificationRequest = {
-            ...editingMaterial.clarification_request,
+            ...material.clarification_request,
             resolved_at: new Date().toISOString(),
           };
         }
@@ -574,25 +576,25 @@ export default function ProjectPage() {
       const { error } = await supabase
         .from('materials')
         .update({
-          name: editingMaterial.name,
-          description: editingMaterial.description,
-          category: editingMaterial.category,
-          quantity: editingMaterial.quantity,
-          surface: editingMaterial.surface,
-          weight: editingMaterial.weight,
-          volume: editingMaterial.volume,
-          specs: editingMaterial.specs,
-          images: editingMaterial.images || [],
+          name: material.name,
+          description: material.description,
+          category: material.category,
+          quantity: material.quantity,
+          surface: material.surface,
+          weight: material.weight,
+          volume: material.volume,
+          specs: material.specs,
+          images: material.images || [],
           clarification_request: updatedClarificationRequest,
         })
-        .eq('id', editingMaterial.id);
+        .eq('id', material.id);
 
       if (error) throw error;
 
       // Show appropriate message based on whether clarification was resolved
       if (updatedClarificationRequest?.resolved_at &&
-          editingMaterial.clarification_request &&
-          !editingMaterial.clarification_request.resolved_at) {
+          material.clarification_request &&
+          !material.clarification_request.resolved_at) {
         toast.success("Matériau mis à jour - Demande de précision résolue ✓");
       } else {
         toast.success("Matériau mis à jour");
@@ -604,6 +606,7 @@ export default function ProjectPage() {
     } catch (error) {
       console.error("Error updating material:", error);
       toast.error("Erreur lors de la mise à jour");
+      throw error; // Re-throw pour que le composant appelant puisse gérer l'erreur
     } finally {
       setIsSaving(false);
     }
@@ -1720,207 +1723,13 @@ export default function ProjectPage() {
       )}
       
       {/* Modal d'édition */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] border-0 bg-white/95 backdrop-blur-sm shadow-2xl overflow-hidden flex flex-col">
-          <div className="h-2 bg-gradient-to-r from-[#5B5FC7] to-[#7B7FE8] absolute top-0 left-0 right-0 rounded-t-lg" />
-          <DialogHeader className="pt-4 flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-2xl">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#5B5FC7]/10 to-[#7B7FE8]/10 rounded-xl flex items-center justify-center">
-                <Edit className="h-5 w-5 text-[#5B5FC7]" />
-              </div>
-              Éditer le matériau
-            </DialogTitle>
-            <DialogDescription className="text-[#718096]">
-              Modifiez les informations du matériau
-            </DialogDescription>
-          </DialogHeader>
-          
-          {editingMaterial && (
-            <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-6">
-              {/* Clarification Request Banner */}
-              {editingMaterial.clarification_request && !editingMaterial.clarification_request.resolved_at && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-orange-800 text-sm">Demande de précision</h4>
-                      <p className="text-sm text-orange-700 mt-1">
-                        {editingMaterial.clarification_request.message}
-                      </p>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {editingMaterial.clarification_request.needs_description && (
-                          <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
-                            editingMaterial.description && editingMaterial.description.trim().length > 0
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-orange-100 text-orange-700'
-                          }`}>
-                            {editingMaterial.description && editingMaterial.description.trim().length > 0 ? (
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            ) : (
-                              <AlertCircle className="h-3.5 w-3.5" />
-                            )}
-                            Description {editingMaterial.description && editingMaterial.description.trim().length > 0 ? '✓' : 'requise'}
-                          </div>
-                        )}
-                        {editingMaterial.clarification_request.needs_images && (
-                          <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
-                            editingMaterial.images && editingMaterial.images.length > 0
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-orange-100 text-orange-700'
-                          }`}>
-                            {editingMaterial.images && editingMaterial.images.length > 0 ? (
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            ) : (
-                              <AlertCircle className="h-3.5 w-3.5" />
-                            )}
-                            Images {editingMaterial.images && editingMaterial.images.length > 0 ? '✓' : 'requises'}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid gap-2">
-                <Label htmlFor="name">Nom *</Label>
-                <Input
-                  id="name"
-                  value={editingMaterial.name}
-                  onChange={(e) => setEditingMaterial({ ...editingMaterial, name: e.target.value })}
-                  placeholder="Nom du matériau"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="description">
-                  Description
-                  {editingMaterial.clarification_request &&
-                   !editingMaterial.clarification_request.resolved_at &&
-                   editingMaterial.clarification_request.needs_description && (
-                    <span className="text-orange-500 ml-1">*</span>
-                  )}
-                </Label>
-                <Textarea
-                  id="description"
-                  value={editingMaterial.description || ''}
-                  onChange={(e) => setEditingMaterial({ ...editingMaterial, description: e.target.value || null })}
-                  className={editingMaterial.clarification_request &&
-                    !editingMaterial.clarification_request.resolved_at &&
-                    editingMaterial.clarification_request.needs_description &&
-                    (!editingMaterial.description || editingMaterial.description.trim().length === 0)
-                      ? 'border-orange-300 focus:border-orange-400 focus:ring-orange-200'
-                      : ''
-                  }
-                  placeholder="Spécifications, caractéristiques, notes..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="category">Catégorie</Label>
-                <Input
-                  id="category"
-                  value={editingMaterial.category || ''}
-                  onChange={(e) => setEditingMaterial({ ...editingMaterial, category: e.target.value })}
-                  placeholder="Ex: Matériaux de base, Ferraillage..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="quantity">Quantité</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    value={editingMaterial.quantity || ''}
-                    onChange={(e) => setEditingMaterial({ ...editingMaterial, quantity: parseFloat(e.target.value) || null })}
-                    placeholder="0"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="surface">Surface (m²)</Label>
-                  <Input
-                    id="surface"
-                    type="number"
-                    value={editingMaterial.surface || ''}
-                    onChange={(e) => setEditingMaterial({ ...editingMaterial, surface: parseFloat(e.target.value) || null })}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="weight">Poids (kg)</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    value={editingMaterial.weight || ''}
-                    onChange={(e) => setEditingMaterial({ ...editingMaterial, weight: parseFloat(e.target.value) || null })}
-                    placeholder="0"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="volume">Volume (m³)</Label>
-                  <Input
-                    id="volume"
-                    type="number"
-                    value={editingMaterial.volume || ''}
-                    onChange={(e) => setEditingMaterial({ ...editingMaterial, volume: parseFloat(e.target.value) || null })}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              {/* Images Upload */}
-              <div className={`space-y-2 p-3 rounded-lg ${
-                editingMaterial.clarification_request &&
-                !editingMaterial.clarification_request.resolved_at &&
-                editingMaterial.clarification_request.needs_images &&
-                (!editingMaterial.images || editingMaterial.images.length === 0)
-                  ? 'bg-orange-50 border border-orange-200'
-                  : ''
-              }`}>
-                <Label>
-                  Images
-                  {editingMaterial.clarification_request &&
-                   !editingMaterial.clarification_request.resolved_at &&
-                   editingMaterial.clarification_request.needs_images && (
-                    <span className="text-orange-500 ml-1">*</span>
-                  )}
-                </Label>
-                <ImageUpload
-                  images={editingMaterial.images || []}
-                  onImagesChange={(images) => setEditingMaterial({ ...editingMaterial, images })}
-                  maxImages={5}
-                  bucket="project-materials"
-                  path={projectId}
-                />
-              </div>
-
-            </div>
-          )}
-
-          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditDialogOpen(false);
-                setEditingMaterial(null);
-              }}
-              disabled={isSaving}
-            >
-              Annuler
-            </Button>
-            <Button onClick={handleSaveMaterial} disabled={isSaving || !editingMaterial?.name}>
-              {isSaving ? "Enregistrement..." : "Enregistrer"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MaterialEditDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        material={editingMaterial}
+        onSave={handleSaveMaterial}
+        projectId={projectId}
+      />
 
       {/* Modal d'ajout */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
