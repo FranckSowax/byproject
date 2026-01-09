@@ -1203,11 +1203,44 @@ export default function ProjectPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce projet ?")) {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce projet et toutes ses données ?")) {
       return;
     }
 
     try {
+      // 1. Supprimer l'historique du projet
+      await supabase
+        .from('project_history' as any)
+        .delete()
+        .eq('project_id', projectId);
+
+      // 2. Supprimer les collaborateurs du projet
+      await supabase
+        .from('project_collaborators' as any)
+        .delete()
+        .eq('project_id', projectId);
+
+      // 3. Supprimer les prix des matériaux du projet
+      const { data: materialIds } = await supabase
+        .from('materials')
+        .select('id')
+        .eq('project_id', projectId);
+
+      if (materialIds && materialIds.length > 0) {
+        const ids = materialIds.map(m => m.id);
+        await supabase
+          .from('prices')
+          .delete()
+          .in('material_id', ids);
+      }
+
+      // 4. Supprimer les matériaux du projet
+      await supabase
+        .from('materials')
+        .delete()
+        .eq('project_id', projectId);
+
+      // 5. Supprimer le projet
       const { error } = await supabase
         .from('projects')
         .delete()
