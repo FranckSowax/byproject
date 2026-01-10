@@ -55,12 +55,14 @@ export async function POST(request: NextRequest) {
     if (userError || !userData) {
       console.log('User not in users table, creating...', userError?.message);
       // Try to create user in users table
+      // Note: hashed_password is required by schema but we use Supabase Auth
       const { data: newUser, error: createUserError } = await supabase
         .from('users')
         .insert({
           id: userId,
           email: authUserEmail || `user-${userId.slice(0, 8)}@temp.local`,
           full_name: authUserMetadata?.full_name || 'Utilisateur',
+          hashed_password: 'SUPABASE_AUTH_MANAGED', // Placeholder - actual auth is via Supabase Auth
           preferred_language: authUserMetadata?.preferred_language || 'fr',
           role_id: 3, // Reader par défaut
         })
@@ -69,7 +71,10 @@ export async function POST(request: NextRequest) {
 
       if (createUserError) {
         console.error('Error creating user in users table:', createUserError);
-        // Continue anyway - we can still create the project with just the user_id
+        return NextResponse.json(
+          { error: 'Erreur: impossible de créer le profil utilisateur. ' + createUserError.message, message: 'Erreur de création du profil' },
+          { status: 500 }
+        );
       } else {
         userData = newUser;
         console.log('User created in users table');

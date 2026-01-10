@@ -64,22 +64,32 @@ export async function POST(request: NextRequest) {
     console.log('Auth user created:', authData.user.id);
 
     // 2. Create user in users table
-    const { error: userError } = await supabase
+    // Note: hashed_password is required by schema but we use Supabase Auth for actual auth
+    // We store a placeholder since the real password is managed by Supabase Auth
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .insert({
         id: authData.user.id,
         email: email,
         full_name: fullName,
+        hashed_password: 'SUPABASE_AUTH_MANAGED', // Placeholder - actual auth is via Supabase Auth
         preferred_language: language || 'fr',
         role_id: 3, // Reader par défaut
-      });
+      })
+      .select()
+      .single();
 
     if (userError) {
       console.error('User table error:', userError);
-      // Don't fail - user can still login
-    } else {
-      console.log('User created in users table');
+      // This is critical - we need the user in the users table for FK constraints
+      // Try to delete the auth user and fail
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      return NextResponse.json(
+        { error: 'Erreur lors de la création du profil utilisateur: ' + userError.message },
+        { status: 500 }
+      );
     }
+    console.log('User created in users table:', userData?.id);
 
     // 3. Create subscription
     const trialEndDate = new Date();
