@@ -2,8 +2,8 @@ import OpenAI from 'openai';
 
 // =====================================================
 // AI Client Factory
-// Supports: DeepSeek, OpenAI
-// Priority: DeepSeek > OpenAI (configurable)
+// Supports: OpenAI, DeepSeek
+// Priority: OpenAI > DeepSeek (configurable)
 // =====================================================
 
 // DeepSeek client (OpenAI-compatible API)
@@ -85,7 +85,7 @@ export const OPENAI_MODELS = {
 
 /**
  * Call AI with automatic provider fallback
- * Priority: DeepSeek > OpenAI (unless specified)
+ * Priority: OpenAI > DeepSeek (unless specified)
  */
 export async function callAI(
   messages: AIMessage[],
@@ -98,9 +98,9 @@ export async function callAI(
     provider = 'auto',
   } = options;
 
-  // Determine provider order
+  // Determine provider order - OpenAI first, DeepSeek as fallback
   const providers = provider === 'auto'
-    ? ['deepseek', 'openai'] as const
+    ? ['openai', 'deepseek'] as const
     : [provider];
 
   let lastError: Error | null = null;
