@@ -234,6 +234,42 @@ export function MaterialsView({
   };
 
 
+  // Helper function to check if clarification request should be resolved
+  const checkAndResolveClarification = (
+    material: Material,
+    newDescription?: string | null,
+    newImages?: string[]
+  ): { resolved: boolean; clarification_request?: any } => {
+    const clarificationRequest = material.clarification_request;
+    if (!clarificationRequest || clarificationRequest.resolved_at) {
+      return { resolved: false };
+    }
+
+    const description = newDescription ?? material.description;
+    const images = newImages ?? material.images ?? [];
+
+    const hasDescription = description && description.trim().length > 0;
+    const hasImages = images.length > 0;
+
+    const needsDescription = clarificationRequest.needs_description;
+    const needsImages = clarificationRequest.needs_images;
+
+    const descriptionOk = !needsDescription || hasDescription;
+    const imagesOk = !needsImages || hasImages;
+
+    if (descriptionOk && imagesOk) {
+      return {
+        resolved: true,
+        clarification_request: {
+          ...clarificationRequest,
+          resolved_at: new Date().toISOString()
+        }
+      };
+    }
+
+    return { resolved: false };
+  };
+
   const handleSaveDrawer = async (updates: Partial<Material>) => {
     if (!selectedDrawerMaterial) return;
     try {
@@ -244,58 +280,17 @@ export function MaterialsView({
         return;
       }
 
-      // First, get the latest material data from the database to ensure we have current images
-      const { data: currentMaterial, error: fetchError } = await supabase
-        .from('materials')
-        .select('*')
-        .eq('id', selectedDrawerMaterial.id)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching current material:', fetchError);
-      }
-
-      // Cast to Material type for proper typing
-      const dbMaterial = currentMaterial as unknown as Material | null;
-
-      // Use the most up-to-date data: DB data or local state
-      const latestImages = dbMaterial?.images || selectedDrawerMaterial.images || [];
-      const latestClarificationRequest = dbMaterial?.clarification_request || selectedDrawerMaterial.clarification_request;
-
-      // Check if clarification request should be resolved
       let finalUpdates = { ...updates };
 
-      if (latestClarificationRequest && !latestClarificationRequest.resolved_at) {
-        const newDescription = updates.description ?? selectedDrawerMaterial.description;
-        const newImages = updates.images ?? latestImages;
+      // Check if clarification should be resolved
+      const { resolved, clarification_request } = checkAndResolveClarification(
+        selectedDrawerMaterial,
+        updates.description,
+        selectedDrawerMaterial.images
+      );
 
-        const hasDescription = newDescription && newDescription.trim().length > 0;
-        const hasImages = newImages && newImages.length > 0;
-
-        const needsDescription = latestClarificationRequest.needs_description;
-        const needsImages = latestClarificationRequest.needs_images;
-
-        // Check if all required items are now provided
-        const descriptionSatisfied = !needsDescription || hasDescription;
-        const imagesSatisfied = !needsImages || hasImages;
-
-        if (descriptionSatisfied && imagesSatisfied) {
-          // Mark clarification as resolved
-          finalUpdates = {
-            ...finalUpdates,
-            clarification_request: {
-              ...latestClarificationRequest,
-              resolved_at: new Date().toISOString()
-            }
-          };
-          console.log('[MaterialsView] Clarification request resolved:', {
-            materialId: selectedDrawerMaterial.id,
-            hasDescription,
-            hasImages,
-            needsDescription,
-            needsImages
-          });
-        }
+      if (resolved) {
+        finalUpdates.clarification_request = clarification_request;
       }
 
       const { error } = await supabase
@@ -305,12 +300,8 @@ export function MaterialsView({
 
       if (error) throw error;
 
-      // Update local state with the latest data
-      const updatedMaterial = {
-        ...selectedDrawerMaterial,
-        ...finalUpdates,
-        images: updates.images ?? latestImages
-      };
+      // Update local state
+      const updatedMaterial = { ...selectedDrawerMaterial, ...finalUpdates };
       setSelectedDrawerMaterial(updatedMaterial);
 
       // Notify parent to update materials list
@@ -318,14 +309,7 @@ export function MaterialsView({
         onMaterialUpdate(updatedMaterial);
       }
 
-      // Show appropriate toast message
-      if (finalUpdates.clarification_request?.resolved_at &&
-          latestClarificationRequest &&
-          !latestClarificationRequest.resolved_at) {
-        toast.success("Modifications enregistrées - Demande de précision résolue ✓");
-      } else {
-        toast.success("Modifications enregistrées");
-      }
+      toast.success(resolved ? "Modifications enregistrées ✓" : "Modifications enregistrées");
     } catch (error) {
       console.error('Error updating material:', error);
       toast.error("Erreur lors de l'enregistrement");
@@ -370,32 +354,19 @@ export function MaterialsView({
       const data = await response.json();
       const publicUrl = data.publicUrl;
 
-      // Update material images in database
-      const currentImages = selectedDrawerMaterial.images || [];
-      const newImages = [...currentImages, publicUrl];
-
-      // Check if clarification request should be resolved after adding image
-      const clarificationRequest = selectedDrawerMaterial.clarification_request;
+      // Update material images
+      const newImages = [...(selectedDrawerMaterial.images || []), publicUrl];
       let dbUpdates: any = { images: newImages };
 
-      if (clarificationRequest && !clarificationRequest.resolved_at) {
-        const hasDescription = selectedDrawerMaterial.description && selectedDrawerMaterial.description.trim().length > 0;
-        const hasImages = newImages.length > 0; // Now we have images
+      // Check if clarification should be resolved
+      const { resolved, clarification_request } = checkAndResolveClarification(
+        selectedDrawerMaterial,
+        selectedDrawerMaterial.description,
+        newImages
+      );
 
-        const needsDescription = clarificationRequest.needs_description;
-        const needsImages = clarificationRequest.needs_images;
-
-        // Check if all required items are now provided
-        const descriptionSatisfied = !needsDescription || hasDescription;
-        const imagesSatisfied = !needsImages || hasImages;
-
-        if (descriptionSatisfied && imagesSatisfied) {
-          // Mark clarification as resolved
-          dbUpdates.clarification_request = {
-            ...clarificationRequest,
-            resolved_at: new Date().toISOString()
-          };
-        }
+      if (resolved) {
+        dbUpdates.clarification_request = clarification_request;
       }
 
       // Update database
@@ -406,28 +377,61 @@ export function MaterialsView({
 
       if (updateError) {
         console.error('DB update error:', updateError);
-        toast.error("Erreur lors de la mise à jour du matériau");
+        toast.error("Erreur lors de la mise à jour");
         return null;
       }
 
-      // Update local drawer state
-      const updatedMaterial = {
-        ...selectedDrawerMaterial,
-        ...dbUpdates
-      };
+      // Update local state
+      const updatedMaterial = { ...selectedDrawerMaterial, ...dbUpdates };
       setSelectedDrawerMaterial(updatedMaterial);
 
-      // Notify parent to update materials list
       if (onMaterialUpdate) {
         onMaterialUpdate(updatedMaterial);
       }
 
-      toast.success("Image uploadée avec succès");
+      toast.success(resolved ? "Image ajoutée ✓" : "Image ajoutée");
       return publicUrl;
     } catch (error) {
       console.error('Upload error:', error);
       toast.error("Erreur lors de l'upload");
       return null;
+    }
+  };
+
+  const handleDeleteImageDrawer = async (imageUrl: string): Promise<void> => {
+    if (!selectedDrawerMaterial) return;
+
+    try {
+      const supabase = createClient();
+
+      // Remove image from array
+      const currentImages = selectedDrawerMaterial.images || [];
+      const newImages = currentImages.filter(img => img !== imageUrl);
+
+      // Update database
+      const { error: updateError } = await supabase
+        .from('materials')
+        .update({ images: newImages } as any)
+        .eq('id', selectedDrawerMaterial.id);
+
+      if (updateError) {
+        console.error('DB update error:', updateError);
+        toast.error("Erreur lors de la suppression");
+        return;
+      }
+
+      // Update local state
+      const updatedMaterial = { ...selectedDrawerMaterial, images: newImages };
+      setSelectedDrawerMaterial(updatedMaterial);
+
+      if (onMaterialUpdate) {
+        onMaterialUpdate(updatedMaterial);
+      }
+
+      toast.success("Image supprimée");
+    } catch (error) {
+      console.error('Delete image error:', error);
+      toast.error("Erreur lors de la suppression");
     }
   };
 
@@ -631,6 +635,7 @@ export function MaterialsView({
         onAddPrice={handleAddPriceFromDrawer}
         onAddComment={handleAddCommentFromDrawer}
         onUploadImage={handleUploadImageDrawer}
+        onDeleteImage={handleDeleteImageDrawer}
       />
     </div>
   );
