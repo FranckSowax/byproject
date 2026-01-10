@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { completeJSON } from '@/lib/ai/clients';
 
+// Configuration pour Netlify/Vercel - augmenter le timeout
+export const maxDuration = 60; // 60 secondes max
+export const dynamic = 'force-dynamic';
+
 // Fields that are commonly needed for different material types
 const MATERIAL_REQUIRED_FIELDS: Record<string, string[]> = {
   // Electrical materials
@@ -317,8 +321,8 @@ REPONDS EN JSON VALIDE:
           .eq('id', supplierRequestId)
           .single();
 
-        // Update each material with clarification request
-        for (const result of materialsNeedingClarification) {
+        // Update materials with clarification requests in batch (parallel)
+        const updatePromises = materialsNeedingClarification.map(result => {
           const clarificationData = {
             requested_at: new Date().toISOString(),
             requested_by: 'ai',
@@ -331,11 +335,14 @@ REPONDS EN JSON VALIDE:
             resolved_at: null,
           };
 
-          await supabase
+          return supabase
             .from('materials')
             .update({ clarification_request: clarificationData })
             .eq('id', result.material_id);
-        }
+        });
+
+        // Execute all updates in parallel
+        await Promise.all(updatePromises);
 
         // Create notification for client
         if (supplierRequest?.user_id) {
@@ -400,31 +407,31 @@ REPONDS EN JSON VALIDE:
       const projectName = (supplierRequestData?.projects as any)?.name || 'Projet';
       const requestNumber = supplierRequestData?.request_number || '';
 
-      // Create notification for each admin
-      for (const adminId of adminIds) {
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: adminId,
-            type: 'ai_analysis_complete',
-            title: allComplete
-              ? 'Analyse IA terminee - Pret a envoyer'
-              : 'Analyse IA terminee - Clarifications requises',
-            message: allComplete
-              ? `L'analyse IA de la demande ${requestNumber} (${projectName}) est terminee. Tous les ${materials.length} materiaux sont complets et prets a etre envoyes aux fournisseurs.`
-              : `L'analyse IA de la demande ${requestNumber} (${projectName}) a detecte ${materialsNeedingClarification.length}/${materials.length} materiau(x) necessitant des precisions.`,
-            data: {
-              supplier_request_id: supplierRequestId,
-              total_materials: materials.length,
-              complete_materials: materials.length - materialsNeedingClarification.length,
-              incomplete_materials: materialsNeedingClarification.length,
-              analysis_status: allComplete ? 'ready' : 'needs_clarification'
-            },
-            link: `/admin/supplier-requests/${supplierRequestId}`,
-            icon: 'Bot',
-            color: allComplete ? 'green' : 'orange',
-            read: false,
-          });
+      // Create notifications for all admins in batch
+      if (adminIds.size > 0) {
+        const adminNotifications = Array.from(adminIds).map(adminId => ({
+          user_id: adminId,
+          type: 'ai_analysis_complete',
+          title: allComplete
+            ? 'Analyse IA terminee - Pret a envoyer'
+            : 'Analyse IA terminee - Clarifications requises',
+          message: allComplete
+            ? `L'analyse IA de la demande ${requestNumber} (${projectName}) est terminee. Tous les ${materials.length} materiaux sont complets et prets a etre envoyes aux fournisseurs.`
+            : `L'analyse IA de la demande ${requestNumber} (${projectName}) a detecte ${materialsNeedingClarification.length}/${materials.length} materiau(x) necessitant des precisions.`,
+          data: {
+            supplier_request_id: supplierRequestId,
+            total_materials: materials.length,
+            complete_materials: materials.length - materialsNeedingClarification.length,
+            incomplete_materials: materialsNeedingClarification.length,
+            analysis_status: allComplete ? 'ready' : 'needs_clarification'
+          },
+          link: `/admin/supplier-requests/${supplierRequestId}`,
+          icon: 'Bot',
+          color: allComplete ? 'green' : 'orange',
+          read: false,
+        }));
+
+        await supabase.from('notifications').insert(adminNotifications);
       }
     }
 
