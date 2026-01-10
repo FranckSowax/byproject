@@ -82,6 +82,13 @@ const adminNavigation = [
         badge: null,
         description: 'Base fournisseurs'
       },
+      {
+        name: 'Matériaux & Prix',
+        href: '/admin/materials',
+        icon: Package,
+        badge: null,
+        description: 'Catalogue avec prix fournisseurs'
+      },
     ]
   },
   {
@@ -100,13 +107,6 @@ const adminNavigation = [
         icon: FileText,
         badge: null,
         description: 'Modèles de projets'
-      },
-      {
-        name: 'Matériaux',
-        href: '/admin/materials',
-        icon: Package,
-        badge: null,
-        description: 'Catalogue matériaux'
       },
     ]
   },
