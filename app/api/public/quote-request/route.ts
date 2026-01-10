@@ -155,15 +155,21 @@ export async function POST(request: NextRequest) {
     console.log('Project created successfully:', project.id);
 
     // Insert materials into the project
+    // Note: 'unit' column doesn't exist, store it in specs JSON
     const materialsToInsert = materials.map((mat: any) => ({
       project_id: project.id,
       name: mat.name,
       description: mat.description || null,
       quantity: parseFloat(mat.quantity) || 1,
-      unit: mat.unit || 'pièce',
       images: mat.images || [],
       category: 'user_defined',
+      specs: {
+        unit: mat.unit || 'pièce',
+        source: 'public_quote_request',
+      },
     }));
+
+    console.log('Inserting materials:', materialsToInsert);
 
     const { data: insertedMaterials, error: materialsError } = await supabase
       .from('materials')
@@ -172,7 +178,10 @@ export async function POST(request: NextRequest) {
 
     if (materialsError) {
       console.error('Error inserting materials:', materialsError);
-      // Don't fail, project is created
+      // Log but don't fail - project is already created
+      console.error('Materials data that failed:', JSON.stringify(materialsToInsert));
+    } else {
+      console.log('Materials inserted successfully:', insertedMaterials?.length);
     }
 
     // Create a supplier request for this project
