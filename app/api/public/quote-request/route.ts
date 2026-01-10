@@ -154,43 +154,70 @@ export async function POST(request: NextRequest) {
     project = projectData;
     console.log('Project created successfully:', project.id);
 
-    // Insert materials into the project
-    // Store all form data in specs JSON since some columns don't exist
-    const materialsToInsert = materials.map((mat: any) => ({
-      project_id: project.id,
-      name: mat.name,
-      description: mat.description || null,
-      quantity: parseFloat(mat.quantity) || 1,
-      images: mat.images || [],
-      category: 'Catégorie inconnue',
-      specs: {
-        unit: mat.unit || 'pièce',
-        quantity_with_unit: `${parseFloat(mat.quantity) || 1} ${mat.unit || 'pièce'}`,
+    // Insert materials into the project one by one to handle errors better
+    // Note: base64 images are too large for direct DB storage, skip them for now
+    const insertedMaterialIds: string[] = [];
+    const materialErrors: string[] = [];
+
+    for (let i = 0; i < materials.length; i++) {
+      const mat = materials[i];
+
+      // Skip base64 images - they're too large for DB storage
+      // In production, images should be uploaded to Supabase Storage first
+      const hasBase64Images = (mat.images || []).some((img: string) => img?.startsWith('data:'));
+
+      const materialData = {
+        project_id: project.id,
+        name: mat.name,
         description: mat.description || null,
-        images_count: (mat.images || []).length,
-        source: 'public_quote_request',
-        submitted_at: new Date().toISOString(),
-      },
-    }));
+        quantity: parseFloat(mat.quantity) || 1,
+        images: hasBase64Images ? [] : (mat.images || []), // Skip base64 images
+        category: 'Catégorie inconnue',
+        specs: {
+          unit: mat.unit || 'pièce',
+          quantity_with_unit: `${parseFloat(mat.quantity) || 1} ${mat.unit || 'pièce'}`,
+          description: mat.description || null,
+          images_count: (mat.images || []).length,
+          has_images: (mat.images || []).length > 0,
+          source: 'public_quote_request',
+          submitted_at: new Date().toISOString(),
+        },
+      };
 
-    console.log('Inserting materials:', materialsToInsert);
+      console.log(`Inserting material ${i + 1}/${materials.length}:`, mat.name);
 
-    const { data: insertedMaterials, error: materialsError } = await supabase
-      .from('materials')
-      .insert(materialsToInsert)
-      .select();
+      const { data: insertedMaterial, error: materialError } = await supabase
+        .from('materials')
+        .insert(materialData)
+        .select()
+        .single();
 
-    if (materialsError) {
-      console.error('Error inserting materials:', materialsError);
-      // Log but don't fail - project is already created
-      console.error('Materials data that failed:', JSON.stringify(materialsToInsert));
-    } else {
-      console.log('Materials inserted successfully:', insertedMaterials?.length);
+      if (materialError) {
+        console.error(`Error inserting material "${mat.name}":`, materialError);
+        materialErrors.push(`${mat.name}: ${materialError.message}`);
+      } else {
+        console.log(`Material "${mat.name}" inserted:`, insertedMaterial?.id);
+        insertedMaterialIds.push(insertedMaterial?.id);
+      }
+    }
+
+    console.log(`Materials inserted: ${insertedMaterialIds.length}/${materials.length}`);
+    if (materialErrors.length > 0) {
+      console.error('Material insertion errors:', materialErrors);
     }
 
     // Create a supplier request for this project
     const requestNumber = `QR-${nanoid(8).toUpperCase()}`;
     const publicToken = nanoid(32);
+
+    // Prepare materials data for supplier request (without base64 images)
+    const materialsForRequest = materials.map((mat: any) => ({
+      name: mat.name,
+      description: mat.description || null,
+      quantity: parseFloat(mat.quantity) || 1,
+      unit: mat.unit || 'pièce',
+      has_images: (mat.images || []).length > 0,
+    }));
 
     const { data: supplierRequest, error: requestError } = await supabase
       .from('supplier_requests')
@@ -199,7 +226,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         request_number: requestNumber,
         status: 'pending',
-        materials_data: materialsToInsert,
+        materials_data: materialsForRequest,
         total_materials: materials.length,
         public_token: publicToken,
         num_suppliers: 3, // Default to 3 suppliers
