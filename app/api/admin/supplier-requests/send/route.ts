@@ -1,6 +1,78 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { nanoid } from 'nanoid';
+import { completeText } from '@/lib/ai/clients';
+
+// Configuration pour Netlify
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
+// Fonction de traduction par lots
+async function translateMaterialsBatch(
+  materials: any[],
+  targetLanguage: 'en' | 'zh'
+): Promise<any[]> {
+  const BATCH_SIZE = 5;
+  const results: any[] = [];
+
+  for (let i = 0; i < materials.length; i += BATCH_SIZE) {
+    const batch = materials.slice(i, i + BATCH_SIZE);
+
+    // Préparer le texte à traduire
+    const textToTranslate = batch.map((m, idx) =>
+      `[${idx + 1}] ${m.name}${m.description ? ` | ${m.description}` : ''}${m.category ? ` | ${m.category}` : ''}`
+    ).join('\n');
+
+    const systemPrompt = targetLanguage === 'zh'
+      ? 'Translate these construction materials from French to Simplified Chinese. Return ONLY the translations in the same format [1] name | description | category, one per line.'
+      : 'Translate these construction materials from French to English. Return ONLY the translations in the same format [1] name | description | category, one per line.';
+
+    try {
+      const translated = await completeText(
+        `Translate:\n${textToTranslate}`,
+        systemPrompt,
+        { temperature: 0.2, maxTokens: 2000 }
+      );
+
+      // Parser les traductions
+      const lines = translated.split('\n').filter(l => l.trim());
+
+      batch.forEach((material, idx) => {
+        const line = lines.find(l => l.startsWith(`[${idx + 1}]`));
+        if (line) {
+          const parts = line.replace(/^\[\d+\]\s*/, '').split('|').map(p => p.trim());
+          results.push({
+            ...material,
+            translatedName: parts[0] || material.name,
+            translatedDescription: parts[1] || material.description,
+            originalName: material.name,
+            originalDescription: material.description,
+          });
+        } else {
+          results.push({
+            ...material,
+            translatedName: material.name,
+            translatedDescription: material.description,
+            translationError: true,
+          });
+        }
+      });
+    } catch (error) {
+      console.error(`Translation batch error:`, error);
+      // Fallback: utiliser les originaux
+      batch.forEach(material => {
+        results.push({
+          ...material,
+          translatedName: material.name,
+          translatedDescription: material.description,
+          translationError: true,
+        });
+      });
+    }
+  }
+
+  return results;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,37 +119,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Traduire les matériaux en anglais
-    const translateResponseEn = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/translate`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ materials, targetLanguage: 'en' }),
-      }
-    );
+    console.log(`Translating ${materials.length} materials...`);
 
-    if (!translateResponseEn.ok) {
-      throw new Error('English translation failed');
-    }
+    // Traduire les matériaux en anglais et chinois en parallèle
+    const [materialsEn, materialsZh] = await Promise.all([
+      translateMaterialsBatch(materials, 'en'),
+      translateMaterialsBatch(materials, 'zh'),
+    ]);
 
-    const { translations: materialsEn } = await translateResponseEn.json();
-
-    // Traduire les matériaux en chinois
-    const translateResponseZh = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/translate`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ materials, targetLanguage: 'zh' }),
-      }
-    );
-
-    if (!translateResponseZh.ok) {
-      throw new Error('Chinese translation failed');
-    }
-
-    const { translations: materialsZh } = await translateResponseZh.json();
+    console.log(`Translation complete: EN=${materialsEn.length}, ZH=${materialsZh.length}`);
 
     // Préparer le snapshot des matériaux avec traductions
     const materialsSnapshot = {
