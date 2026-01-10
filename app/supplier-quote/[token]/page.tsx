@@ -105,6 +105,22 @@ const translations = {
     saveDraft: 'Enregistrer le brouillon',
     draftSaved: 'Brouillon enregistré',
     saveError: 'Erreur lors de l\'enregistrement',
+    loading: 'Chargement...',
+    thankYou: 'Merci pour votre cotation !',
+    part1Title: '📋 PARTIE 1 : Vos Informations',
+    part1Subtitle: 'Remplissez vos coordonnées une seule fois. Elles seront sauvegardées automatiquement.',
+    part2Title: '📦 PARTIE 2 : Cotation des Matériaux',
+    part2Subtitle: 'Ajoutez vos prix pour chaque matériau. Vos données sont sauvegardées automatiquement à chaque ajout.',
+    fillInfoFirst: 'Veuillez d\'abord remplir vos informations (Partie 1)',
+    fillAllInfo: 'Veuillez remplir toutes les informations',
+    atLeastEmail: 'Veuillez au moins renseigner votre email',
+    addPriceOrUnavailable: 'Veuillez ajouter au moins un prix ou marquer des matériaux comme indisponibles',
+    priceAdded: 'Prix ajouté',
+    materialUpdated: 'Matériau mis à jour',
+    markedUnavailable: 'Matériau marqué comme non disponible',
+    markedAvailable: 'Matériau marqué comme disponible',
+    submissionError: 'Erreur lors de la soumission',
+    error: 'Erreur',
   },
   en: {
     title: 'Quotation Request',
@@ -124,6 +140,25 @@ const translations = {
     submitted: 'Quotation Submitted',
     notFound: 'Request not found',
     expired: 'This request has expired',
+    saveDraft: 'Save Draft',
+    draftSaved: 'Draft saved',
+    saveError: 'Error saving draft',
+    loading: 'Loading...',
+    thankYou: 'Thank you for your quotation!',
+    part1Title: '📋 PART 1: Your Information',
+    part1Subtitle: 'Fill in your contact details once. They will be saved automatically.',
+    part2Title: '📦 PART 2: Materials Quotation',
+    part2Subtitle: 'Add your prices for each material. Your data is saved automatically with each addition.',
+    fillInfoFirst: 'Please fill in your information first (Part 1)',
+    fillAllInfo: 'Please fill all information',
+    atLeastEmail: 'Please provide at least your email',
+    addPriceOrUnavailable: 'Please add at least one price or mark materials as unavailable',
+    priceAdded: 'Price added',
+    materialUpdated: 'Material updated',
+    markedUnavailable: 'Material marked as unavailable',
+    markedAvailable: 'Material marked as available',
+    submissionError: 'Submission error',
+    error: 'Error',
   },
   zh: {
     title: '报价请求',
@@ -146,6 +181,22 @@ const translations = {
     saveDraft: '保存草稿',
     draftSaved: '草稿已保存',
     saveError: '保存草稿时出错',
+    loading: '加载中...',
+    thankYou: '感谢您的报价！',
+    part1Title: '📋 第一部分：您的信息',
+    part1Subtitle: '填写一次您的联系方式。它们将自动保存。',
+    part2Title: '📦 第二部分：材料报价',
+    part2Subtitle: '为每种材料添加价格。每次添加时数据会自动保存。',
+    fillInfoFirst: '请先填写您的信息（第一部分）',
+    fillAllInfo: '请填写所有信息',
+    atLeastEmail: '请至少提供您的电子邮件',
+    addPriceOrUnavailable: '请至少添加一个价格或标记材料为不可用',
+    priceAdded: '价格已添加',
+    materialUpdated: '材料已更新',
+    markedUnavailable: '材料标记为不可用',
+    markedAvailable: '材料标记为可用',
+    submissionError: '提交错误',
+    error: '错误',
   },
 };
 
@@ -327,7 +378,7 @@ export default function SupplierQuotePage() {
 
   const handleOpenPrice = (material: Material) => {
     if (!isSupplierInfoComplete) {
-      toast.error(language === 'fr' ? 'Veuillez d\'abord remplir vos informations (Partie 1)' : language === 'en' ? 'Please fill in your information first (Part 1)' : '请先填写您的信息（第一部分）');
+      toast.error(t.fillInfoFirst);
       const element = document.getElementById('supplier-info-section');
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
@@ -499,7 +550,7 @@ export default function SupplierQuotePage() {
         }
       }
 
-      toast.success(language === 'fr' ? 'Prix ajouté' : language === 'en' ? 'Price added' : '价格已添加');
+      toast.success(t.priceAdded);
       
       // Reload prices for this material to get the latest from database
       if (selectedMaterial?.id) {
@@ -540,7 +591,7 @@ export default function SupplierQuotePage() {
       }
     } catch (error) {
       console.error('Error submitting price:', error);
-      toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
+      toast.error(t.error);
     }
   };
 
@@ -595,7 +646,7 @@ export default function SupplierQuotePage() {
         }
       }
 
-      toast.success(language === 'fr' ? 'Matériau mis à jour' : language === 'en' ? 'Material updated' : '材料已更新');
+      toast.success(t.materialUpdated);
       
       // Update local state without reload
       setMaterials(prevMaterials => 
@@ -617,7 +668,7 @@ export default function SupplierQuotePage() {
       );
     } catch (error) {
       console.error('Error updating material:', error);
-      toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
+      toast.error(t.error);
     }
   };
 
@@ -657,9 +708,7 @@ export default function SupplierQuotePage() {
 
       if (error) throw error;
 
-      const message = newUnavailableStatus
-        ? (language === 'fr' ? 'Matériau marqué comme non disponible' : language === 'en' ? 'Material marked as unavailable' : '材料标记为不可用')
-        : (language === 'fr' ? 'Matériau marqué comme disponible' : language === 'en' ? 'Material marked as available' : '材料标记为可用');
+      const message = newUnavailableStatus ? t.markedUnavailable : t.markedAvailable;
       
       console.log(`Marked ${material.name} as ${newUnavailableStatus ? 'unavailable' : 'available'}`);
       
@@ -675,14 +724,14 @@ export default function SupplierQuotePage() {
       toast.success(message);
     } catch (error) {
       console.error('Error marking material unavailable:', error);
-      toast.error(language === 'fr' ? 'Erreur' : language === 'en' ? 'Error' : '错误');
+      toast.error(t.error);
     }
   };
 
   const handleSaveDraft = async () => {
     // Basic validation - at least email should be there
     if (!supplierInfo.email) {
-      toast.error(language === 'fr' ? 'Veuillez au moins renseigner votre email' : language === 'en' ? 'Please provide at least your email' : '请至少提供您的电子邮件');
+      toast.error(t.atLeastEmail);
       const element = document.getElementById('supplier-info-section');
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
@@ -733,7 +782,7 @@ export default function SupplierQuotePage() {
 
   const handleSubmitQuotation = async () => {
     if (!supplierInfo.companyName || !supplierInfo.contactName || !supplierInfo.email) {
-      toast.error(language === 'fr' ? 'Veuillez remplir toutes les informations' : language === 'en' ? 'Please fill all information' : '请填写所有信息');
+      toast.error(t.fillAllInfo);
       return;
     }
 
@@ -745,7 +794,7 @@ export default function SupplierQuotePage() {
 
       // Check if there are any materials to quote
       if (quotedMaterials.length === 0) {
-        toast.error(language === 'fr' ? 'Veuillez ajouter au moins un prix ou marquer des matériaux comme indisponibles' : language === 'en' ? 'Please add at least one price or mark materials as unavailable' : '请至少添加一个价格或标记材料为不可用');
+        toast.error(t.addPriceOrUnavailable);
         return;
       }
 
@@ -770,7 +819,7 @@ export default function SupplierQuotePage() {
       toast.success(t.submitted);
     } catch (error) {
       console.error('Error submitting quotation:', error);
-      toast.error(language === 'fr' ? 'Erreur lors de la soumission' : language === 'en' ? 'Submission error' : '提交错误');
+      toast.error(t.submissionError);
     }
   };
 
@@ -779,7 +828,7 @@ export default function SupplierQuotePage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">{t.loading}</p>
         </div>
       </div>
     );
@@ -806,7 +855,7 @@ export default function SupplierQuotePage() {
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <CardTitle className="text-center text-2xl">{t.submitted}</CardTitle>
             <CardDescription className="text-center">
-              {language === 'zh' ? '感谢您的报价！' : language === 'en' ? 'Thank you for your quotation!' : 'Merci pour votre cotation !'}
+              {t.thankYou}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -883,13 +932,13 @@ export default function SupplierQuotePage() {
           <div className="mb-4 px-1 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
-                {language === 'fr' ? '📋 PARTIE 1 : Vos Informations' : language === 'en' ? '📋 PART 1: Your Information' : '📋 第一部分：您的信息'}
+                {t.part1Title}
                 {isSupplierInfoComplete && (
                   <CheckCircle className="h-6 w-6 text-green-500 animate-in zoom-in duration-300" />
                 )}
               </h2>
               <p className="text-sm text-gray-600">
-                {language === 'fr' ? 'Remplissez vos coordonnées une seule fois. Elles seront sauvegardées automatiquement.' : language === 'en' ? 'Fill in your contact details once. They will be saved automatically.' : '填写一次您的联系方式。它们将自动保存。'}
+                {t.part1Subtitle}
               </p>
             </div>
           </div>
@@ -960,10 +1009,10 @@ export default function SupplierQuotePage() {
         <div className="mb-8">
           <div className="mb-4 px-1">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              {language === 'fr' ? '📦 PARTIE 2 : Cotation des Matériaux' : language === 'en' ? '📦 PART 2: Materials Quotation' : '📦 第二部分：材料报价'}
+              {t.part2Title}
             </h2>
             <p className="text-sm text-gray-600">
-              {language === 'fr' ? 'Ajoutez vos prix pour chaque matériau. Vos données sont sauvegardées automatiquement à chaque ajout.' : language === 'en' ? 'Add your prices for each material. Your data is saved automatically with each addition.' : '为每种材料添加价格。每次添加时数据会自动保存。'}
+              {t.part2Subtitle}
             </p>
           </div>
           
