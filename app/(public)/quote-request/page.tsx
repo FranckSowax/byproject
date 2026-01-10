@@ -167,13 +167,15 @@ export default function PublicQuoteRequestPage() {
       return;
     }
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       setIsAuthDialogOpen(true);
       return;
     }
 
     setIsSubmitting(true);
     try {
+      console.log("Submitting quote request...", { userId: user.id, materialsCount: materials.length });
+
       // Create the quote request via API
       const response = await fetch("/api/public/quote-request", {
         method: "POST",
@@ -184,12 +186,12 @@ export default function PublicQuoteRequestPage() {
         }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Erreur lors de la création");
-      }
-
       const data = await response.json();
+      console.log("API response:", { status: response.status, data });
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Erreur lors de la création");
+      }
 
       // Clear localStorage
       localStorage.removeItem("quote_request_materials");

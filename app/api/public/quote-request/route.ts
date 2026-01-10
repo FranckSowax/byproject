@@ -9,34 +9,63 @@ export async function POST(request: NextRequest) {
   try {
     const { materials, userId } = await request.json();
 
+    console.log('Quote request received:', { materialsCount: materials?.length, userId });
+
     if (!materials || !Array.isArray(materials) || materials.length === 0) {
       return NextResponse.json(
-        { error: 'Materials list is required' },
+        { error: 'La liste des matériaux est requise', message: 'La liste des matériaux est requise' },
         { status: 400 }
       );
     }
 
     if (!userId) {
       return NextResponse.json(
-        { error: 'User authentication required' },
+        { error: 'Authentification requise', message: 'Authentification requise' },
         { status: 401 }
       );
     }
 
     const supabase = createServiceClient();
 
-    // Check if user exists and get their subscription
-    const { data: userData, error: userError } = await supabase
+    // Check if user exists in auth
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
+
+    if (authError || !authUser?.user) {
+      console.error('Auth user not found:', authError);
+      return NextResponse.json(
+        { error: 'Utilisateur non trouvé', message: 'Utilisateur non trouvé' },
+        { status: 404 }
+      );
+    }
+
+    // Check if user exists in users table, if not create them
+    let { data: userData, error: userError } = await supabase
       .from('users')
       .select('id, email, full_name')
       .eq('id', userId)
       .single();
 
     if (userError || !userData) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      console.log('User not in users table, creating...');
+      // User exists in auth but not in users table - create them
+      const { data: newUser, error: createUserError } = await supabase
+        .from('users')
+        .insert({
+          id: authUser.user.id,
+          email: authUser.user.email,
+          full_name: authUser.user.user_metadata?.full_name || authUser.user.email?.split('@')[0] || 'User',
+          preferred_language: authUser.user.user_metadata?.preferred_language || 'fr',
+          role_id: 3, // Reader par défaut
+        })
+        .select()
+        .single();
+
+      if (createUserError) {
+        console.error('Error creating user in users table:', createUserError);
+        // Continue anyway - we can still create the project
+      } else {
+        userData = newUser;
+      }
     }
 
     // Check subscription status
@@ -75,7 +104,7 @@ export async function POST(request: NextRequest) {
     if (userSubscription?.expires_at && new Date(userSubscription.expires_at) < new Date()) {
       if (userSubscription.plan === 'Trial') {
         return NextResponse.json(
-          { error: 'Your trial period has expired. Please upgrade to continue.' },
+          { error: 'Votre période d\'essai a expiré. Veuillez mettre à niveau pour continuer.', message: 'Votre période d\'essai a expiré. Veuillez mettre à niveau pour continuer.' },
           { status: 403 }
         );
       }
@@ -83,6 +112,7 @@ export async function POST(request: NextRequest) {
 
     // Create a project for this quote request
     const projectName = `Demande de cotation - ${new Date().toLocaleDateString('fr-FR')}`;
+    console.log('Creating project:', projectName);
 
     const { data: project, error: projectError } = await supabase
       .from('projects')
@@ -97,10 +127,12 @@ export async function POST(request: NextRequest) {
     if (projectError) {
       console.error('Error creating project:', projectError);
       return NextResponse.json(
-        { error: 'Failed to create project' },
+        { error: 'Erreur lors de la création du projet: ' + projectError.message, message: 'Erreur lors de la création du projet' },
         { status: 500 }
       );
     }
+
+    console.log('Project created:', project.id);
 
     // Insert materials into the project
     const materialsToInsert = materials.map((mat: any) => ({
@@ -159,7 +191,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error in public quote request:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error.message || 'Erreur interne du serveur', message: error.message || 'Une erreur est survenue' },
       { status: 500 }
     );
   }
