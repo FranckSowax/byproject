@@ -1,13 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, DollarSign, MessageSquare, Image as ImageIcon, Edit2, Trash2, Plus, Package, ChevronLeft, ChevronRight, Send, Camera, Save, Check, MapPin, Phone, User, Globe, Building } from "lucide-react";
+import { X, DollarSign, MessageSquare, Image as ImageIcon, Edit2, Trash2, Plus, Package, ChevronLeft, ChevronRight, Send, Camera, Save, MapPin, Phone, User, Building, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+
+interface ClarificationRequest {
+  requested_at: string;
+  requested_by: string;
+  message: string;
+  needs_images: boolean;
+  needs_description: boolean;
+  resolved_at: string | null;
+}
 
 interface Material {
   id: string;
@@ -20,6 +29,7 @@ interface Material {
   volume?: number | null;
   specs: any;
   images?: string[];
+  clarification_request?: ClarificationRequest | null;
 }
 
 interface PricePhoto {
@@ -143,6 +153,17 @@ export function MaterialDetailModal({
   const [showAddPrice, setShowAddPrice] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [expandedPriceId, setExpandedPriceId] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Clarification request helpers
+  const hasClarificationRequest = material?.clarification_request &&
+    !material.clarification_request.resolved_at;
+  const needsImages = hasClarificationRequest &&
+    material?.clarification_request?.needs_images;
+  const needsDescription = hasClarificationRequest &&
+    material?.clarification_request?.needs_description;
+  const hasImages = material?.images && material.images.length > 0;
+  const hasDescription = material?.description && material.description.trim().length > 0;
 
   // Editable fields
   const [editData, setEditData] = useState<Partial<Material>>({});
@@ -235,11 +256,11 @@ export function MaterialDetailModal({
     });
   };
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
-    { id: 'details', label: 'Détails', icon: <Package className="h-4 w-4" /> },
+  const tabs: { id: Tab; label: string; icon: React.ReactNode; count?: number; needsAttention?: boolean }[] = [
+    { id: 'details', label: 'Détails', icon: <Package className="h-4 w-4" />, needsAttention: !!(needsDescription && !hasDescription) },
     { id: 'prices', label: 'Prix', icon: <DollarSign className="h-4 w-4" />, count: prices.length },
     { id: 'comments', label: 'Notes', icon: <MessageSquare className="h-4 w-4" />, count: comments.length },
-    { id: 'photos', label: 'Photos', icon: <ImageIcon className="h-4 w-4" />, count: material.images?.length || 0 },
+    { id: 'photos', label: 'Photos', icon: <ImageIcon className="h-4 w-4" />, count: material.images?.length || 0, needsAttention: !!(needsImages && !hasImages) },
   ];
 
   // Group prices by country
@@ -405,7 +426,10 @@ export function MaterialDetailModal({
               >
                 <span className="flex-shrink-0">{tab.icon}</span>
                 <span className="hidden xs:inline">{tab.label}</span>
-                {tab.count !== undefined && tab.count > 0 && (
+                {tab.needsAttention && (
+                  <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+                )}
+                {tab.count !== undefined && tab.count > 0 && !tab.needsAttention && (
                   <span className={cn(
                     "ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs",
                     activeTab === tab.id ? "bg-violet-100 text-violet-700" : "bg-slate-200 text-slate-600"
@@ -417,6 +441,39 @@ export function MaterialDetailModal({
             ))}
           </div>
         </div>
+
+        {/* Clarification Request Banner */}
+        {hasClarificationRequest && (
+          <div className="mx-4 sm:mx-8 mb-4 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-orange-800 text-sm">Demande de précision</h4>
+                <p className="text-sm text-orange-700 mt-1">
+                  {material.clarification_request?.message || "Informations supplémentaires requises"}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {needsDescription && (
+                    <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
+                      hasDescription ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {hasDescription ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                      Description {hasDescription ? '✓' : 'requise'}
+                    </div>
+                  )}
+                  {needsImages && (
+                    <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
+                      hasImages ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {hasImages ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                      Images {hasImages ? '✓' : 'requises'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 overscroll-contain bg-gradient-to-b from-transparent to-slate-50/50">
@@ -970,18 +1027,69 @@ export function MaterialDetailModal({
           {/* Photos Tab */}
           {activeTab === 'photos' && (
             <div className="space-y-4">
-              {/* Upload button */}
-              <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-colors">
-                <Camera className="h-5 w-5 text-slate-400" />
-                <span className="text-sm text-slate-600">Ajouter une photo</span>
+              {/* Upload zone */}
+              <label
+                className={cn(
+                  "flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all",
+                  isUploading
+                    ? "border-gray-300 bg-gray-50 cursor-wait"
+                    : needsImages && !hasImages
+                    ? "border-orange-300 bg-orange-50 hover:border-orange-400 hover:bg-orange-100"
+                    : "border-slate-300 hover:border-violet-400 hover:bg-violet-50"
+                )}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
+                    <span className="text-sm text-gray-600">Upload en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center",
+                      needsImages && !hasImages ? "bg-orange-100" : "bg-violet-100"
+                    )}>
+                      <Camera className={cn(
+                        "h-6 w-6",
+                        needsImages && !hasImages ? "text-orange-500" : "text-violet-500"
+                      )} />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">Ajouter une photo</span>
+                    <span className="text-xs text-slate-500">
+                      JPG, PNG • Max 5MB • {(material.images || []).length}/5 images
+                    </span>
+                  </>
+                )}
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
+                  multiple
                   className="hidden"
+                  disabled={isUploading}
                   onChange={async (e) => {
-                    if (e.target.files?.[0]) {
-                      await onUploadImage(e.target.files[0]);
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+
+                    const currentImages = material.images || [];
+                    if (currentImages.length + files.length > 5) {
+                      alert("Maximum 5 images autorisées");
+                      return;
+                    }
+
+                    setIsUploading(true);
+                    try {
+                      for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        if (!file.type.startsWith('image/')) continue;
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert(`${file.name} est trop volumineux (max 5MB)`);
+                          continue;
+                        }
+                        await onUploadImage(file);
+                      }
+                    } finally {
+                      setIsUploading(false);
+                      e.target.value = '';
                     }
                   }}
                 />
@@ -991,7 +1099,7 @@ export function MaterialDetailModal({
               {material.images && material.images.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {material.images.map((img, index) => (
-                    <div 
+                    <div
                       key={index}
                       className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 cursor-pointer group"
                       onClick={() => {
@@ -1000,11 +1108,14 @@ export function MaterialDetailModal({
                         setShowLightbox(true);
                       }}
                     >
-                      <img 
-                        src={img} 
+                      <img
+                        src={img}
                         alt={`${material.name} ${index + 1}`}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
+                      <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                        {index + 1}
+                      </div>
                       {onDeleteImage && (
                         <button
                           onClick={(e) => {
