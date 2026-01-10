@@ -24,6 +24,7 @@ interface MaterialsViewProps {
   onImportMaterials: () => void;
   onExportMaterials: () => void;
   onQuickUpdate?: (id: string, field: string, value: any) => Promise<void>;
+  onMaterialUpdate?: (updatedMaterial: Material) => void;
   onCategoryRename: (oldName: string, newName: string) => Promise<void>;
   onMergeDuplicates?: () => void;
   // onMaterialClick removed/internalized
@@ -48,7 +49,8 @@ export function MaterialsView({
   onAddMaterial,
   onImportMaterials,
   onExportMaterials,
-  onQuickUpdate,
+  onQuickUpdate: _onQuickUpdate,
+  onMaterialUpdate,
   onCategoryRename,
   onMergeDuplicates,
   // onMaterialClick, -> Internalized
@@ -298,21 +300,29 @@ export function MaterialsView({
       const currentImages = selectedDrawerMaterial.images || [];
       const newImages = [...currentImages, publicUrl];
 
+      // Update database
       const { error: updateError } = await supabase
         .from('materials')
         .update({ images: newImages } as any)
         .eq('id', selectedDrawerMaterial.id);
 
       if (updateError) {
+        console.error('DB update error:', updateError);
         toast.error("Erreur lors de la mise à jour du matériau");
         return null;
       }
 
-      // Update local state
-      setSelectedDrawerMaterial({
+      // Update local drawer state
+      const updatedMaterial = {
         ...selectedDrawerMaterial,
         images: newImages
-      });
+      };
+      setSelectedDrawerMaterial(updatedMaterial);
+
+      // Notify parent to update materials list
+      if (onMaterialUpdate) {
+        onMaterialUpdate(updatedMaterial);
+      }
 
       toast.success("Image uploadée avec succès");
       return publicUrl;

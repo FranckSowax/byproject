@@ -654,6 +654,10 @@ export default function ProjectPage() {
     toast.info("Exportation à venir");
   };
 
+  const handleMaterialUpdate = (updatedMaterial: Material) => {
+    setMaterials(prev => prev.map(m => m.id === updatedMaterial.id ? updatedMaterial : m));
+  };
+
   const handleDeleteMaterial = async (materialId: string, materialName?: string) => {
     const name = materialName || materials.find(m => m.id === materialId)?.name || 'cet élément';
     
@@ -1655,6 +1659,7 @@ export default function ProjectPage() {
         onImportMaterials={() => setIsImportDialogOpen(true)}
         onExportMaterials={handleExportMaterials}
         onQuickUpdate={handleQuickUpdate}
+        onMaterialUpdate={handleMaterialUpdate}
         onCategoryRename={handleCategoryRename}
         onMergeDuplicates={() => setIsDuplicatesDialogOpen(true)}
         projectId={projectId}
