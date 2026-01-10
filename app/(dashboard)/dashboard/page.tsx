@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Calendar, Edit, Image as ImageIcon, X, Copy, Check, Gift, Sparkles, ExternalLink } from "lucide-react";
+import { Plus, FolderOpen, Calendar, Edit, Image as ImageIcon, X } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -16,59 +16,6 @@ interface Project {
   name: string;
   created_at: string;
   image_url: string | null;
-}
-
-function QuoteRequestLinkCopier() {
-  const [copied, setCopied] = useState(false);
-  const [baseUrl, setBaseUrl] = useState("");
-
-  useEffect(() => {
-    setBaseUrl(window.location.origin);
-  }, []);
-
-  const quoteRequestUrl = `${baseUrl}/quote-request`;
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(quoteRequestUrl);
-      setCopied(true);
-      toast.success("Lien copié !");
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      toast.error("Erreur lors de la copie");
-    }
-  };
-
-  return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-      <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 flex items-center gap-3">
-        <ExternalLink className="h-5 w-5 text-white/60 shrink-0" />
-        <span className="text-white font-mono text-sm truncate">
-          {quoteRequestUrl || "Chargement..."}
-        </span>
-      </div>
-      <Button
-        onClick={handleCopy}
-        className={`shrink-0 font-semibold rounded-xl px-6 py-6 shadow-lg transition-all gap-2 ${
-          copied
-            ? "bg-green-500 hover:bg-green-600 text-white"
-            : "bg-white text-purple-700 hover:bg-white/90"
-        }`}
-      >
-        {copied ? (
-          <>
-            <Check className="h-5 w-5" />
-            Copié !
-          </>
-        ) : (
-          <>
-            <Copy className="h-5 w-5" />
-            Copier le lien
-          </>
-        )}
-      </Button>
-    </div>
-  );
 }
 
 export default function DashboardPage() {
@@ -311,37 +258,6 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
-
-        {/* Carte promotionnelle - Lien de demande de cotation à partager */}
-        <Card className="border-0 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 shadow-xl rounded-2xl overflow-hidden relative">
-          <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-          <CardContent className="relative p-6 md:p-8">
-            <div className="flex flex-col gap-6">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shrink-0">
-                  <Gift className="h-7 w-7 text-white" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Sparkles className="h-4 w-4 text-yellow-300" />
-                    <span className="text-yellow-300 text-sm font-semibold uppercase tracking-wider">
-                      Lien à partager
-                    </span>
-                  </div>
-                  <h3 className="text-xl md:text-2xl font-bold text-white mb-2">
-                    Demande de cotation freemium
-                  </h3>
-                  <p className="text-white/80 text-sm md:text-base max-w-xl">
-                    Partagez ce lien avec vos clients pour qu'ils puissent demander une cotation.
-                    Ils bénéficieront de <span className="font-semibold text-yellow-300">15 jours d'essai gratuit</span>.
-                  </p>
-                </div>
-              </div>
-              <QuoteRequestLinkCopier />
-            </div>
-          </CardContent>
-        </Card>
 
         {projects.length === 0 ? (
           <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
