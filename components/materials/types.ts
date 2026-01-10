@@ -1,5 +1,6 @@
 export interface ClarificationRequest {
   requested_at: string;
+  requested_by: string;
   message: string;
   needs_images: boolean;
   needs_description: boolean;
