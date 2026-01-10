@@ -263,7 +263,7 @@ export default function PublicQuoteRequestPage() {
         <div className="max-w-5xl mx-auto text-center">
           <Badge className="mb-3 sm:mb-4 bg-white/20 text-white border-white/30 text-xs sm:text-sm px-3 sm:px-4 py-1">
             <Gift className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            Offre Freemium - 15 jours gratuits
+            1 Projet offert • 15 matériaux max
           </Badge>
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-3 sm:mb-4 leading-tight">
             Sourcez vos Produits en Chine
@@ -430,9 +430,9 @@ export default function PublicQuoteRequestPage() {
               <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 bg-purple-100 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
                 <Gift className="h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6 text-purple-600" />
               </div>
-              <h3 className="font-semibold mb-1 sm:mb-2 text-sm sm:text-base">15 Jours Gratuits</h3>
+              <h3 className="font-semibold mb-1 sm:mb-2 text-sm sm:text-base">1 Projet Offert</h3>
               <p className="text-xs sm:text-sm text-gray-600">
-                Testez sans engagement pendant 15 jours
+                Créez votre premier projet gratuitement
               </p>
             </CardContent>
           </Card>
@@ -589,18 +589,18 @@ export default function PublicQuoteRequestPage() {
               <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                 <Gift className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-purple-900 text-sm sm:text-base">Offre Freemium</h4>
-                  <p className="text-xs sm:text-sm text-purple-700">15 jours d'essai gratuit</p>
+                  <h4 className="font-semibold text-purple-900 text-sm sm:text-base">Plan Free</h4>
+                  <p className="text-xs sm:text-sm text-purple-700">1 projet offert, 15 matériaux max</p>
                 </div>
               </div>
               <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-purple-800">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
-                  Jusqu'à 5 projets
+                  1 projet gratuit
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
-                  Devis illimités
+                  Jusqu'à 15 matériaux
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
