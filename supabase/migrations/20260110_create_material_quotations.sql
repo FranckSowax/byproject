@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS material_quotations (
   supplier_phone TEXT,
   supplier_whatsapp TEXT,
   supplier_wechat TEXT,
+  supplier_reference TEXT, -- Anonymous reference for client (e.g., REF-A1B2)
 
   -- Price information
   unit_price NUMERIC(15,2) NOT NULL,
@@ -78,6 +79,7 @@ CREATE INDEX idx_material_quotations_name_search ON material_quotations USING gi
 -- Composite index for common queries
 CREATE INDEX idx_material_quotations_name_country ON material_quotations(material_name, supplier_country);
 CREATE INDEX idx_material_quotations_name_price ON material_quotations(material_name, unit_price);
+CREATE INDEX idx_material_quotations_reference ON material_quotations(supplier_reference);
 
 -- Enable RLS
 ALTER TABLE material_quotations ENABLE ROW LEVEL SECURITY;

@@ -70,6 +70,7 @@ interface SupplierQuote {
   supplier_phone?: string;
   supplier_whatsapp?: string;
   supplier_wechat?: string;
+  supplier_reference?: string; // Anonymous reference for client (e.g., REF-A1B2)
   quoted_materials: Material[];
   status: string;
   submitted_at: string;
@@ -275,6 +276,10 @@ export default function AdminQuotationsPage() {
               originalAmount: v.amount,
             })) || [];
 
+            // Use supplier reference (anonymous ID) for client-facing notes
+            // Admin info is stored separately in material_quotations
+            const supplierRef = selectedQuote.supplier_reference || `REF-${selectedQuote.id.slice(0, 8).toUpperCase()}`;
+
             return {
               material_id: projectMaterialId,
               supplier_id: supplierId,
@@ -282,8 +287,11 @@ export default function AdminQuotationsPage() {
               amount: finalAmount,
               currency: price.currency,
               converted_amount: convertedAmount,
-              notes: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${materialMargin}%\nPrix original: ${price.amount} ${price.currency}`,
-              notes_fr: `Fournisseur: ${selectedQuote.supplier_company}\nContact: ${selectedQuote.supplier_name}\nEmail: ${selectedQuote.supplier_email}\nMarge admin: ${materialMargin}%\nPrix original: ${price.amount} ${price.currency}`,
+              // Client sees only the reference, not the actual supplier name
+              notes: `Référence: ${supplierRef}\nPays: ${selectedQuote.supplier_country}`,
+              notes_fr: `Référence: ${supplierRef}\nPays: ${selectedQuote.supplier_country}`,
+              // Store supplier reference for tracking
+              supplier_reference: supplierRef,
               variations: variationsWithMargin,
             };
           });
@@ -322,6 +330,7 @@ export default function AdminQuotationsPage() {
             phone: selectedQuote.supplier_phone,
             whatsapp: selectedQuote.supplier_whatsapp,
             wechat: selectedQuote.supplier_wechat,
+            reference: selectedQuote.supplier_reference || `REF-${selectedQuote.id.slice(0, 8).toUpperCase()}`,
           },
         }),
       });

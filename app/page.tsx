@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { 
-  ArrowRight, 
-  Globe, 
-  Shield, 
-  Sparkles, 
-  CheckCircle2, 
-  Bot, 
-  LogIn, 
+import {
+  ArrowRight,
+  Globe,
+  Shield,
+  Sparkles,
+  CheckCircle2,
+  Bot,
+  LogIn,
   UserPlus,
   FileUp,
   Users,
@@ -21,7 +21,12 @@ import {
   UtensilsCrossed,
   Store,
   HeartPulse,
-  Package
+  Package,
+  Bell,
+  Link as LinkIcon,
+  Eye,
+  DollarSign,
+  RefreshCw
 } from "lucide-react";
 import Image from "next/image";
 import { HowItWorksSimple } from "@/components/home/HowItWorksSimple";
@@ -85,52 +90,67 @@ export default function Home() {
         {/* Hero Section */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-blue-50 pointer-events-none" />
-          
+
           <div className="container mx-auto px-4 sm:px-6 py-20 sm:py-28 relative">
             <div className="max-w-4xl mx-auto text-center space-y-8">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-100 text-violet-700 text-sm font-medium">
-                <Sparkles className="h-4 w-4" />
-                Plateforme de Sourcing B2B depuis la Chine
+                <Send className="h-4 w-4" />
+                Cotation en ligne depuis la Chine
               </div>
-              
+
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 leading-tight">
-                Importez, comparez, sourcez
+                Recevez des cotations
                 <span className="block bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                  en toute simplicité
+                  directement de Chine
                 </span>
               </h1>
-              
+
               <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-                La plateforme qui centralise vos besoins, collecte les prix de fournisseurs chinois et vous aide à prendre les meilleures décisions d'achat.
+                Uploadez votre liste de materiaux, demandez une cotation et recevez les prix de fournisseurs chinois verifies. Comparez et decidez en toute transparence.
               </p>
 
-              {/* Secteurs supportés */}
-              <div className="flex flex-wrap justify-center gap-3 pt-2">
+              {/* Key benefits */}
+              <div className="flex flex-wrap justify-center gap-4 pt-2">
                 {[
-                  { icon: Building2, label: 'BTP' },
-                  { icon: Hotel, label: 'Hôtellerie' },
-                  { icon: UtensilsCrossed, label: 'Restauration' },
-                  { icon: Store, label: 'Retail' },
-                  { icon: HeartPulse, label: 'Médical' },
-                  { icon: Package, label: 'Et plus...' },
+                  { icon: Clock, label: 'Delai 48-72h' },
+                  { icon: DollarSign, label: 'Prix competitifs' },
+                  { icon: Shield, label: 'Fournisseurs verifies' },
+                  { icon: Bell, label: 'Notification auto' },
                 ].map(({ icon: Icon, label }) => (
-                  <span key={label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-sm">
-                    <Icon className="h-3.5 w-3.5" />
+                  <span key={label} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-sm border border-slate-100 text-slate-700 text-sm font-medium">
+                    <Icon className="h-4 w-4 text-violet-600" />
                     {label}
                   </span>
                 ))}
               </div>
-              
+
+              {/* Secteurs supportes */}
+              <div className="flex flex-wrap justify-center gap-2 pt-2">
+                {[
+                  { icon: Building2, label: 'BTP' },
+                  { icon: Hotel, label: 'Hotellerie' },
+                  { icon: UtensilsCrossed, label: 'Restauration' },
+                  { icon: Store, label: 'Retail' },
+                  { icon: HeartPulse, label: 'Medical' },
+                  { icon: Package, label: 'Et plus...' },
+                ].map(({ icon: Icon, label }) => (
+                  <span key={label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-xs">
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Link href="/signup">
                   <Button size="lg" className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white px-8 h-12 text-base">
-                    Démarrer gratuitement
+                    Demander une cotation
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
                 <Link href="#how-it-works">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto border-slate-300 text-slate-700 hover:bg-slate-50 h-12 text-base">
-                    Découvrir la plateforme
+                    Voir le processus
                   </Button>
                 </Link>
               </div>
@@ -138,100 +158,116 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Section: Problème / Solution */}
+        {/* Section: Avantages du systeme */}
         <section className="py-20 bg-slate-50">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-16">
                 <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-                  Le sourcing international, simplifié
+                  Pourquoi notre systeme de cotation ?
                 </h2>
                 <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                  Fini les emails perdus, les fichiers Excel éparpillés et les comparaisons manuelles interminables.
+                  Fini les emails perdus et les comparaisons manuelles. Tout est automatise et transparent.
                 </p>
               </div>
 
               <div className="grid md:grid-cols-3 gap-8">
-                {[
-                  {
-                    icon: Clock,
-                    title: "Gain de temps",
-                    description: "Centralisez tous vos besoins et fournisseurs en un seul endroit. Plus de va-et-vient entre emails et tableurs.",
-                    color: "violet"
-                  },
-                  {
-                    icon: TrendingDown,
-                    title: "Réduction des coûts",
-                    description: "Comparez instantanément les prix locaux vs import Chine. Identifiez les meilleures opportunités.",
-                    color: "emerald"
-                  },
-                  {
-                    icon: Shield,
-                    title: "Sécurité",
-                    description: "Vos données sont protégées. Historique complet des échanges et traçabilité des prix.",
-                    color: "blue"
-                  }
-                ].map((item) => (
-                  <div key={item.title} className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-                    <div className={`w-12 h-12 rounded-xl bg-${item.color}-100 flex items-center justify-center mb-5`}>
-                      <item.icon className={`h-6 w-6 text-${item.color}-600`} />
-                    </div>
-                    <h3 className="text-xl font-semibold text-slate-900 mb-3">{item.title}</h3>
-                    <p className="text-slate-600 leading-relaxed">{item.description}</p>
+                <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                  <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center mb-5">
+                    <Send className="h-6 w-6 text-violet-600" />
                   </div>
-                ))}
+                  <h3 className="text-xl font-semibold text-slate-900 mb-3">Demande simplifiee</h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    Un seul clic pour demander des cotations. Notre equipe sollicite plusieurs fournisseurs en parallele.
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center mb-5">
+                    <Eye className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-3">Transparence totale</h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    Chaque fournisseur est identifie par une reference unique. Comparez objectivement sans biais.
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mb-5">
+                    <RefreshCw className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-3">Conversion automatique</h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    Les prix sont convertis en FCFA automatiquement. Comparez facilement les offres locales et import.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Section: Fonctionnalités Clés */}
+        {/* Section: Fonctionnalites Cles */}
         <section id="features" className="py-20">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-16">
                 <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-                  Tout ce dont vous avez besoin
+                  Un systeme complet de sourcing
                 </h2>
                 <p className="text-lg text-slate-600">
-                  Des outils puissants pour chaque étape de votre sourcing
+                  De la liste de materiaux a la decision d'achat
                 </p>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-6">
-                {/* Feature 1: Import IA */}
-                <div className="group relative bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl p-8 border border-violet-100 hover:border-violet-200 transition-all">
-                  <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
-                      <FileUp className="h-7 w-7 text-white" />
+                {/* Feature 1: Cotation en ligne - PRINCIPAL */}
+                <div className="group relative bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-violet-200 hover:border-violet-300 transition-all sm:col-span-2">
+                  <div className="flex flex-col sm:flex-row items-start gap-6">
+                    <div className="w-16 h-16 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
+                      <Send className="h-8 w-8 text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Import intelligent</h3>
-                      <p className="text-slate-600 leading-relaxed">
-                        Uploadez vos listes Excel, PDF ou CSV. L'IA analyse et structure automatiquement vos données selon votre secteur d'activité.
+                    <div className="flex-1">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-medium mb-3">
+                        <Sparkles className="h-3 w-3" />
+                        Fonctionnalite principale
+                      </div>
+                      <h3 className="text-2xl font-semibold text-slate-900 mb-3">Systeme de cotation en ligne</h3>
+                      <p className="text-slate-600 leading-relaxed mb-4">
+                        Demandez des cotations en un clic. Notre equipe sollicite les fournisseurs via des liens uniques et isoles.
+                        Chaque fournisseur remplit ses prix directement en ligne. Vous recevez une notification des que les prix sont disponibles.
                       </p>
-                      <div className="mt-4 flex items-center gap-2 text-sm text-violet-600 font-medium">
-                        <Zap className="h-4 w-4" />
-                        Mapping automatique par IA
+                      <div className="flex flex-wrap gap-4">
+                        <span className="inline-flex items-center gap-2 text-sm text-violet-600 font-medium">
+                          <LinkIcon className="h-4 w-4" />
+                          Liens uniques par fournisseur
+                        </span>
+                        <span className="inline-flex items-center gap-2 text-sm text-violet-600 font-medium">
+                          <Bell className="h-4 w-4" />
+                          Notifications automatiques
+                        </span>
+                        <span className="inline-flex items-center gap-2 text-sm text-violet-600 font-medium">
+                          <Shield className="h-4 w-4" />
+                          References anonymes
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Feature 2: Multi-fournisseurs */}
+                {/* Feature 2: Import IA */}
                 <div className="group relative bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-8 border border-emerald-100 hover:border-emerald-200 transition-all">
                   <div className="flex items-start gap-4">
                     <div className="w-14 h-14 rounded-xl bg-emerald-600 flex items-center justify-center flex-shrink-0">
-                      <Users className="h-7 w-7 text-white" />
+                      <FileUp className="h-7 w-7 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Gestion fournisseurs</h3>
+                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Import intelligent</h3>
                       <p className="text-slate-600 leading-relaxed">
-                        Centralisez tous vos contacts fournisseurs. Gérez les informations, suivez l'historique des prix et des échanges.
+                        Uploadez vos listes Excel, PDF ou CSV. L'IA structure automatiquement vos materiaux par categorie.
                       </p>
                       <div className="mt-4 flex items-center gap-2 text-sm text-emerald-600 font-medium">
-                        <Globe className="h-4 w-4" />
-                        Base fournisseurs Chine intégrée
+                        <Zap className="h-4 w-4" />
+                        Mapping automatique par IA
                       </div>
                     </div>
                   </div>
@@ -246,30 +282,49 @@ export default function Home() {
                     <div>
                       <h3 className="text-xl font-semibold text-slate-900 mb-2">Comparateur de prix</h3>
                       <p className="text-slate-600 leading-relaxed">
-                        Visualisez les écarts de prix entre fournisseurs. Simulez les coûts d'import (transport, douane) pour une décision éclairée.
+                        Visualisez les ecarts de prix. Prix convertis en FCFA automatiquement pour une comparaison facile.
                       </p>
                       <div className="mt-4 flex items-center gap-2 text-sm text-blue-600 font-medium">
                         <TrendingDown className="h-4 w-4" />
-                        Calcul automatique des économies
+                        Local vs Import Chine
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Feature 4: Cotation en ligne */}
+                {/* Feature 4: Historique */}
                 <div className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-8 border border-amber-100 hover:border-amber-200 transition-all">
                   <div className="flex items-start gap-4">
                     <div className="w-14 h-14 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0">
-                      <Send className="h-7 w-7 text-white" />
+                      <Clock className="h-7 w-7 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Cotation en ligne</h3>
+                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Historique des prix</h3>
                       <p className="text-slate-600 leading-relaxed">
-                        Générez un lien unique pour chaque fournisseur. Ils remplissent leurs prix directement en ligne. Fini les emails perdus.
+                        Base de donnees complete des cotations. Suivez l'evolution des prix par materiau et fournisseur.
                       </p>
                       <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 font-medium">
                         <CheckCircle2 className="h-4 w-4" />
-                        Réponses centralisées automatiquement
+                        Tracabilite complete
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feature 5: Base fournisseurs */}
+                <div className="group relative bg-gradient-to-br from-slate-50 to-gray-50 rounded-2xl p-8 border border-slate-200 hover:border-slate-300 transition-all">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-slate-700 flex items-center justify-center flex-shrink-0">
+                      <Users className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-slate-900 mb-2">Base fournisseurs</h3>
+                      <p className="text-slate-600 leading-relaxed">
+                        Reseau de fournisseurs chinois verifies. Informations de contact, historique des echanges.
+                      </p>
+                      <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 font-medium">
+                        <Globe className="h-4 w-4" />
+                        Fournisseurs pre-qualifies
                       </div>
                     </div>
                   </div>

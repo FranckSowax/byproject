@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
       supplier_phone: token.supplier_phone,
       supplier_whatsapp: token.supplier_whatsapp,
       supplier_wechat: token.supplier_wechat,
+      supplier_reference: token.supplier_reference, // Anonymous reference for client
       quoted_materials: token.quoted_materials || [],
       status: 'submitted',
       submitted_at: token.submitted_at,
@@ -385,6 +386,7 @@ export async function POST(request: NextRequest) {
                 supplier_phone: supplierInfo.phone,
                 supplier_whatsapp: supplierInfo.whatsapp,
                 supplier_wechat: supplierInfo.wechat,
+                supplier_reference: supplierInfo.reference || null, // Anonymous reference for client
                 unit_price: price.amount,
                 currency: price.currency || 'CNY',
                 unit: price.unit || null,
