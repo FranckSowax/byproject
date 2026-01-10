@@ -211,6 +211,10 @@ export default function PublicQuoteRequestPage() {
     setIsSubmitting(true);
     try {
       console.log("Submitting quote request...", { userId: user.id, materialsCount: materials.length });
+      // Log each material with its images for debugging
+      materials.forEach((mat, i) => {
+        console.log(`Material ${i + 1}:`, mat.name, `- Images: ${mat.images?.length || 0}`, mat.images);
+      });
 
       // Create the quote request via API
       const response = await fetch("/api/public/quote-request", {
