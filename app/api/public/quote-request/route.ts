@@ -155,30 +155,34 @@ export async function POST(request: NextRequest) {
     console.log('Project created successfully:', project.id);
 
     // Insert materials into the project one by one to handle errors better
-    // Note: base64 images are too large for direct DB storage, skip them for now
     const insertedMaterialIds: string[] = [];
     const materialErrors: string[] = [];
 
     for (let i = 0; i < materials.length; i++) {
       const mat = materials[i];
 
-      // Skip base64 images - they're too large for DB storage
-      // In production, images should be uploaded to Supabase Storage first
-      const hasBase64Images = (mat.images || []).some((img: string) => img?.startsWith('data:'));
+      // Filter images: keep only valid URLs (Supabase Storage URLs), skip base64
+      const validImages = (mat.images || []).filter((img: string) => {
+        if (!img) return false;
+        // Skip base64 images (too large for DB)
+        if (img.startsWith('data:')) return false;
+        // Keep Supabase Storage URLs and other valid URLs
+        return img.startsWith('http://') || img.startsWith('https://');
+      });
 
       const materialData = {
         project_id: project.id,
         name: mat.name,
         description: mat.description || null,
         quantity: parseFloat(mat.quantity) || 1,
-        images: hasBase64Images ? [] : (mat.images || []), // Skip base64 images
+        images: validImages,
         category: 'Catégorie inconnue',
         specs: {
           unit: mat.unit || 'pièce',
           quantity_with_unit: `${parseFloat(mat.quantity) || 1} ${mat.unit || 'pièce'}`,
           description: mat.description || null,
-          images_count: (mat.images || []).length,
-          has_images: (mat.images || []).length > 0,
+          images_count: validImages.length,
+          has_images: validImages.length > 0,
           source: 'public_quote_request',
           submitted_at: new Date().toISOString(),
         },

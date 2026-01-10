@@ -34,6 +34,7 @@ import {
   ShoppingBag,
   Factory,
   Boxes,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -60,6 +61,7 @@ export default function PublicQuoteRequestPage() {
     unit: "pièce",
   });
   const [newImages, setNewImages] = useState<string[]>([]);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isAddingMaterial, setIsAddingMaterial] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,25 +141,59 @@ export default function PublicQuoteRequestPage() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
-    const newUrls: string[] = [];
+    setIsUploadingImage(true);
 
-    for (let i = 0; i < files.length && i < 3; i++) {
-      const file = files[i];
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} est trop volumineux (max 5MB)`);
-        continue;
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (let i = 0; i < files.length && i < 3 - newImages.length; i++) {
+        const file = files[i];
+
+        // Validate file size
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`${file.name} est trop volumineux (max 5MB)`);
+          continue;
+        }
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          toast.error(`${file.name}: type non supporté`);
+          continue;
+        }
+
+        // Upload to Supabase Storage via API
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/public/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          toast.error(data.error || `Erreur upload ${file.name}`);
+          continue;
+        }
+
+        uploadedUrls.push(data.url);
+        toast.success(`${file.name} uploadé`);
       }
 
-      // For now, create a local URL preview
-      // In production, this would upload to storage
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        newUrls.push(reader.result as string);
-        setNewImages([...newImages, ...newUrls]);
-      };
-      reader.readAsDataURL(file);
+      if (uploadedUrls.length > 0) {
+        setNewImages([...newImages, ...uploadedUrls]);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error("Erreur lors de l'upload des images");
+    } finally {
+      setIsUploadingImage(false);
+      // Reset input
+      e.target.value = '';
     }
   };
 
@@ -498,15 +534,20 @@ export default function PublicQuoteRequestPage() {
                   </div>
                 ))}
                 {newImages.length < 3 && (
-                  <label className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors">
+                  <label className={`w-16 h-16 sm:w-20 sm:h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center transition-colors ${isUploadingImage ? 'bg-purple-50 border-purple-300 cursor-wait' : 'cursor-pointer hover:border-purple-500 hover:bg-purple-50'}`}>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
                       className="hidden"
                       onChange={handleImageUpload}
                       multiple
+                      disabled={isUploadingImage}
                     />
-                    <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" />
+                    {isUploadingImage ? (
+                      <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500 animate-spin" />
+                    ) : (
+                      <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" />
+                    )}
                   </label>
                 )}
               </div>
