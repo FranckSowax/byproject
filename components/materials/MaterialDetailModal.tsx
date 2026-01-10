@@ -350,10 +350,10 @@ export function MaterialDetailModal({
                       placeholder="Qté"
                     />
                   </div>
-                ) : material.quantity ? (
+                ) : (material.quantity || material.specs?.quantity_with_unit) ? (
                   <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
                     <Package className="h-3 w-3 mr-1" />
-                    {material.quantity}
+                    {material.specs?.quantity_with_unit || `${material.quantity} ${material.specs?.unit || ''}`}
                   </Badge>
                 ) : null}
               </div>
@@ -567,7 +567,9 @@ export function MaterialDetailModal({
                       className="h-9"
                     />
                   ) : (
-                    <p className="text-lg font-semibold text-slate-900">{material.quantity || '-'}</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {material.specs?.quantity_with_unit || (material.quantity ? `${material.quantity} ${material.specs?.unit || ''}` : '-')}
+                    </p>
                   )}
                 </div>
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">

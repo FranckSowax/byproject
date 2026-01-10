@@ -94,10 +94,10 @@ export function MaterialCard({
                 {material.category}
               </Badge>
             )}
-            {material.quantity && (
+            {(material.quantity || material.specs?.quantity_with_unit) && (
               <Badge variant="outline" className="text-orange-600 border-orange-200 text-[10px] sm:text-xs px-1 sm:px-2 py-0 sm:py-0.5">
                 <Package className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
-                {material.quantity}
+                {material.specs?.quantity_with_unit || `${material.quantity} ${material.specs?.unit || ''}`}
               </Badge>
             )}
             

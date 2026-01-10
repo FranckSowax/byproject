@@ -162,13 +162,25 @@ export async function POST(request: NextRequest) {
       const mat = materials[i];
 
       // Filter images: keep only valid URLs (Supabase Storage URLs), skip base64
-      const validImages = (mat.images || []).filter((img: string) => {
+      const rawImages = mat.images || [];
+      console.log(`Material "${mat.name}" raw images count:`, rawImages.length);
+      if (rawImages.length > 0) {
+        rawImages.forEach((img: string, idx: number) => {
+          console.log(`  Image ${idx + 1}:`, img ? img.substring(0, 100) : 'null/undefined');
+        });
+      }
+
+      const validImages = rawImages.filter((img: string) => {
         if (!img) return false;
         // Skip base64 images (too large for DB)
-        if (img.startsWith('data:')) return false;
+        if (img.startsWith('data:')) {
+          console.log(`  -> Skipping base64 image`);
+          return false;
+        }
         // Keep Supabase Storage URLs and other valid URLs
         return img.startsWith('http://') || img.startsWith('https://');
       });
+      console.log(`Material "${mat.name}" valid images after filter:`, validImages.length);
 
       const materialData = {
         project_id: project.id,
