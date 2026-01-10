@@ -1,10 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { nanoid } from 'nanoid';
+import { completeText } from '@/lib/ai/clients';
 
-// Configuration pour Netlify - timeout court car pas de traduction lourde
-export const maxDuration = 30;
+// Configuration pour Netlify
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+
+// Translate materials to target language
+async function translateMaterials(materials: any[], targetLanguage: 'en' | 'zh'): Promise<any[]> {
+  const languageName = targetLanguage === 'zh' ? 'Simplified Chinese' : 'English';
+
+  // Process in batches of 3 to avoid timeouts
+  const BATCH_SIZE = 3;
+  const results: any[] = [];
+
+  for (let i = 0; i < materials.length; i += BATCH_SIZE) {
+    const batch = materials.slice(i, i + BATCH_SIZE);
+
+    const batchResults = await Promise.all(
+      batch.map(async (material) => {
+        try {
+          // Translate name
+          let translatedName = material.name;
+          if (material.name) {
+            translatedName = await completeText(
+              material.name,
+              `Translate this construction material name from French to ${languageName}. Return ONLY the translation, nothing else.`,
+              { temperature: 0.1, maxTokens: 100 }
+            );
+          }
+
+          // Translate description
+          let translatedDescription = material.description || '';
+          if (material.description) {
+            translatedDescription = await completeText(
+              material.description,
+              `Translate this construction material description from French to ${languageName}. Keep technical terms accurate. Return ONLY the translation.`,
+              { temperature: 0.1, maxTokens: 500 }
+            );
+          }
+
+          return {
+            ...material,
+            translatedName: translatedName.trim(),
+            translatedDescription: translatedDescription.trim(),
+            originalName: material.name,
+            originalDescription: material.description,
+          };
+        } catch (error) {
+          console.error(`Translation error for ${material.name}:`, error);
+          return {
+            ...material,
+            translatedName: material.name,
+            translatedDescription: material.description,
+            translationError: true,
+          };
+        }
+      })
+    );
+
+    results.push(...batchResults);
+  }
+
+  return results;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,21 +113,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[SEND] Found ${materials.length} materials`);
+    console.log(`[SEND] Found ${materials.length} materials, translating...`);
 
-    // Pour l'instant, on utilise les matériaux en français directement
-    // La traduction peut être faite ultérieurement ou côté formulaire fournisseur
-    const materialsEn = materials.map((m: any) => ({
-      ...m,
-      translatedName: m.name,
-      translatedDescription: m.description,
-    }));
+    // Traduire les matériaux en anglais et chinois en parallèle
+    const [materialsEn, materialsZh] = await Promise.all([
+      translateMaterials(materials, 'en'),
+      translateMaterials(materials, 'zh'),
+    ]);
 
-    const materialsZh = materials.map((m: any) => ({
-      ...m,
-      translatedName: m.name,
-      translatedDescription: m.description,
-    }));
+    console.log(`[SEND] Translations complete: EN=${materialsEn.length}, ZH=${materialsZh.length}`);
 
     // Préparer le snapshot des matériaux avec traductions
     const materialsSnapshot = {
@@ -153,7 +207,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `${supplierCount} liens fournisseurs générés`,
+      message: `${supplierCount} liens fournisseurs générés (matériaux traduits en EN/ZH)`,
       supplierLinks,
       expiresAt: expiresAt.toISOString()
     });
