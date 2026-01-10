@@ -155,17 +155,21 @@ export async function POST(request: NextRequest) {
     console.log('Project created successfully:', project.id);
 
     // Insert materials into the project
-    // Note: 'unit' column doesn't exist, store it in specs JSON
+    // Store all form data in specs JSON since some columns don't exist
     const materialsToInsert = materials.map((mat: any) => ({
       project_id: project.id,
       name: mat.name,
       description: mat.description || null,
       quantity: parseFloat(mat.quantity) || 1,
       images: mat.images || [],
-      category: 'user_defined',
+      category: 'Catégorie inconnue',
       specs: {
         unit: mat.unit || 'pièce',
+        quantity_with_unit: `${parseFloat(mat.quantity) || 1} ${mat.unit || 'pièce'}`,
+        description: mat.description || null,
+        images_count: (mat.images || []).length,
         source: 'public_quote_request',
+        submitted_at: new Date().toISOString(),
       },
     }));
 
