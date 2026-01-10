@@ -90,20 +90,17 @@ export async function POST(request: NextRequest) {
       .eq('user_id', userId)
       .single();
 
-    // If no subscription, create a freemium trial
+    // If no subscription, create a Free plan (1 project, 15 materials)
     let userSubscription = subscription;
     if (!subscription) {
-      const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 15); // 15 days trial
-
       const { data: newSub, error: newSubError } = await supabase
         .from('subscriptions')
         .insert({
           user_id: userId,
-          plan: 'Trial',
-          project_limit: 5,
-          export_limit: 10,
-          expires_at: trialEndDate.toISOString(),
+          plan: 'Free',
+          project_limit: 1,       // 1 projet maximum
+          export_limit: 15,       // 15 matériaux maximum (using export_limit for material count)
+          expires_at: null,       // Pas d'expiration
         })
         .select()
         .single();
@@ -115,14 +112,59 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if trial has expired
-    if (userSubscription?.expires_at && new Date(userSubscription.expires_at) < new Date()) {
-      if (userSubscription.plan === 'Trial') {
-        return NextResponse.json(
-          { error: 'Votre période d\'essai a expiré. Veuillez mettre à niveau pour continuer.', message: 'Votre période d\'essai a expiré. Veuillez mettre à niveau pour continuer.' },
-          { status: 403 }
-        );
-      }
+    // Check project limit
+    const projectLimit = userSubscription?.project_limit || 1;
+    const { count: existingProjectsCount } = await supabase
+      .from('projects')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    console.log(`User has ${existingProjectsCount || 0} projects, limit is ${projectLimit}`);
+
+    if ((existingProjectsCount || 0) >= projectLimit) {
+      return NextResponse.json(
+        {
+          error: `Limite atteinte: vous avez déjà ${existingProjectsCount} projet(s). Plan Free = 1 projet maximum. Passez à un plan supérieur pour créer plus de projets.`,
+          message: 'Limite de projets atteinte',
+          limitReached: 'projects'
+        },
+        { status: 403 }
+      );
+    }
+
+    // Check material limit - count total materials for this user across all projects
+    const materialLimit = userSubscription?.export_limit || 15; // Using export_limit for material count
+    const { data: userProjects } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('user_id', userId);
+
+    let totalMaterialsCount = 0;
+    if (userProjects && userProjects.length > 0) {
+      const projectIds = userProjects.map(p => p.id);
+      const { count } = await supabase
+        .from('materials')
+        .select('*', { count: 'exact', head: true })
+        .in('project_id', projectIds);
+      totalMaterialsCount = count || 0;
+    }
+
+    const newMaterialsCount = materials.length;
+    console.log(`User has ${totalMaterialsCount} materials, adding ${newMaterialsCount}, limit is ${materialLimit}`);
+
+    if (totalMaterialsCount + newMaterialsCount > materialLimit) {
+      const remaining = Math.max(0, materialLimit - totalMaterialsCount);
+      return NextResponse.json(
+        {
+          error: `Limite atteinte: vous avez ${totalMaterialsCount} matériaux et voulez en ajouter ${newMaterialsCount}. Plan Free = ${materialLimit} matériaux maximum. ${remaining > 0 ? `Vous pouvez encore ajouter ${remaining} matériau(x).` : ''} Passez à un plan supérieur pour ajouter plus de matériaux.`,
+          message: 'Limite de matériaux atteinte',
+          limitReached: 'materials',
+          currentCount: totalMaterialsCount,
+          limit: materialLimit,
+          remaining: remaining
+        },
+        { status: 403 }
+      );
     }
 
     // Create a project for this quote request

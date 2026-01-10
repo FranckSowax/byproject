@@ -91,18 +91,15 @@ export async function POST(request: NextRequest) {
     }
     console.log('User created in users table:', userData?.id);
 
-    // 3. Create subscription
-    const trialEndDate = new Date();
-    trialEndDate.setDate(trialEndDate.getDate() + 15); // 15 days
-
+    // 3. Create subscription - Free plan: 1 project, 15 materials max, no expiration
     const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
         user_id: authData.user.id,
-        plan: isFreemium ? 'Trial' : 'Free',
-        project_limit: 5,
-        export_limit: isFreemium ? 10 : 2,
-        expires_at: isFreemium ? trialEndDate.toISOString() : null,
+        plan: 'Free',
+        project_limit: 1,         // 1 projet maximum
+        export_limit: 15,         // 15 matériaux maximum
+        expires_at: null,         // Pas d'expiration
       });
 
     if (subscriptionError) {
