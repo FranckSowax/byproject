@@ -185,20 +185,34 @@ export async function POST(request: NextRequest) {
     console.log(`Pre-analysis: ${materialsNeedingAI.length}/${materials.length} need deeper AI analysis`);
 
     // Step 2: AI Analysis for materials with potential issues
-    // Priority: DeepSeek > Gemini > OpenAI
+    // Process in batches of 5 materials to avoid timeouts
+    const BATCH_SIZE = 5;
     let aiAnalysisResults: Record<string, { suggestions: string[], additionalMissing: string[] }> = {};
     let modelUsed = 'rule-based';
 
     if (materialsNeedingAI.length > 0) {
-      const materialsText = materialsNeedingAI.map((m, i) =>
-        `${i + 1}. [ID:${m.id}] ${m.name}${m.description ? ` - ${m.description}` : ''}${m.category ? ` (${m.category})` : ''}`
-      ).join('\n');
+      const systemPrompt = "Tu es un expert en sourcing de materiaux BTP. Tu analyses les descriptions pour determiner si elles sont suffisantes pour une cotation. Tu reponds UNIQUEMENT en JSON valide.";
 
-      const prompt = `Tu es un EXPERT en sourcing de materiaux de construction avec 20 ans d'experience en import de Chine.
+      // Split materials into batches
+      const batches: Material[][] = [];
+      for (let i = 0; i < materialsNeedingAI.length; i += BATCH_SIZE) {
+        batches.push(materialsNeedingAI.slice(i, i + BATCH_SIZE));
+      }
+
+      console.log(`Processing ${batches.length} batch(es) of max ${BATCH_SIZE} materials each`);
+
+      // Process batches sequentially to avoid rate limits
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+        const materialsText = batch.map((m, i) =>
+          `${i + 1}. [ID:${m.id}] ${m.name}${m.description ? ` - ${m.description}` : ''}${m.category ? ` (${m.category})` : ''}`
+        ).join('\n');
+
+        const prompt = `Tu es un EXPERT en sourcing de materiaux de construction avec 20 ans d'experience en import de Chine.
 
 MISSION: Analyser chaque materiau et determiner si les informations sont SUFFISANTES pour qu'un fournisseur chinois puisse faire une cotation precise.
 
-MATERIAUX A ANALYSER:
+MATERIAUX A ANALYSER (Lot ${batchIndex + 1}/${batches.length}):
 ${materialsText}
 
 Pour CHAQUE materiau, reponds avec:
@@ -224,31 +238,32 @@ REPONDS EN JSON VALIDE:
   ]
 }`;
 
-      const systemPrompt = "Tu es un expert en sourcing de materiaux BTP. Tu analyses les descriptions pour determiner si elles sont suffisantes pour une cotation. Tu reponds UNIQUEMENT en JSON valide.";
+        try {
+          // Use unified AI client with automatic fallback: DeepSeek > OpenAI
+          const result = await completeJSON<{ analyses: Array<{ material_id: string; missing_critical: string[]; needs_photos: boolean; suggestions: string[] }> }>(
+            prompt,
+            systemPrompt,
+            { temperature: 0.3, maxTokens: 2000 }
+          );
 
-      try {
-        // Use unified AI client with automatic fallback: DeepSeek > Gemini > OpenAI
-        const result = await completeJSON<{ analyses: Array<{ material_id: string; missing_critical: string[]; needs_photos: boolean; suggestions: string[] }> }>(
-          prompt,
-          systemPrompt,
-          { temperature: 0.3, maxTokens: 4000 }
-        );
+          modelUsed = `${result.provider}/${result.model}`;
+          console.log(`Batch ${batchIndex + 1}/${batches.length} completed with ${modelUsed}`);
 
-        modelUsed = `${result.provider}/${result.model}`;
-        console.log(`AI Analysis completed with ${modelUsed}`);
-
-        if (result.data.analyses && Array.isArray(result.data.analyses)) {
-          for (const analysis of result.data.analyses) {
-            aiAnalysisResults[analysis.material_id] = {
-              suggestions: analysis.suggestions || [],
-              additionalMissing: analysis.missing_critical || []
-            };
+          if (result.data.analyses && Array.isArray(result.data.analyses)) {
+            for (const analysis of result.data.analyses) {
+              aiAnalysisResults[analysis.material_id] = {
+                suggestions: analysis.suggestions || [],
+                additionalMissing: analysis.missing_critical || []
+              };
+            }
           }
+        } catch (aiError: any) {
+          console.error(`Batch ${batchIndex + 1} AI analysis error:`, aiError.message);
+          // Continue with next batch - rule-based results will be used for failed materials
         }
-      } catch (aiError: any) {
-        console.error('AI analysis error:', aiError.message);
-        // Continue with rule-based analysis only
       }
+
+      console.log(`AI Analysis completed: ${Object.keys(aiAnalysisResults).length}/${materialsNeedingAI.length} materials analyzed`);
     }
 
     // Step 3: Combine results
