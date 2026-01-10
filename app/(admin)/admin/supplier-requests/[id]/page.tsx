@@ -346,6 +346,10 @@ export default function EditSupplierRequestPage() {
   const handleSendToSuppliers = async () => {
     setSending(true);
     try {
+      // Timeout de 25 secondes (Netlify a un timeout de 10-30s)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
       const response = await fetch('/api/admin/supplier-requests/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -353,11 +357,20 @@ export default function EditSupplierRequestPage() {
           requestId,
           numSuppliers: formData.num_suppliers,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const { error } = await response.json();
-        throw new Error(error || 'Failed to send');
+        let errorMessage = 'Erreur lors de l\'envoi';
+        try {
+          const { error } = await response.json();
+          errorMessage = error || errorMessage;
+        } catch {
+          // Si le parsing JSON échoue, utiliser le message par défaut
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -366,7 +379,11 @@ export default function EditSupplierRequestPage() {
       loadRequest(); // Reload to update status
     } catch (error: any) {
       console.error('Error sending to suppliers:', error);
-      toast.error(error.message || 'Erreur lors de l\'envoi');
+      if (error.name === 'AbortError') {
+        toast.error('Timeout: L\'opération a pris trop de temps. Veuillez réessayer.');
+      } else {
+        toast.error(error.message || 'Erreur lors de l\'envoi');
+      }
     } finally {
       setSending(false);
     }

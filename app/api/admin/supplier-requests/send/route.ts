@@ -1,78 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { nanoid } from 'nanoid';
-import { completeText } from '@/lib/ai/clients';
 
-// Configuration pour Netlify
-export const maxDuration = 60;
+// Configuration pour Netlify - timeout court car pas de traduction lourde
+export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
-
-// Fonction de traduction par lots
-async function translateMaterialsBatch(
-  materials: any[],
-  targetLanguage: 'en' | 'zh'
-): Promise<any[]> {
-  const BATCH_SIZE = 5;
-  const results: any[] = [];
-
-  for (let i = 0; i < materials.length; i += BATCH_SIZE) {
-    const batch = materials.slice(i, i + BATCH_SIZE);
-
-    // Préparer le texte à traduire
-    const textToTranslate = batch.map((m, idx) =>
-      `[${idx + 1}] ${m.name}${m.description ? ` | ${m.description}` : ''}${m.category ? ` | ${m.category}` : ''}`
-    ).join('\n');
-
-    const systemPrompt = targetLanguage === 'zh'
-      ? 'Translate these construction materials from French to Simplified Chinese. Return ONLY the translations in the same format [1] name | description | category, one per line.'
-      : 'Translate these construction materials from French to English. Return ONLY the translations in the same format [1] name | description | category, one per line.';
-
-    try {
-      const translated = await completeText(
-        `Translate:\n${textToTranslate}`,
-        systemPrompt,
-        { temperature: 0.2, maxTokens: 2000 }
-      );
-
-      // Parser les traductions
-      const lines = translated.split('\n').filter(l => l.trim());
-
-      batch.forEach((material, idx) => {
-        const line = lines.find(l => l.startsWith(`[${idx + 1}]`));
-        if (line) {
-          const parts = line.replace(/^\[\d+\]\s*/, '').split('|').map(p => p.trim());
-          results.push({
-            ...material,
-            translatedName: parts[0] || material.name,
-            translatedDescription: parts[1] || material.description,
-            originalName: material.name,
-            originalDescription: material.description,
-          });
-        } else {
-          results.push({
-            ...material,
-            translatedName: material.name,
-            translatedDescription: material.description,
-            translationError: true,
-          });
-        }
-      });
-    } catch (error) {
-      console.error(`Translation batch error:`, error);
-      // Fallback: utiliser les originaux
-      batch.forEach(material => {
-        results.push({
-          ...material,
-          translatedName: material.name,
-          translatedDescription: material.description,
-          translationError: true,
-        });
-      });
-    }
-  }
-
-  return results;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,6 +17,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`[SEND] Starting send for request ${requestId}`);
+
     const supabase = createServiceClient();
 
     // Récupérer la demande avec les matériaux du projet
@@ -95,7 +29,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (requestError) {
-      console.error('Error fetching request:', requestError);
+      console.error('[SEND] Error fetching request:', requestError);
       return NextResponse.json(
         { error: requestError.message },
         { status: 500 }
@@ -112,22 +46,28 @@ export async function POST(request: NextRequest) {
       .eq('project_id', supplierRequest.project_id);
 
     if (materialsError) {
-      console.error('Error fetching materials:', materialsError);
+      console.error('[SEND] Error fetching materials:', materialsError);
       return NextResponse.json(
         { error: materialsError.message },
         { status: 500 }
       );
     }
 
-    console.log(`Translating ${materials.length} materials...`);
+    console.log(`[SEND] Found ${materials.length} materials`);
 
-    // Traduire les matériaux en anglais et chinois en parallèle
-    const [materialsEn, materialsZh] = await Promise.all([
-      translateMaterialsBatch(materials, 'en'),
-      translateMaterialsBatch(materials, 'zh'),
-    ]);
+    // Pour l'instant, on utilise les matériaux en français directement
+    // La traduction peut être faite ultérieurement ou côté formulaire fournisseur
+    const materialsEn = materials.map((m: any) => ({
+      ...m,
+      translatedName: m.name,
+      translatedDescription: m.description,
+    }));
 
-    console.log(`Translation complete: EN=${materialsEn.length}, ZH=${materialsZh.length}`);
+    const materialsZh = materials.map((m: any) => ({
+      ...m,
+      translatedName: m.name,
+      translatedDescription: m.description,
+    }));
 
     // Préparer le snapshot des matériaux avec traductions
     const materialsSnapshot = {
@@ -156,6 +96,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    console.log(`[SEND] Creating ${supplierTokens.length} supplier tokens...`);
+
     // Insérer les tokens fournisseurs
     const { data: insertedTokens, error: tokensError } = await supabase
       .from('supplier_tokens')
@@ -163,12 +105,14 @@ export async function POST(request: NextRequest) {
       .select('id, token');
 
     if (tokensError) {
-      console.error('Error creating supplier tokens:', tokensError);
+      console.error('[SEND] Error creating supplier tokens:', tokensError);
       return NextResponse.json(
-        { error: tokensError.message },
+        { error: `Erreur création tokens: ${tokensError.message}` },
         { status: 500 }
       );
     }
+
+    console.log(`[SEND] Created ${insertedTokens?.length || 0} tokens`);
 
     // Mettre à jour la demande principale
     const { error: updateError } = await supabase
@@ -187,21 +131,25 @@ export async function POST(request: NextRequest) {
       .eq('id', requestId);
 
     if (updateError) {
-      console.error('Error updating request:', updateError);
+      console.error('[SEND] Error updating request:', updateError);
       return NextResponse.json(
-        { error: updateError.message },
+        { error: `Erreur mise à jour demande: ${updateError.message}` },
         { status: 500 }
       );
     }
 
+    console.log(`[SEND] Request updated to status 'sent'`);
+
     // Générer les URLs pour chaque fournisseur
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const supplierLinks = insertedTokens.map((t: any, index: number) => ({
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://byproject-twinsk.netlify.app';
+    const supplierLinks = (insertedTokens || []).map((t: any, index: number) => ({
       id: t.id,
       label: `Fournisseur ${index + 1}`,
       token: t.token,
       url: `${baseUrl}/supplier-quote/${t.token}`
     }));
+
+    console.log(`[SEND] Generated ${supplierLinks.length} supplier links`);
 
     return NextResponse.json({
       success: true,
