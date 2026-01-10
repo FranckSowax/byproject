@@ -58,82 +58,50 @@ function SignupForm() {
     setIsLoading(true);
 
     try {
-      // 1. Créer l'utilisateur dans Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-            preferred_language: formData.language,
-            whatsapp: formData.whatsapp,
-          },
-        },
+      // Utiliser l'API server-side pour créer le compte (contourne les RLS)
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          fullName: formData.fullName,
+          whatsapp: formData.whatsapp,
+          language: formData.language,
+          isFreemium,
+        }),
       });
 
-      if (authError) {
-        console.error("Auth error:", authError);
+      const data = await response.json();
 
-        if (authError.message.includes("already registered")) {
-          toast.error("Cet email est déjà utilisé");
-        } else {
-          toast.error(`Erreur: ${authError.message}`);
-        }
+      if (!response.ok) {
+        toast.error(data.error || "Erreur lors de la création du compte");
         return;
       }
 
-      if (!authData.user) {
-        toast.error("Erreur lors de la création du compte");
+      // Succès! Maintenant connecter l'utilisateur automatiquement
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        console.error("Auto sign-in error:", signInError);
+        toast.success("Compte créé! Connectez-vous maintenant.");
+        setTimeout(() => {
+          router.push(`/login?redirect=${encodeURIComponent(redirectTo)}`);
+        }, 1500);
         return;
       }
 
-      // 2. Créer l'utilisateur dans la table users
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: formData.email,
-          full_name: formData.fullName,
-          preferred_language: formData.language,
-          role_id: 3, // Reader par défaut
-        });
-
-      if (userError) {
-        console.error("User table error:", userError);
-        // L'utilisateur est créé dans auth mais pas dans users
-        // On continue quand même car il pourra se connecter
-      }
-
-      // 3. Créer la subscription (Trial si freemium, Free sinon)
-      const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 15); // 15 jours
-
-      const { error: subscriptionError } = await supabase
-        .from('subscriptions')
-        .insert({
-          user_id: authData.user.id,
-          plan: isFreemium ? 'Trial' : 'Free',
-          project_limit: 5,
-          export_limit: isFreemium ? 10 : 2,
-          expires_at: isFreemium ? trialEndDate.toISOString() : null,
-        });
-
-      if (subscriptionError) {
-        console.error("Subscription error:", subscriptionError);
-        // Pas bloquant
-      }
-
-      // Succès!
-      toast.success("Compte créé avec succès! Vérifiez votre email pour confirmer.");
-
-      // Nettoyer le localStorage (au cas où il y aurait un mock user)
+      // Nettoyer le localStorage
       localStorage.removeItem("mockUser");
 
-      // Rediriger vers la page de login après 2 secondes
-      setTimeout(() => {
-        router.push(`/login?redirect=${encodeURIComponent(redirectTo)}`);
-        router.refresh();
-      }, 2000);
+      toast.success("Compte créé et connecté avec succès!");
+
+      // Rediriger directement vers la destination
+      router.push(redirectTo);
+      router.refresh();
 
     } catch (error: any) {
       console.error("Signup error:", error);
