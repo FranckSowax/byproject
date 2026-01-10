@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS supplier_tokens (
   -- Expiration
   expires_at TIMESTAMPTZ,
 
+  -- Admin processing
+  admin_margin NUMERIC(5,2),
+  sent_to_client_at TIMESTAMPTZ,
+
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -55,20 +59,22 @@ CREATE INDEX idx_supplier_tokens_expires ON supplier_tokens(expires_at) WHERE ex
 -- RLS Policies
 ALTER TABLE supplier_tokens ENABLE ROW LEVEL SECURITY;
 
--- Admin can do everything
+-- Admin can do everything (using auth.users metadata like other tables)
 CREATE POLICY "Admins can manage supplier tokens"
   ON supplier_tokens FOR ALL
+  TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM user_roles
-      WHERE user_roles.user_id = auth.uid()
-      AND user_roles.role = 'admin'
+      SELECT 1 FROM auth.users
+      WHERE auth.users.id = auth.uid()
+      AND auth.users.raw_user_meta_data->>'role' = 'admin'
     )
   );
 
 -- Users can view tokens for their own supplier requests
 CREATE POLICY "Users can view their supplier tokens"
   ON supplier_tokens FOR SELECT
+  TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM supplier_requests
@@ -77,25 +83,12 @@ CREATE POLICY "Users can view their supplier tokens"
     )
   );
 
--- Public access with valid token (for suppliers without auth)
-CREATE POLICY "Anyone can view with valid token"
-  ON supplier_tokens FOR SELECT
-  USING (
-    token IS NOT NULL AND
-    (expires_at IS NULL OR expires_at > NOW())
-  );
-
--- Anyone can update their own token data (supplier filling info)
-CREATE POLICY "Anyone can update with valid token"
-  ON supplier_tokens FOR UPDATE
-  USING (
-    token IS NOT NULL AND
-    (expires_at IS NULL OR expires_at > NOW())
-  )
-  WITH CHECK (
-    token IS NOT NULL AND
-    (expires_at IS NULL OR expires_at > NOW())
-  );
+-- Service role can do everything (for API routes)
+CREATE POLICY "Service role full access"
+  ON supplier_tokens FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- Add trigger to update updated_at
 CREATE OR REPLACE FUNCTION update_supplier_tokens_updated_at()

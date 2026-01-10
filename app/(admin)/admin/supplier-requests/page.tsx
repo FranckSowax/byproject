@@ -28,7 +28,9 @@ import {
   TrendingUp,
   Calendar,
   ExternalLink,
-  Edit
+  Edit,
+  Plus,
+  RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -118,6 +120,8 @@ export default function AdminSupplierRequestsPage() {
     }
   };
 
+  const [generatingToken, setGeneratingToken] = useState<string | null>(null);
+
   const handleSendToSuppliers = async (requestId: string) => {
     try {
       const response = await fetch('/api/admin/supplier-requests/send', {
@@ -137,6 +141,36 @@ export default function AdminSupplierRequestsPage() {
     } catch (error: any) {
       console.error('Error sending to suppliers:', error);
       toast.error(error.message || 'Erreur lors de l\'envoi');
+    }
+  };
+
+  // Générer un nouveau lien fournisseur et l'ouvrir dans un nouvel onglet
+  const handleGenerateNewLink = async (requestId: string) => {
+    setGeneratingToken(requestId);
+    try {
+      const response = await fetch(`/api/admin/supplier-requests/${requestId}/tokens`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: 1 }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to generate link');
+      }
+
+      const { tokens } = await response.json();
+      if (tokens && tokens.length > 0) {
+        // Ouvrir le nouveau lien dans un nouvel onglet
+        window.open(tokens[0].url, '_blank');
+        toast.success('Nouveau lien fournisseur généré');
+        loadRequests(); // Recharger pour mettre à jour le compteur
+      }
+    } catch (error: any) {
+      console.error('Error generating new link:', error);
+      toast.error(error.message || 'Erreur lors de la génération du lien');
+    } finally {
+      setGeneratingToken(null);
     }
   };
 
@@ -422,16 +456,20 @@ export default function AdminSupplierRequestsPage() {
                                 Envoyer
                               </Button>
                             )}
-                            {request.public_token && (
-                              <a
-                                href={`${window.location.origin}/supplier-quote/${request.public_token}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            {(request.status === 'sent' || request.status === 'in_progress') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Générer nouveau lien fournisseur"
+                                onClick={() => handleGenerateNewLink(request.id)}
+                                disabled={generatingToken === request.id}
                               >
-                                <Button variant="ghost" size="sm" title="Voir le lien public">
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              </a>
+                                {generatingToken === request.id ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Plus className="h-4 w-4" />
+                                )}
+                              </Button>
                             )}
                           </div>
                         </TableCell>

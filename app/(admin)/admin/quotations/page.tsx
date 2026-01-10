@@ -67,6 +67,9 @@ interface SupplierQuote {
   supplier_email: string;
   supplier_company: string;
   supplier_country: string;
+  supplier_phone?: string;
+  supplier_whatsapp?: string;
+  supplier_wechat?: string;
   quoted_materials: Material[];
   status: string;
   submitted_at: string;
@@ -77,11 +80,16 @@ interface SupplierQuote {
     id: string;
     request_number: string;
     project_id: string;
+    user_id?: string;
     projects?: {
       id: string;
       name: string;
+      user_id?: string;
     };
   };
+  // New system fields
+  isNewSystem?: boolean;
+  tokenId?: string;
 }
 
 export default function AdminQuotationsPage() {
@@ -178,6 +186,8 @@ export default function AdminQuotationsPage() {
       setIsSending(true);
 
       const projectId = selectedQuote.supplier_requests.project_id;
+      const userId = selectedQuote.supplier_requests.user_id || selectedQuote.supplier_requests.projects?.user_id;
+      const projectName = selectedQuote.supplier_requests.projects?.name;
 
       // 1. Get all materials from the project
       const { data: projectMaterials, error: materialsError } = await supabase
@@ -195,7 +205,7 @@ export default function AdminQuotationsPage() {
       // 2. Find or create admin supplier "Twinsk Company Ltd"
       const adminSupplierName = 'Twinsk Company Ltd';
       let supplierId: string | null = null;
-      
+
       // Try to find existing Twinsk supplier
       const { data: existingSupplier } = await supabase
         .from('suppliers')
@@ -234,13 +244,13 @@ export default function AdminQuotationsPage() {
 
       const cnyToFcfaRate = exchangeRate?.rate || 95; // Default rate if not found
 
-      // 4. Insert prices with margin into prices table for each material
+      // 4. Prepare prices with margin for each material
       const pricesWithMargin = selectedQuote.quoted_materials
         .filter(m => m.prices && m.prices.length > 0)
         .flatMap(material => {
           // Find the corresponding project material by name
           const projectMaterialId = materialNameToId.get(material.name.toLowerCase().trim());
-          
+
           if (!projectMaterialId) {
             console.warn(`Material "${material.name}" not found in project`);
             return [];
@@ -249,26 +259,25 @@ export default function AdminQuotationsPage() {
           return material.prices!.map(price => {
             const materialMargin = getMarginForMaterial(material.id);
             const finalAmount = calculatePriceWithMargin(price.amount, materialMargin);
-            
+
             // Calculate FCFA conversion
             let convertedAmount = finalAmount;
             if (price.currency === 'CNY') {
               convertedAmount = finalAmount * cnyToFcfaRate;
             } else if (price.currency !== 'FCFA') {
-              // For other currencies, use same rate or fetch specific rate
               convertedAmount = finalAmount * cnyToFcfaRate;
             }
-            
+
             // Prepare variations with margin
             const variationsWithMargin = price.variations?.map(v => ({
               ...v,
               amount: calculatePriceWithMargin(parseFloat(v.amount), materialMargin).toString(),
-              originalAmount: v.amount, // Keep original for reference
+              originalAmount: v.amount,
             })) || [];
 
             return {
-              material_id: projectMaterialId, // Use the project material ID
-              supplier_id: supplierId, // Twinsk Company Ltd
+              material_id: projectMaterialId,
+              supplier_id: supplierId,
               country: selectedQuote.supplier_country,
               amount: finalAmount,
               currency: price.currency,
@@ -280,34 +289,44 @@ export default function AdminQuotationsPage() {
           });
         });
 
-      // Insert all prices
-      if (pricesWithMargin.length > 0) {
-        const { error: pricesError } = await supabase
-          .from('prices')
-          .insert(pricesWithMargin);
-
-        if (pricesError) throw pricesError;
+      // 5. Get the session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée. Veuillez vous reconnecter.');
+        return;
       }
 
-      // 2. Update quote with margin and sent status
-      // @ts-ignore
-      const { error } = await supabase
-        .from('supplier_quotes')
-        .update({
-          admin_margin: margin,
-          status: 'sent_to_client',
-          sent_to_client_at: new Date().toISOString(),
-        })
-        .eq('id', selectedQuote.id);
+      // 6. Call the API to send to client with notification
+      const response = await fetch('/api/admin/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          quoteId: selectedQuote.id,
+          projectId,
+          userId,
+          pricesWithMargin,
+          supplierId,
+          isNewSystem: selectedQuote.isNewSystem || false,
+          projectName,
+          materialCount: pricesWithMargin.length,
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Erreur lors de l\'envoi');
+      }
 
-      toast.success(`Cotation envoyée au client avec ${pricesWithMargin.length} prix ajoutés`);
+      const result = await response.json();
+      toast.success(result.message || `Cotation envoyée au client avec ${pricesWithMargin.length} prix ajoutés`);
       setIsViewModalOpen(false);
       loadQuotes();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending to client:', error);
-      toast.error('Erreur lors de l\'envoi au client');
+      toast.error(error.message || 'Erreur lors de l\'envoi au client');
     } finally {
       setIsSending(false);
     }
