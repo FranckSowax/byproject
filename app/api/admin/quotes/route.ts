@@ -275,7 +275,9 @@ export async function POST(request: NextRequest) {
       supplierId,
       isNewSystem,
       projectName,
-      materialCount
+      materialCount,
+      quotedMaterials, // Original materials with prices from the quote
+      supplierInfo, // Supplier contact information
     } = body;
 
     // 1. Insert prices into the prices table
@@ -335,6 +337,88 @@ export async function POST(request: NextRequest) {
       if (notifError) {
         console.error('Error creating notification:', notifError);
         // Don't fail the whole operation, just log it
+      }
+    }
+
+    // 4. Store quotations in material_quotations database for historical tracking
+    if (quotedMaterials && quotedMaterials.length > 0 && supplierInfo) {
+      try {
+        // Get exchange rate for conversion
+        const { data: exchangeRate } = await supabaseAdmin
+          .from('exchange_rates')
+          .select('rate')
+          .eq('from_currency', 'CNY')
+          .eq('to_currency', 'FCFA')
+          .single();
+
+        const cnyToFcfaRate = exchangeRate?.rate || 95;
+
+        // Get supplier request info
+        const { data: supplierRequest } = await supabaseAdmin
+          .from('supplier_requests')
+          .select('id, project_id')
+          .eq('id', isNewSystem ?
+            (await supabaseAdmin.from('supplier_tokens').select('supplier_request_id').eq('id', quoteId).single()).data?.supplier_request_id
+            : quoteId
+          )
+          .single();
+
+        // Prepare material quotations for insertion
+        const materialQuotations = quotedMaterials
+          .filter((m: any) => m.prices && m.prices.length > 0)
+          .flatMap((material: any) => {
+            return material.prices.map((price: any) => {
+              let convertedPrice = price.amount;
+              if (price.currency === 'CNY') {
+                convertedPrice = price.amount * cnyToFcfaRate;
+              }
+
+              return {
+                material_name: material.name,
+                material_category: material.category || null,
+                original_material_id: material.id || null,
+                project_id: projectId || null,
+                supplier_email: supplierInfo.email,
+                supplier_company: supplierInfo.company,
+                supplier_name: supplierInfo.name,
+                supplier_country: supplierInfo.country,
+                supplier_phone: supplierInfo.phone,
+                supplier_whatsapp: supplierInfo.whatsapp,
+                supplier_wechat: supplierInfo.wechat,
+                unit_price: price.amount,
+                currency: price.currency || 'CNY',
+                unit: price.unit || null,
+                min_quantity: price.minQuantity || null,
+                moq: price.moq || null,
+                variations: price.variations || [],
+                converted_price_fcfa: convertedPrice,
+                exchange_rate_used: price.currency === 'CNY' ? cnyToFcfaRate : null,
+                source_type: 'quotation',
+                source_quote_id: quoteId,
+                source_request_id: supplierRequest?.id || null,
+                specifications: material.specifications || {},
+                notes: price.notes || null,
+                images: material.images || [],
+                status: 'active',
+              };
+            });
+          });
+
+        if (materialQuotations.length > 0) {
+          const { error: quotationsError } = await supabaseAdmin
+            .from('material_quotations')
+            .insert(materialQuotations);
+
+          if (quotationsError) {
+            console.error('Error storing material quotations:', quotationsError);
+            // Don't fail the main operation, just log it
+          } else {
+            console.log(`Stored ${materialQuotations.length} material quotations in database`);
+          }
+        }
+      } catch (quotationError) {
+        console.error('Error processing material quotations:', quotationError);
+        // Don't fail the main operation
       }
     }
 

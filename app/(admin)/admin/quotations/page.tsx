@@ -312,6 +312,17 @@ export default function AdminQuotationsPage() {
           isNewSystem: selectedQuote.isNewSystem || false,
           projectName,
           materialCount: pricesWithMargin.length,
+          // Pass original materials and supplier info for material_quotations database
+          quotedMaterials: selectedQuote.quoted_materials,
+          supplierInfo: {
+            email: selectedQuote.supplier_email,
+            company: selectedQuote.supplier_company,
+            name: selectedQuote.supplier_name,
+            country: selectedQuote.supplier_country,
+            phone: selectedQuote.supplier_phone,
+            whatsapp: selectedQuote.supplier_whatsapp,
+            wechat: selectedQuote.supplier_wechat,
+          },
         }),
       });
 
