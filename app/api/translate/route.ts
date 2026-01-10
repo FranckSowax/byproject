@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { completeText } from '@/lib/ai/clients';
 
-const DEEPSEEK_API_KEY = 'sk-5d0d9534cc734cccb8117b270e28cae7';
+// Configuration pour Netlify
+export const maxDuration = 30;
+export const dynamic = 'force-dynamic';
 
 interface TranslationRequest {
   text: string;
@@ -8,6 +11,12 @@ interface TranslationRequest {
   sourceLanguage?: 'fr' | 'en' | 'zh';
   context?: string;
 }
+
+const languageMap: Record<string, string> = {
+  fr: 'French',
+  en: 'English',
+  zh: 'Simplified Chinese',
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,60 +29,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine source and target languages
     const source = sourceLanguage || 'fr';
-    const languageMap: Record<string, string> = {
-      fr: 'French',
-      en: 'English',
-      zh: 'Simplified Chinese',
-    };
 
-    const systemPrompt = `You are a professional translator specializing in construction and building materials. Translate the following text from ${languageMap[source]} to ${languageMap[targetLanguage]}. Maintain technical accuracy and use appropriate construction terminology. ${context ? `Context: ${context}` : ''}`;
-
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: text,
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 2000,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('DeepSeek API error:', error);
-      return NextResponse.json(
-        { error: 'Translation service error' },
-        { status: response.status }
-      );
+    // Skip translation if source and target are the same
+    if (source === targetLanguage) {
+      return NextResponse.json({
+        translatedText: text,
+        originalText: text,
+        targetLanguage,
+      });
     }
 
-    const data = await response.json();
-    const translatedText = data.choices[0]?.message?.content || '';
+    const systemPrompt = `You are a professional translator specializing in construction and building materials. Translate the following text from ${languageMap[source]} to ${languageMap[targetLanguage]}. Maintain technical accuracy and use appropriate construction terminology. Return ONLY the translated text, nothing else. ${context ? `Context: ${context}` : ''}`;
+
+    const translatedText = await completeText(
+      text,
+      systemPrompt,
+      { temperature: 0.2, maxTokens: 2000 }
+    );
 
     return NextResponse.json({
-      translatedText,
+      translatedText: translatedText.trim(),
       originalText: text,
       targetLanguage,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Translation error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
@@ -91,63 +74,60 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const translations = await Promise.all(
-      materials.map(async (material) => {
-        const textToTranslate = `Material: ${material.name}\nDescription: ${material.description || ''}\nCategory: ${material.category || ''}`;
-        
-        const systemPrompt = targetLanguage === 'zh'
-          ? 'You are a professional translator specializing in construction materials. Translate the following material information from French to Simplified Chinese. Keep technical terms accurate. Return ONLY the translated text in the same format (Material: ..., Description: ..., Category: ...).'
-          : 'You are a professional translator specializing in construction materials. Translate the following material information from French to English. Keep technical terms accurate. Return ONLY the translated text in the same format (Material: ..., Description: ..., Category: ...).';
+    // Process materials in batches of 5 to avoid timeouts
+    const BATCH_SIZE = 5;
+    const translations: any[] = [];
 
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: textToTranslate },
-            ],
-            temperature: 0.3,
-            max_tokens: 1000,
-          }),
-        });
+    for (let i = 0; i < materials.length; i += BATCH_SIZE) {
+      const batch = materials.slice(i, i + BATCH_SIZE);
 
-        if (!response.ok) {
-          return {
-            ...material,
-            translatedName: material.name,
-            translatedDescription: material.description,
-            translationError: true,
-          };
-        }
+      const batchResults = await Promise.all(
+        batch.map(async (material) => {
+          try {
+            const textToTranslate = `Material: ${material.name}\nDescription: ${material.description || ''}\nCategory: ${material.category || ''}`;
 
-        const data = await response.json();
-        const translated = data.choices[0]?.message?.content || '';
-        
-        // Parse the translated response
-        const lines = translated.split('\n');
-        const translatedName = lines.find(l => l.match(/^Material:/i))?.replace(/^Material:\s*/i, '').trim() || material.name;
-        const translatedDescription = lines.find(l => l.match(/^Description:/i))?.replace(/^Description:\s*/i, '').trim() || material.description;
+            const systemPrompt = targetLanguage === 'zh'
+              ? 'You are a professional translator specializing in construction materials. Translate the following material information from French to Simplified Chinese. Keep technical terms accurate. Return ONLY the translated text in the same format (Material: ..., Description: ..., Category: ...).'
+              : 'You are a professional translator specializing in construction materials. Translate the following material information from French to English. Keep technical terms accurate. Return ONLY the translated text in the same format (Material: ..., Description: ..., Category: ...).';
 
-        return {
-          ...material,
-          translatedName,
-          translatedDescription,
-          originalName: material.name,
-          originalDescription: material.description,
-        };
-      })
-    );
+            const translated = await completeText(
+              textToTranslate,
+              systemPrompt,
+              { temperature: 0.2, maxTokens: 1000 }
+            );
+
+            // Parse the translated response
+            const lines = translated.split('\n');
+            const translatedName = lines.find(l => l.match(/^Material:/i))?.replace(/^Material:\s*/i, '').trim() || material.name;
+            const translatedDescription = lines.find(l => l.match(/^Description:/i))?.replace(/^Description:\s*/i, '').trim() || material.description;
+
+            return {
+              ...material,
+              translatedName,
+              translatedDescription,
+              originalName: material.name,
+              originalDescription: material.description,
+            };
+          } catch (error) {
+            console.error(`Translation error for material ${material.id}:`, error);
+            return {
+              ...material,
+              translatedName: material.name,
+              translatedDescription: material.description,
+              translationError: true,
+            };
+          }
+        })
+      );
+
+      translations.push(...batchResults);
+    }
 
     return NextResponse.json({ translations });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Batch translation error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
