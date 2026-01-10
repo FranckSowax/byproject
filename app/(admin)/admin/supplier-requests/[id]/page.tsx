@@ -220,7 +220,7 @@ export default function EditSupplierRequestPage() {
     }
   };
 
-  // AI Analysis function
+  // AI Analysis function - processes materials in batches of 5 to avoid timeouts
   const handleAIAnalysis = async (autoSendClarifications: boolean = false) => {
     if (!request?.materials_data || request.materials_data.length === 0) {
       toast.error('Aucun materiau a analyser');
@@ -228,37 +228,77 @@ export default function EditSupplierRequestPage() {
     }
 
     setAnalyzing(true);
-    try {
-      const response = await fetch('/api/ai/analyze-materials-completeness', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          materials: request.materials_data,
-          supplierRequestId: requestId,
-          autoSendClarifications,
-        }),
-      });
+    const allResults: any[] = [];
+    const BATCH_SIZE = 5;
+    const materials = request.materials_data;
+    const totalBatches = Math.ceil(materials.length / BATCH_SIZE);
 
-      if (!response.ok) {
-        const { error } = await response.json();
-        throw new Error(error || 'AI analysis failed');
+    try {
+      // Process materials in batches
+      for (let i = 0; i < materials.length; i += BATCH_SIZE) {
+        const batch = materials.slice(i, i + BATCH_SIZE);
+        const batchIndex = Math.floor(i / BATCH_SIZE);
+
+        console.log(`Processing batch ${batchIndex + 1}/${totalBatches}...`);
+
+        const response = await fetch('/api/ai/analyze-materials-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            materials: batch,
+            batchIndex,
+            totalBatches,
+          }),
+        });
+
+        if (!response.ok) {
+          const { error } = await response.json();
+          console.error(`Batch ${batchIndex + 1} failed:`, error);
+          // Continue with next batch instead of failing completely
+          continue;
+        }
+
+        const result = await response.json();
+        allResults.push(...(result.results || []));
       }
 
-      const result = await response.json();
-      setAiAnalysisResults(result.results || []);
+      // Set results
+      setAiAnalysisResults(allResults);
 
-      if (result.summary.ready_for_quotation) {
+      // Calculate summary
+      const needsClarification = allResults.filter(r => !r.is_complete).length;
+      const readyForQuotation = needsClarification === 0;
+
+      if (readyForQuotation) {
         toast.success('Tous les materiaux sont complets ! Pret a envoyer aux fournisseurs.', {
           icon: <CheckCircle className="h-5 w-5 text-green-500" />,
         });
       } else {
-        toast.warning(`${result.summary.needs_clarification} materiau(x) necessitent des precisions`, {
+        toast.warning(`${needsClarification} materiau(x) necessitent des precisions`, {
           icon: <AlertTriangle className="h-5 w-5 text-orange-500" />,
           description: autoSendClarifications
             ? 'Une notification a ete envoyee au client'
             : 'Cliquez pour voir les details',
         });
         setShowAIResultsDialog(true);
+      }
+
+      // If autoSendClarifications is enabled, send them now
+      if (autoSendClarifications && needsClarification > 0) {
+        const incompleteMaterials = allResults.filter(r => !r.is_complete);
+        for (const result of incompleteMaterials) {
+          await fetch('/api/admin/clarification-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              supplierRequestId: requestId,
+              materialIds: [result.material_id],
+              message: result.ai_suggestions.join(' '),
+              needsImages: result.needs_images,
+              needsDescription: result.needs_description,
+            }),
+          });
+        }
       }
 
       loadRequest(); // Reload to get updated ai_analysis_status
