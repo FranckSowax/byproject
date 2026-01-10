@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     if ((existingProjectsCount || 0) >= projectLimit) {
       return NextResponse.json(
         {
-          error: `Limite atteinte: vous avez déjà ${existingProjectsCount} projet(s). Plan Free = 1 projet maximum. Passez à un plan supérieur pour créer plus de projets.`,
+          error: `Limite atteinte: vous avez déjà ${existingProjectsCount} projet(s). Plan Free = 1 projet maximum. Passez au plan Pro pour créer plus de projets.`,
           message: 'Limite de projets atteinte',
           limitReached: 'projects'
         },
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
       const remaining = Math.max(0, materialLimit - totalMaterialsCount);
       return NextResponse.json(
         {
-          error: `Limite atteinte: vous avez ${totalMaterialsCount} matériaux et voulez en ajouter ${newMaterialsCount}. Plan Free = ${materialLimit} matériaux maximum. ${remaining > 0 ? `Vous pouvez encore ajouter ${remaining} matériau(x).` : ''} Passez à un plan supérieur pour ajouter plus de matériaux.`,
+          error: `Limite atteinte: vous avez ${totalMaterialsCount} matériaux et voulez en ajouter ${newMaterialsCount}. Plan Free = ${materialLimit} matériaux maximum. ${remaining > 0 ? `Vous pouvez encore ajouter ${remaining} matériau(x).` : ''} Passez au plan Pro pour ajouter plus de matériaux.`,
           message: 'Limite de matériaux atteinte',
           limitReached: 'materials',
           currentCount: totalMaterialsCount,
