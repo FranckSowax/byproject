@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, DollarSign, MessageSquare, Image as ImageIcon, Edit2, Trash2, Plus, Package, ChevronLeft, ChevronRight, Send, Camera, Save, MapPin, Phone, User, Building, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { X, DollarSign, MessageSquare, Image as ImageIcon, Edit2, Trash2, Plus, Package, ChevronLeft, ChevronRight, Send, Camera, Save, MapPin, Phone, User, Building, AlertCircle, CheckCircle2, Loader2, Bot, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,9 +12,12 @@ import { cn } from "@/lib/utils";
 interface ClarificationRequest {
   requested_at: string;
   requested_by: string;
+  source?: string; // 'ai_analysis' | 'manual'
   message: string;
+  missing_fields?: string[];
   needs_images: boolean;
   needs_description: boolean;
+  ai_suggestions?: string[];
   resolved_at: string | null;
 }
 
@@ -444,15 +447,66 @@ export function MaterialDetailModal({
 
         {/* Clarification Request Banner */}
         {hasClarificationRequest && (
-          <div className="mx-4 sm:mx-8 mb-4 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3">
+          <div className={cn(
+            "mx-4 sm:mx-8 mb-4 rounded-2xl px-4 py-3 border",
+            material.clarification_request?.source === 'ai_analysis'
+              ? "bg-violet-50 border-violet-200"
+              : "bg-orange-50 border-orange-200"
+          )}>
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+              {material.clarification_request?.source === 'ai_analysis' ? (
+                <Bot className="h-5 w-5 text-violet-500 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+              )}
               <div className="flex-1">
-                <h4 className="font-semibold text-orange-800 text-sm">Demande de précision</h4>
-                <p className="text-sm text-orange-700 mt-1">
-                  {material.clarification_request?.message || "Informations supplémentaires requises"}
+                <h4 className={cn(
+                  "font-semibold text-sm flex items-center gap-2",
+                  material.clarification_request?.source === 'ai_analysis' ? "text-violet-800" : "text-orange-800"
+                )}>
+                  {material.clarification_request?.source === 'ai_analysis' ? (
+                    <>Verification IA - Precisions requises</>
+                  ) : (
+                    <>Demande de precision</>
+                  )}
+                </h4>
+                <p className={cn(
+                  "text-sm mt-1",
+                  material.clarification_request?.source === 'ai_analysis' ? "text-violet-700" : "text-orange-700"
+                )}>
+                  {material.clarification_request?.message || "Informations supplementaires requises"}
                 </p>
-                <div className="flex flex-wrap gap-2 mt-2">
+
+                {/* AI Suggestions */}
+                {material.clarification_request?.ai_suggestions && material.clarification_request.ai_suggestions.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    <p className="text-xs text-violet-600 font-medium flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      Suggestions:
+                    </p>
+                    <ul className="space-y-1">
+                      {material.clarification_request.ai_suggestions.map((suggestion, i) => (
+                        <li key={i} className="text-xs text-violet-700 flex items-start gap-1.5 pl-1">
+                          <span className="text-violet-400">•</span>
+                          {suggestion}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Missing fields */}
+                {material.clarification_request?.missing_fields && material.clarification_request.missing_fields.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {material.clarification_request.missing_fields.map((field, i) => (
+                      <Badge key={i} variant="outline" className="text-xs bg-white/50">
+                        {field}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 mt-3">
                   {needsDescription && (
                     <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
                       hasDescription ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'

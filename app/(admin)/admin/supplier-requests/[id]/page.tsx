@@ -51,6 +51,10 @@ import {
   FileQuestion,
   RefreshCw,
   Link as LinkIcon,
+  Bot,
+  Sparkles,
+  Eye,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SupplierLinksPanel } from '@/components/admin/SupplierLinksPanel';
@@ -64,11 +68,27 @@ interface Material {
   images: string[];
   clarification_request?: {
     requested_at: string;
+    requested_by?: string;
+    source?: string;
     message: string;
+    missing_fields?: string[];
     needs_images: boolean;
     needs_description: boolean;
+    ai_suggestions?: string[];
     resolved_at: string | null;
   } | null;
+}
+
+interface AIAnalysisResult {
+  material_id: string;
+  material_name: string;
+  is_complete: boolean;
+  missing_fields: string[];
+  missing_fields_fr: string[];
+  needs_images: boolean;
+  needs_description: boolean;
+  confidence_score: number;
+  ai_suggestions: string[];
 }
 
 interface SupplierRequest {
@@ -84,6 +104,16 @@ interface SupplierRequest {
   public_token: string;
   created_at: string;
   expires_at: string | null;
+  ai_analysis_status?: string;
+  ai_analysis_completed_at?: string;
+  ai_analysis_result?: {
+    model_used?: string;
+    total_materials?: number;
+    complete_materials?: number;
+    incomplete_materials?: number;
+    analyzed_at?: string;
+  };
+  materials_needing_clarification?: number;
   projects?: {
     id: string;
     name: string;
@@ -113,6 +143,7 @@ export default function EditSupplierRequestPage() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendingClarification, setSendingClarification] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [request, setRequest] = useState<SupplierRequest | null>(null);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [clarificationDialogOpen, setClarificationDialogOpen] = useState(false);
@@ -120,6 +151,8 @@ export default function EditSupplierRequestPage() {
   const [needsImages, setNeedsImages] = useState(true);
   const [needsDescription, setNeedsDescription] = useState(true);
   const [showLinksPanel, setShowLinksPanel] = useState(false);
+  const [aiAnalysisResults, setAiAnalysisResults] = useState<AIAnalysisResult[]>([]);
+  const [showAIResultsDialog, setShowAIResultsDialog] = useState(false);
   const [formData, setFormData] = useState({
     status: '',
     num_suppliers: 3,
@@ -184,6 +217,89 @@ export default function EditSupplierRequestPage() {
       toast.error('Erreur lors de la mise à jour');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // AI Analysis function
+  const handleAIAnalysis = async (autoSendClarifications: boolean = false) => {
+    if (!request?.materials_data || request.materials_data.length === 0) {
+      toast.error('Aucun materiau a analyser');
+      return;
+    }
+
+    setAnalyzing(true);
+    try {
+      const response = await fetch('/api/ai/analyze-materials-completeness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          materials: request.materials_data,
+          supplierRequestId: requestId,
+          autoSendClarifications,
+        }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'AI analysis failed');
+      }
+
+      const result = await response.json();
+      setAiAnalysisResults(result.results || []);
+
+      if (result.summary.ready_for_quotation) {
+        toast.success('Tous les materiaux sont complets ! Pret a envoyer aux fournisseurs.', {
+          icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+        });
+      } else {
+        toast.warning(`${result.summary.needs_clarification} materiau(x) necessitent des precisions`, {
+          icon: <AlertTriangle className="h-5 w-5 text-orange-500" />,
+          description: autoSendClarifications
+            ? 'Une notification a ete envoyee au client'
+            : 'Cliquez pour voir les details',
+        });
+        setShowAIResultsDialog(true);
+      }
+
+      loadRequest(); // Reload to get updated ai_analysis_status
+    } catch (error: any) {
+      console.error('AI Analysis error:', error);
+      toast.error(error.message || 'Erreur lors de l\'analyse IA');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  // Send clarifications for AI-detected incomplete materials
+  const handleSendAIClarifications = async () => {
+    const incompleteMaterials = aiAnalysisResults.filter(r => !r.is_complete);
+    if (incompleteMaterials.length === 0) return;
+
+    setSendingClarification(true);
+    try {
+      // Send clarification for each incomplete material
+      for (const result of incompleteMaterials) {
+        await fetch('/api/admin/clarification-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            supplierRequestId: requestId,
+            materialIds: [result.material_id],
+            message: result.ai_suggestions.join(' '),
+            needsImages: result.needs_images,
+            needsDescription: result.needs_description,
+          }),
+        });
+      }
+
+      toast.success(`Demandes de clarification envoyees pour ${incompleteMaterials.length} materiau(x)`);
+      setShowAIResultsDialog(false);
+      loadRequest();
+    } catch (error: any) {
+      console.error('Error sending clarifications:', error);
+      toast.error('Erreur lors de l\'envoi des demandes');
+    } finally {
+      setSendingClarification(false);
     }
   };
 
@@ -396,22 +512,104 @@ export default function EditSupplierRequestPage() {
         </Card>
       )}
 
-      {/* Send to Suppliers Button - Only for pending_admin status */}
+      {/* AI Analysis Card - For pending_admin status */}
+      {request.status === 'pending_admin' && (
+        <Card className="mb-6 border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center flex-shrink-0">
+                  <Bot className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-violet-900 flex items-center gap-2">
+                    Verification IA des materiaux
+                    {request.ai_analysis_status === 'ready' && (
+                      <Badge className="bg-green-100 text-green-700">Pret</Badge>
+                    )}
+                    {request.ai_analysis_status === 'needs_clarification' && (
+                      <Badge className="bg-orange-100 text-orange-700">
+                        {request.materials_needing_clarification} a clarifier
+                      </Badge>
+                    )}
+                  </h3>
+                  <p className="text-sm text-violet-700 mt-1">
+                    L'IA verifie si les descriptions sont suffisantes pour obtenir des cotations precises
+                  </p>
+                  {request.ai_analysis_completed_at && (
+                    <p className="text-xs text-violet-500 mt-1">
+                      Derniere analyse: {new Date(request.ai_analysis_completed_at).toLocaleString('fr-FR')}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  onClick={() => handleAIAnalysis(false)}
+                  disabled={analyzing}
+                  variant="outline"
+                  className="border-violet-300 text-violet-700 hover:bg-violet-100"
+                >
+                  {analyzing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Analyse...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Analyser
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => handleAIAnalysis(true)}
+                  disabled={analyzing}
+                  className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                >
+                  {analyzing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Analyse...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Analyser et notifier
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Send to Suppliers Button - After AI analysis is ready or can be forced */}
       {request.status === 'pending_admin' && (
         <Card className="mb-6 border-blue-200 bg-blue-50/50">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-blue-900">Prêt à envoyer aux fournisseurs</h3>
+                <h3 className="font-semibold text-blue-900">Envoyer aux fournisseurs</h3>
                 <p className="text-sm text-blue-700 mt-1">
-                  {formData.num_suppliers} lien(s) unique(s) seront générés
+                  {formData.num_suppliers} lien(s) unique(s) seront generes
+                  {request.ai_analysis_status === 'needs_clarification' && (
+                    <span className="text-orange-600 ml-2">
+                      (Attention: {request.materials_needing_clarification} materiau(x) incomplet(s))
+                    </span>
+                  )}
                 </p>
               </div>
               <Button
                 onClick={handleSendToSuppliers}
                 disabled={sending}
                 size="lg"
-                className="bg-gradient-to-r from-blue-600 to-purple-600"
+                className={`${
+                  request.ai_analysis_status === 'ready'
+                    ? 'bg-gradient-to-r from-green-600 to-emerald-600'
+                    : 'bg-gradient-to-r from-blue-600 to-purple-600'
+                }`}
               >
                 {sending ? (
                   <>
@@ -421,7 +619,9 @@ export default function EditSupplierRequestPage() {
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Envoyer aux Fournisseurs
+                    {request.ai_analysis_status === 'needs_clarification'
+                      ? 'Envoyer quand meme'
+                      : 'Envoyer aux Fournisseurs'}
                   </>
                 )}
               </Button>
@@ -796,6 +996,121 @@ export default function EditSupplierRequestPage() {
                 <>
                   <Send className="h-4 w-4 mr-2" />
                   Envoyer la demande
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Analysis Results Dialog */}
+      <Dialog open={showAIResultsDialog} onOpenChange={setShowAIResultsDialog}>
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-violet-600" />
+              Resultats de l'analyse IA
+            </DialogTitle>
+            <DialogDescription>
+              {aiAnalysisResults.filter(r => !r.is_complete).length} materiau(x) necessitent des precisions supplementaires
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {aiAnalysisResults.filter(r => !r.is_complete).map((result) => (
+              <div
+                key={result.material_id}
+                className="p-4 rounded-lg border border-orange-200 bg-orange-50/50"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold text-slate-900">{result.material_name}</h4>
+                  <Badge className={`${
+                    result.confidence_score > 70
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : result.confidence_score > 40
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'bg-red-100 text-red-700'
+                  }`}>
+                    {result.confidence_score}% complet
+                  </Badge>
+                </div>
+
+                {result.missing_fields_fr.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-slate-500 mb-1">Informations manquantes:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {result.missing_fields_fr.map((field, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {field}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-500">Suggestions IA:</p>
+                  <ul className="text-sm text-slate-700 space-y-1">
+                    {result.ai_suggestions.map((suggestion, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Sparkles className="h-3 w-3 text-violet-500 mt-1 flex-shrink-0" />
+                        <span>{suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  {result.needs_images && (
+                    <Badge className="bg-blue-100 text-blue-700">
+                      <ImagePlus className="h-3 w-3 mr-1" />
+                      Photos requises
+                    </Badge>
+                  )}
+                  {result.needs_description && (
+                    <Badge className="bg-purple-100 text-purple-700">
+                      <FileQuestion className="h-3 w-3 mr-1" />
+                      Description requise
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Complete materials summary */}
+            {aiAnalysisResults.filter(r => r.is_complete).length > 0 && (
+              <div className="p-4 rounded-lg border border-green-200 bg-green-50/50">
+                <div className="flex items-center gap-2 text-green-700">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-medium">
+                    {aiAnalysisResults.filter(r => r.is_complete).length} materiau(x) complet(s)
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowAIResultsDialog(false)}
+            >
+              Fermer
+            </Button>
+            <Button
+              onClick={handleSendAIClarifications}
+              disabled={sendingClarification}
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+            >
+              {sendingClarification ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Envoi...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Envoyer les demandes de clarification
                 </>
               )}
             </Button>
