@@ -133,9 +133,12 @@ export default function ProjectPage() {
     id: string;
     request_number: string;
     status: string;
+    updated_at: string;
   } | null>(null);
   const [isUpdatingRequest, setIsUpdatingRequest] = useState(false);
   const [hasModifiedMaterials, setHasModifiedMaterials] = useState(false);
+  const [hasPendingClarifications, setHasPendingClarifications] = useState(false);
+  const [updateSentForCurrentClarification, setUpdateSentForCurrentClarification] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -147,10 +150,24 @@ export default function ProjectPage() {
     }
   }, [projectId]);
 
-  // Check for modified materials when materials change
+  // Check for modified materials and pending clarifications when materials change
   useEffect(() => {
+    // Matériaux avec demande de précision résolue (prêts pour mise à jour)
     const modified = materials.some(m => m.clarification_request?.resolved_at);
     setHasModifiedMaterials(modified);
+
+    // Matériaux avec demande de précision en attente (non résolue)
+    const pending = materials.some(m =>
+      m.clarification_request &&
+      m.clarification_request.requested_at &&
+      !m.clarification_request.resolved_at
+    );
+    setHasPendingClarifications(pending);
+
+    // Réinitialiser l'état "mise à jour envoyée" si l'admin fait une nouvelle demande
+    if (pending) {
+      setUpdateSentForCurrentClarification(false);
+    }
   }, [materials]);
 
   // Vérifier les permissions de l'utilisateur
@@ -263,7 +280,7 @@ export default function ProjectPage() {
 
       const { data, error } = await supabase
         .from('supplier_requests')
-        .select('id, request_number, status')
+        .select('id, request_number, status, updated_at')
         .eq('project_id', projectId)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -282,6 +299,26 @@ export default function ProjectPage() {
   const handleUpdateRequest = async () => {
     if (!existingRequest) return;
 
+    // Vérifier que au moins un matériau a été complété (description OU image)
+    const materialsWithPendingClarification = materials.filter(m =>
+      m.clarification_request &&
+      m.clarification_request.requested_at &&
+      !m.clarification_request.resolved_at
+    );
+
+    const hasCompletedAtLeastOne = materialsWithPendingClarification.some(m => {
+      const hasDescription = m.description && m.description.trim().length > 0;
+      const hasImages = m.images && m.images.length > 0;
+      return hasDescription || hasImages;
+    });
+
+    if (materialsWithPendingClarification.length > 0 && !hasCompletedAtLeastOne) {
+      toast.error("Informations requises", {
+        description: "Veuillez compléter la description ou ajouter une image à au moins un matériau avant d'envoyer la mise à jour."
+      });
+      return;
+    }
+
     try {
       setIsUpdatingRequest(true);
 
@@ -299,6 +336,9 @@ export default function ProjectPage() {
       toast.success("Demande mise à jour !", {
         description: result.message,
       });
+
+      // Marquer que la mise à jour a été envoyée pour cette demande de clarification
+      setUpdateSentForCurrentClarification(true);
 
       // Reload materials to clear modification flags visually
       loadMaterials();
@@ -1477,25 +1517,48 @@ export default function ProjectPage() {
               </Badge>
             )}
             
-            {/* Bouton Mettre à jour la demande (si matériaux modifiés et demande existante) */}
-            {permissions.canManage && existingRequest && hasModifiedMaterials && (
-              <Button
-                onClick={handleUpdateRequest}
-                disabled={isUpdatingRequest}
-                className="flex-shrink-0 gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all rounded-xl text-sm px-3 py-2 animate-pulse"
-              >
-                {isUpdatingRequest ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span className="hidden sm:inline">Mise à jour...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    <span className="hidden sm:inline">Mettre à jour la demande</span>
-                  </>
+            {/* Bouton Mettre à jour la demande (si demande existante et demande de clarification en cours) */}
+            {permissions.canManage && existingRequest && (hasPendingClarifications || hasModifiedMaterials) && (
+              <div className="flex flex-col items-start gap-1 flex-shrink-0">
+                <Button
+                  onClick={handleUpdateRequest}
+                  disabled={isUpdatingRequest || updateSentForCurrentClarification}
+                  className={`gap-2 text-white shadow-lg hover:shadow-xl transition-all rounded-xl text-sm px-3 py-2 ${
+                    updateSentForCurrentClarification
+                      ? 'bg-gradient-to-r from-green-500 to-green-600 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 animate-pulse'
+                  }`}
+                >
+                  {isUpdatingRequest ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span className="hidden sm:inline">Mise à jour...</span>
+                    </>
+                  ) : updateSentForCurrentClarification ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span className="hidden sm:inline">Mise à jour envoyée</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      <span className="hidden sm:inline">Mettre à jour la demande</span>
+                    </>
+                  )}
+                </Button>
+                {/* Date de dernière mise à jour */}
+                {existingRequest.updated_at && (
+                  <span className="text-xs text-[#718096] pl-1">
+                    Dernière màj: {new Date(existingRequest.updated_at).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
                 )}
-              </Button>
+              </div>
             )}
 
             {/* Bouton Demander une cotation */}
@@ -1646,6 +1709,53 @@ export default function ProjectPage() {
         </Card>
 
       </div>
+
+      {/* Bannière d'information pour les demandes de précision en attente */}
+      {hasPendingClarifications && !updateSentForCurrentClarification && (
+        <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">
+          <CardContent className="py-4">
+            <div className="flex gap-3 items-start">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="h-5 w-5 text-orange-600" />
+                </div>
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="font-semibold text-orange-900">Précisions demandées par l'administrateur</h4>
+                <p className="text-sm text-orange-800">
+                  Des informations supplémentaires sont nécessaires pour certains matériaux.
+                  <strong> Veuillez compléter la description ou ajouter une image</strong> pour chaque matériau marqué
+                  avant de pouvoir envoyer votre mise à jour.
+                </p>
+                <p className="text-xs text-orange-700 mt-2">
+                  💡 Cliquez sur un matériau avec le badge orange pour le modifier et ajouter les informations demandées.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Message de confirmation après envoi de la mise à jour */}
+      {updateSentForCurrentClarification && (
+        <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+          <CardContent className="py-4">
+            <div className="flex gap-3 items-start">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                </div>
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="font-semibold text-green-900">Mise à jour envoyée avec succès</h4>
+                <p className="text-sm text-green-800">
+                  Votre mise à jour a été transmise à l'administrateur. Vous serez notifié en cas de nouvelles demandes de précision.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Section Matériaux - Style moderne */}
       <MaterialsView
