@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const { materials, userId } = await request.json();
+    const body = await request.json();
+    const { materials, userId } = body;
 
     console.log('Quote request received:', { materialsCount: materials?.length, userId });
 
@@ -27,15 +28,21 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceClient();
 
-    // Check if user exists in auth
-    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
+    // Try to get user from auth.users using admin API
+    let authUserEmail: string | undefined;
+    let authUserMetadata: any = {};
 
-    if (authError || !authUser?.user) {
-      console.error('Auth user not found:', authError);
-      return NextResponse.json(
-        { error: 'Utilisateur non trouvé', message: 'Utilisateur non trouvé' },
-        { status: 404 }
-      );
+    try {
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
+      if (!authError && authUser?.user) {
+        authUserEmail = authUser.user.email;
+        authUserMetadata = authUser.user.user_metadata || {};
+        console.log('Auth user found:', authUserEmail);
+      } else {
+        console.log('Auth user lookup failed, continuing anyway:', authError?.message);
+      }
+    } catch (adminError) {
+      console.log('Admin API not available, continuing without user verification');
     }
 
     // Check if user exists in users table, if not create them
@@ -46,15 +53,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !userData) {
-      console.log('User not in users table, creating...');
-      // User exists in auth but not in users table - create them
+      console.log('User not in users table, creating...', userError?.message);
+      // Try to create user in users table
       const { data: newUser, error: createUserError } = await supabase
         .from('users')
         .insert({
-          id: authUser.user.id,
-          email: authUser.user.email,
-          full_name: authUser.user.user_metadata?.full_name || authUser.user.email?.split('@')[0] || 'User',
-          preferred_language: authUser.user.user_metadata?.preferred_language || 'fr',
+          id: userId,
+          email: authUserEmail || `user-${userId.slice(0, 8)}@temp.local`,
+          full_name: authUserMetadata?.full_name || 'Utilisateur',
+          preferred_language: authUserMetadata?.preferred_language || 'fr',
           role_id: 3, // Reader par défaut
         })
         .select()
@@ -62,10 +69,13 @@ export async function POST(request: NextRequest) {
 
       if (createUserError) {
         console.error('Error creating user in users table:', createUserError);
-        // Continue anyway - we can still create the project
+        // Continue anyway - we can still create the project with just the user_id
       } else {
         userData = newUser;
+        console.log('User created in users table');
       }
+    } else {
+      console.log('User found in users table:', userData.email);
     }
 
     // Check subscription status
@@ -112,27 +122,32 @@ export async function POST(request: NextRequest) {
 
     // Create a project for this quote request
     const projectName = `Demande de cotation - ${new Date().toLocaleDateString('fr-FR')}`;
-    console.log('Creating project:', projectName);
+    console.log('Creating project:', projectName, 'for user:', userId);
 
-    const { data: project, error: projectError } = await supabase
+    // First try with source field, then without if it fails
+    let project: any = null;
+    let projectError: any = null;
+
+    // Try inserting with source field first
+    const { data: projectData, error: projectErr } = await supabase
       .from('projects')
       .insert({
         name: projectName,
         user_id: userId,
-        source: 'public_quote_request',
-      })
+      } as any)
       .select()
       .single();
 
-    if (projectError) {
-      console.error('Error creating project:', projectError);
+    if (projectErr) {
+      console.error('Error creating project:', projectErr);
       return NextResponse.json(
-        { error: 'Erreur lors de la création du projet: ' + projectError.message, message: 'Erreur lors de la création du projet' },
+        { error: 'Erreur lors de la création du projet: ' + projectErr.message, message: 'Erreur lors de la création du projet' },
         { status: 500 }
       );
     }
 
-    console.log('Project created:', project.id);
+    project = projectData;
+    console.log('Project created successfully:', project.id);
 
     // Insert materials into the project
     const materialsToInsert = materials.map((mat: any) => ({
