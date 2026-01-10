@@ -49,8 +49,11 @@ import {
   ImagePlus,
   AlertCircle,
   FileQuestion,
+  RefreshCw,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SupplierLinksPanel } from '@/components/admin/SupplierLinksPanel';
 
 interface Material {
   id: string;
@@ -108,6 +111,7 @@ export default function EditSupplierRequestPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
   const [sendingClarification, setSendingClarification] = useState(false);
   const [request, setRequest] = useState<SupplierRequest | null>(null);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
@@ -115,6 +119,7 @@ export default function EditSupplierRequestPage() {
   const [clarificationMessage, setClarificationMessage] = useState('');
   const [needsImages, setNeedsImages] = useState(true);
   const [needsDescription, setNeedsDescription] = useState(true);
+  const [showLinksPanel, setShowLinksPanel] = useState(false);
   const [formData, setFormData] = useState({
     status: '',
     num_suppliers: 3,
@@ -179,6 +184,35 @@ export default function EditSupplierRequestPage() {
       toast.error('Erreur lors de la mise à jour');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendToSuppliers = async () => {
+    setSending(true);
+    try {
+      const response = await fetch('/api/admin/supplier-requests/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          numSuppliers: formData.num_suppliers,
+        }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to send');
+      }
+
+      const result = await response.json();
+      toast.success(result.message);
+      setShowLinksPanel(true);
+      loadRequest(); // Reload to update status
+    } catch (error: any) {
+      console.error('Error sending to suppliers:', error);
+      toast.error(error.message || 'Erreur lors de l\'envoi');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -338,29 +372,63 @@ export default function EditSupplierRequestPage() {
             </div>
           </div>
 
-          {request.public_token && (
-            <div className="pt-4 border-t">
-              <Label className="text-sm text-gray-600">Lien Public</Label>
-              <div className="flex items-center gap-2 mt-2">
-                <Input
-                  readOnly
-                  value={`${window.location.origin}/supplier-quote/${request.public_token}`}
-                  className="font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    window.open(`/supplier-quote/${request.public_token}`, '_blank');
-                  }}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {/* Supplier Links Panel - Show after sending or if already sent */}
+      {(request.status === 'sent' || request.status === 'in_progress' || showLinksPanel) && (
+        <Card className="mb-6 border-violet-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-violet-700">
+              <LinkIcon className="h-5 w-5" />
+              Liens Fournisseurs
+            </CardTitle>
+            <CardDescription>
+              Chaque fournisseur a son propre lien unique et espace de travail isolé
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SupplierLinksPanel
+              requestId={requestId}
+              onSyncComplete={loadRequest}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Send to Suppliers Button - Only for pending_admin status */}
+      {request.status === 'pending_admin' && (
+        <Card className="mb-6 border-blue-200 bg-blue-50/50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-blue-900">Prêt à envoyer aux fournisseurs</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  {formData.num_suppliers} lien(s) unique(s) seront générés
+                </p>
+              </div>
+              <Button
+                onClick={handleSendToSuppliers}
+                disabled={sending}
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-purple-600"
+              >
+                {sending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Envoi en cours...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Envoyer aux Fournisseurs
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Materials List */}
       {request.materials_data && request.materials_data.length > 0 && (

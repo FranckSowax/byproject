@@ -153,7 +153,8 @@ export default function AdminSupplierRequestsPage() {
 
   const stats = {
     total: requests.length,
-    pending: requests.filter(r => r.status === 'pending').length,
+    pendingAdmin: requests.filter(r => r.status === 'pending_admin').length,
+    sent: requests.filter(r => r.status === 'sent').length,
     inProgress: requests.filter(r => r.status === 'in_progress').length,
     completed: requests.filter(r => r.status === 'completed').length,
   };
@@ -176,7 +177,7 @@ export default function AdminSupplierRequestsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -191,21 +192,35 @@ export default function AdminSupplierRequestsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={() => setStatusFilter('pending_admin')}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">En attente</p>
-                <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+                <p className="text-sm text-slate-600">À traiter</p>
+                <p className="text-3xl font-bold text-orange-600">{stats.pendingAdmin}</p>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-yellow-600 to-orange-600 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
                 <Clock className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={() => setStatusFilter('sent')}>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600">Envoyées</p>
+                <p className="text-3xl font-bold text-blue-600">{stats.sent}</p>
+              </div>
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
+                <Send className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={() => setStatusFilter('in_progress')}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
@@ -219,7 +234,7 @@ export default function AdminSupplierRequestsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={() => setStatusFilter('completed')}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
@@ -247,7 +262,7 @@ export default function AdminSupplierRequestsPage() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant={statusFilter === 'all' ? 'default' : 'outline'}
                 onClick={() => setStatusFilter('all')}
@@ -256,11 +271,19 @@ export default function AdminSupplierRequestsPage() {
                 Tous
               </Button>
               <Button
-                variant={statusFilter === 'pending' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('pending')}
+                variant={statusFilter === 'pending_admin' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('pending_admin')}
+                size="sm"
+                className={statusFilter === 'pending_admin' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+              >
+                À traiter {stats.pendingAdmin > 0 && `(${stats.pendingAdmin})`}
+              </Button>
+              <Button
+                variant={statusFilter === 'sent' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('sent')}
                 size="sm"
               >
-                En attente
+                Envoyées
               </Button>
               <Button
                 variant={statusFilter === 'in_progress' ? 'default' : 'outline'}
