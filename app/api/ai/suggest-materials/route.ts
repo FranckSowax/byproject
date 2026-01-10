@@ -1,19 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import Replicate from 'replicate';
-
-
-const getOpenAIClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({ apiKey });
-};
-
-const getReplicateClient = () => {
-  const auth = process.env.REPLICATE_API_TOKEN;
-  if (!auth) return null;
-  return new Replicate({ auth });
-};
+import { completeJSON } from '@/lib/ai/clients';
 
 // Règles de complémentarité BTP (si X présent, suggérer Y)
 const COMPLEMENTARY_RULES: Record<string, { requires: string[], suggestions: Array<{ name: string, reason: string, priority: 'high' | 'medium' | 'low' }> }> = {
@@ -190,73 +176,28 @@ RÉPONDS EN JSON avec 10-15 suggestions:
   "analysis": "Résumé en 1 phrase de ce qui manque principalement"
 }`;
 
-    let responseText = '';
     let modelUsed = '';
-
-    const replicate = getReplicateClient();
-    const useGemini = !!replicate;
-
-    if (useGemini && replicate) {
-      try {
-        console.log('🧠 Generating suggestions with Gemini 3 Pro...');
-        const output = await replicate.run("google/gemini-3-pro", {
-          input: {
-            prompt: prompt,
-            system_instruction: "Tu es un expert BTP. Tu analyses les listes de matériaux et suggères les éléments manquants essentiels. Tu réponds UNIQUEMENT en JSON valide.",
-            temperature: 0.7,
-            max_output_tokens: 2000,
-            thinking_level: "medium"
-          }
-        });
-        responseText = Array.isArray(output) ? output.join("") : String(output);
-        modelUsed = 'gemini-3-pro';
-      } catch (geminiError) {
-        console.error('Gemini error, falling back to OpenAI:', geminiError);
-      }
-    }
-
-    // Fallback OpenAI
-    const openai = getOpenAIClient();
-    if (!responseText && openai) {
-      console.log('🔄 Generating suggestions with OpenAI...');
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'Tu es un expert BTP. Tu analyses les listes de matériaux et suggères les éléments manquants essentiels. Tu réponds UNIQUEMENT en JSON valide.'
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        response_format: { type: "json_object" }
-      });
-      responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-      modelUsed = 'gpt-4o-mini';
-    }
-
-    // Nettoyage JSON
-    let cleanJson = responseText;
-    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (jsonMatch) {
-      cleanJson = jsonMatch[1];
-    } else {
-      const startIdx = responseText.indexOf('{');
-      const endIdx = responseText.lastIndexOf('}');
-      if (startIdx !== -1 && endIdx !== -1) {
-        cleanJson = responseText.substring(startIdx, endIdx + 1);
-      }
-    }
-
     let aiSuggestions: any[] = [];
     let analysis = '';
-    
+
     try {
-      const result = JSON.parse(cleanJson);
-      aiSuggestions = result.suggestions || [];
-      analysis = result.analysis || '';
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
+      console.log('🧠 Generating suggestions with unified client (DeepSeek > Gemini > OpenAI)...');
+
+      const systemPrompt = "Tu es un expert BTP. Tu analyses les listes de matériaux et suggères les éléments manquants essentiels. Tu réponds UNIQUEMENT en JSON valide.";
+
+      const result = await completeJSON<{ suggestions: Array<{ name: string; category: string; reason: string; priority: string }>; analysis: string }>(
+        prompt,
+        systemPrompt,
+        { temperature: 0.7, maxTokens: 2000 }
+      );
+
+      modelUsed = `${result.provider}/${result.model}`;
+      console.log(`✅ AI suggestions generated with ${modelUsed}`);
+
+      aiSuggestions = result.data.suggestions || [];
+      analysis = result.data.analysis || '';
+    } catch (aiError) {
+      console.error('AI suggestion error:', aiError);
     }
 
     // Filtrer les suggestions IA qui ressemblent trop aux matériaux existants

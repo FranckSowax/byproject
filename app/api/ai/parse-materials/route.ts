@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { completeJSON } from '@/lib/ai/clients';
 
 // Configuration pour Netlify/Vercel
 export const maxDuration = 60; // 60 secondes max pour les gros fichiers
@@ -18,33 +18,6 @@ interface ParsedItem {
   unit?: string;
   specs?: Record<string, any>;
 }
-
-interface ParseResult {
-  items: ParsedItem[];
-  categories: string[];
-  rawItemCount: number;
-}
-
-/**
- * Client OpenAI
- */
-const getOpenAIClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({ apiKey });
-};
-
-/**
- * Client DeepSeek (compatible OpenAI API)
- */
-const getDeepSeekClient = () => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({
-    apiKey,
-    baseURL: 'https://api.deepseek.com/v1',
-  });
-};
 
 /**
  * Catégories par secteur d'activité
@@ -176,7 +149,7 @@ IMPORTANT:
 }
 
 /**
- * Appel à l'IA (OpenAI ou DeepSeek)
+ * Appel à l'IA avec client unifié (DeepSeek > Gemini > OpenAI)
  */
 async function callAI(
   text: string,
@@ -192,63 +165,18 @@ Extrais TOUS les éléments/matériaux de ce texte. Réponds en JSON.`;
 
   const systemPrompt = getSystemPrompt(sector);
 
-  // Essayer OpenAI d'abord
-  const openai = getOpenAIClient();
-  if (openai) {
-    try {
-      console.log(`🤖 OpenAI: Processing chunk ${chunkIndex + 1}/${totalChunks}`);
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.1,
-        max_tokens: 8000,
-        response_format: { type: 'json_object' },
-      });
+  console.log(`🧠 Processing chunk ${chunkIndex + 1}/${totalChunks} with unified client...`);
 
-      const content = completion.choices[0]?.message?.content?.trim() || '{}';
-      const result = JSON.parse(content);
-      return { items: result.items || [], model: 'gpt-4o-mini' };
-    } catch (error) {
-      console.error('OpenAI error:', error);
-      // Continue vers DeepSeek
-    }
-  }
+  const result = await completeJSON<{ items: ParsedItem[]; totalExtracted?: number }>(
+    userPrompt,
+    systemPrompt,
+    { temperature: 0.1, maxTokens: 8000 }
+  );
 
-  // Fallback DeepSeek
-  const deepseek = getDeepSeekClient();
-  if (deepseek) {
-    try {
-      console.log(`🔄 DeepSeek fallback: Processing chunk ${chunkIndex + 1}/${totalChunks}`);
-      const completion = await deepseek.chat.completions.create({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.1,
-        max_tokens: 8000,
-      });
+  const modelUsed = `${result.provider}/${result.model}`;
+  console.log(`✅ Chunk ${chunkIndex + 1} completed with ${modelUsed}`);
 
-      const content = completion.choices[0]?.message?.content?.trim() || '{}';
-      // DeepSeek peut retourner du markdown, nettoyer
-      const cleanContent = content
-        .replace(/```json\s*/gi, '')
-        .replace(/```\s*/g, '');
-      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const result = JSON.parse(jsonMatch[0]);
-        return { items: result.items || [], model: 'deepseek-chat' };
-      }
-    } catch (error) {
-      console.error('DeepSeek error:', error);
-    }
-  }
-
-  // Aucun modèle disponible
-  throw new Error('Aucun service IA disponible (OpenAI et DeepSeek non configurés ou en erreur)');
+  return { items: result.data.items || [], model: modelUsed };
 }
 
 /**

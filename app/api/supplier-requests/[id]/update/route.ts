@@ -5,12 +5,12 @@ import { createServiceClient } from '@/lib/supabase/service';
 // POST - Update an existing supplier request with modified materials
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
     const serviceClient = createServiceClient();
-    const requestId = params.id;
+    const { id: requestId } = await params;
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
-import OpenAI from 'openai';
+import { completeJSON } from '@/lib/ai/clients';
 
 // Configuration pour Netlify
 export const maxDuration = 20; // 20 secondes max
 export const dynamic = 'force-dynamic';
-
-
-const getGoogleGenAIClient = () => {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-  if (!apiKey) return null;
-  return new GoogleGenAI({ apiKey });
-};
-
-const getOpenAIClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({ apiKey });
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,62 +41,29 @@ FORMAT JSON ATTENDU (sans markdown):
   "categories": ["Catégorie 1"]
 }`;
 
-    let responseText = '';
-    let usedModel = '';
+    try {
+      console.log('🧠 Extracting items with unified client (DeepSeek > Gemini > OpenAI)...');
 
-    const ai = getGoogleGenAIClient();
-    // Essayer Gemini d'abord
-    if (ai) {
-      try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3-pro-preview",
-          contents: prompt,
-          // Removed thinkingConfig to avoid type errors
-        });
-        responseText = response.text || '';
-        usedModel = 'gemini-3-pro';
-      } catch (geminiError) {
-        console.error('Gemini error:', geminiError);
-        // Fallback to OpenAI below
-      }
-    }
+      const systemPrompt = 'Tu es un expert extraction BTP. Réponds UNIQUEMENT en JSON valide.';
 
-    // Si Gemini a échoué ou n'est pas configuré, utiliser OpenAI
-    const openai = getOpenAIClient();
-    if (!responseText && openai) {
-      console.log('🔄 Switching to OpenAI fallback');
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'Tu es un expert extraction BTP. Réponds UNIQUEMENT en JSON valide.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.1,
-        max_tokens: 4000,
-        response_format: { type: "json_object" }
-      });
-      responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-      usedModel = 'gpt-4o-mini';
-    }
-    
-    // Nettoyage JSON
-    let cleanedResponse = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-    const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
-    
-    if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0]);
+      const result = await completeJSON<{ items: Array<{ name: string; description?: string; category: string; quantity?: number; unit?: string }>; categories: string[] }>(
+        prompt,
+        systemPrompt,
+        { temperature: 0.1, maxTokens: 4000 }
+      );
+
+      const usedModel = `${result.provider}/${result.model}`;
+      console.log(`✅ Extraction completed with ${usedModel}`);
+
       return NextResponse.json({
         success: true,
-        items: result.items || [],
-        categories: result.categories || [],
+        items: result.data.items || [],
+        categories: result.data.categories || [],
         model: usedModel
       });
-    } else {
-      console.error(`❌ No JSON in response for chunk ${chunkIndex + 1}`);
-      return NextResponse.json({ success: false, items: [], error: "No JSON found" });
+    } catch (error) {
+      console.error(`❌ AI extraction error for chunk ${chunkIndex + 1}:`, error);
+      return NextResponse.json({ success: false, items: [], error: "AI extraction failed" });
     }
 
   } catch (error) {

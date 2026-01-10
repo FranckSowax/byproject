@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import Replicate from 'replicate';
 import { createServiceClient } from '@/lib/supabase/service';
-
-const getOpenAIClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({ apiKey });
-};
-
-const getReplicateClient = () => {
-  const auth = process.env.REPLICATE_API_TOKEN;
-  if (!auth) return null;
-  return new Replicate({ auth });
-};
+import { completeJSON } from '@/lib/ai/clients';
 
 // Fields that are commonly needed for different material types
 const MATERIAL_REQUIRED_FIELDS: Record<string, string[]> = {
@@ -194,6 +181,7 @@ export async function POST(request: NextRequest) {
     console.log(`Pre-analysis: ${materialsNeedingAI.length}/${materials.length} need deeper AI analysis`);
 
     // Step 2: AI Analysis for materials with potential issues
+    // Priority: DeepSeek > Gemini > OpenAI
     let aiAnalysisResults: Record<string, { suggestions: string[], additionalMissing: string[] }> = {};
     let modelUsed = 'rule-based';
 
@@ -232,73 +220,30 @@ REPONDS EN JSON VALIDE:
   ]
 }`;
 
-      let responseText = '';
-      const replicate = getReplicateClient();
+      const systemPrompt = "Tu es un expert en sourcing de materiaux BTP. Tu analyses les descriptions pour determiner si elles sont suffisantes pour une cotation. Tu reponds UNIQUEMENT en JSON valide.";
 
-      if (replicate) {
-        try {
-          console.log('AI Analysis with Gemini 3 Pro...');
-          const output = await replicate.run("google/gemini-3-pro", {
-            input: {
-              prompt: prompt,
-              system_instruction: "Tu es un expert en sourcing de materiaux BTP. Tu analyses les descriptions pour determiner si elles sont suffisantes pour une cotation. Tu reponds UNIQUEMENT en JSON valide.",
-              temperature: 0.3,
-              max_output_tokens: 4000,
-              thinking_level: "high"
-            }
-          });
-          responseText = Array.isArray(output) ? output.join("") : String(output);
-          modelUsed = 'gemini-3-pro';
-        } catch (geminiError) {
-          console.error('Gemini error:', geminiError);
-        }
-      }
-
-      // Fallback to OpenAI
-      const openai = getOpenAIClient();
-      if (!responseText && openai) {
-        console.log('Fallback to OpenAI...');
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'Tu es un expert en sourcing de materiaux BTP. Tu analyses les descriptions pour determiner si elles sont suffisantes pour une cotation. Tu reponds UNIQUEMENT en JSON valide.'
-            },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.3,
-          response_format: { type: "json_object" }
-        });
-        responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-        modelUsed = 'gpt-4o-mini';
-      }
-
-      // Parse AI response
       try {
-        let cleanJson = responseText;
-        const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanJson = jsonMatch[1];
-        } else {
-          const startIdx = responseText.indexOf('{');
-          const endIdx = responseText.lastIndexOf('}');
-          if (startIdx !== -1 && endIdx !== -1) {
-            cleanJson = responseText.substring(startIdx, endIdx + 1);
-          }
-        }
+        // Use unified AI client with automatic fallback: DeepSeek > Gemini > OpenAI
+        const result = await completeJSON<{ analyses: Array<{ material_id: string; missing_critical: string[]; needs_photos: boolean; suggestions: string[] }> }>(
+          prompt,
+          systemPrompt,
+          { temperature: 0.3, maxTokens: 4000 }
+        );
 
-        const aiResult = JSON.parse(cleanJson);
-        if (aiResult.analyses && Array.isArray(aiResult.analyses)) {
-          for (const analysis of aiResult.analyses) {
+        modelUsed = `${result.provider}/${result.model}`;
+        console.log(`AI Analysis completed with ${modelUsed}`);
+
+        if (result.data.analyses && Array.isArray(result.data.analyses)) {
+          for (const analysis of result.data.analyses) {
             aiAnalysisResults[analysis.material_id] = {
               suggestions: analysis.suggestions || [],
               additionalMissing: analysis.missing_critical || []
             };
           }
         }
-      } catch (parseError) {
-        console.error('AI response parse error:', parseError);
+      } catch (aiError: any) {
+        console.error('AI analysis error:', aiError.message);
+        // Continue with rule-based analysis only
       }
     }
 

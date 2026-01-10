@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     // Create Supabase admin client with service role key
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +24,7 @@ export async function GET(
     const { data: user, error } = await supabaseAdmin
       .from('users')
       .select('id, email, full_name, created_at, role_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !user) {
@@ -52,12 +54,13 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
-    console.log('PATCH /api/admin/users/[id] - Request:', { userId: params.id, body });
-    
+    console.log('PATCH /api/admin/users/[id] - Request:', { userId: id, body });
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -70,15 +73,15 @@ export async function PATCH(
     );
 
     // Get current user to preserve existing metadata
-    const { data: { user: currentUser }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(params.id);
-    
+    const { data: { user: currentUser }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(id);
+
     if (getUserError) {
       console.error('Error getting user:', getUserError);
       throw getUserError;
     }
-    
+
     if (!currentUser) {
-      console.error('User not found:', params.id);
+      console.error('User not found:', id);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
@@ -101,7 +104,7 @@ export async function PATCH(
 
     // Update user with merged metadata
     const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      params.id,
+      id,
       {
         user_metadata: updatedMetadata
       }
@@ -129,9 +132,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -144,7 +149,7 @@ export async function DELETE(
     );
 
     // Delete user
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(params.id);
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
 
     if (error) throw error;
 

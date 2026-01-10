@@ -1,15 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-// Initialisation du client OpenAI (compatible DeepSeek si besoin via baseURL)
-const getOpenAIClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({
-    apiKey,
-    baseURL: process.env.OPENAI_API_KEY ? undefined : 'https://api.deepseek.com/v1',
-  });
-};
+import { completeJSON } from '@/lib/ai/clients';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,14 +9,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'La description de la mission est requise' },
         { status: 400 }
-      );
-    }
-    
-    const openai = getOpenAIClient();
-    if (!openai) {
-      return NextResponse.json(
-        { error: 'Service IA non configuré' },
-        { status: 503 }
       );
     }
 
@@ -42,33 +24,25 @@ Les questions doivent couvrir :
 4. Les objectifs de la visite (Signature, Contrôle qualité, Sourcing)
 
 Format de réponse attendu : JSON uniquement, tableau de chaînes de caractères.
-Exemple : ["Quel est le budget estimatif ?", "Combien de personnes composent la délégation ?"]`;
+Exemple : {"questions": ["Quel est le budget estimatif ?", "Combien de personnes composent la délégation ?"]}`;
 
     const userPrompt = `Voici la description de la mission : "${missionDescription}".
 ${context ? `Contexte supplémentaire : ${context}` : ''}
 
 Génère les 10 questions les plus pertinentes maintenant.`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-    });
+    console.log('🧠 Generating questions with unified client (DeepSeek > Gemini > OpenAI)...');
 
-    const content = response.choices[0].message.content;
-    
-    if (!content) {
-      throw new Error('Réponse vide de l\'IA');
-    }
+    const result = await completeJSON<{ questions?: string[]; list?: string[] }>(
+      userPrompt,
+      systemPrompt,
+      { temperature: 0.7, maxTokens: 2000 }
+    );
 
-    const result = JSON.parse(content);
-    
+    console.log(`✅ Questions generated with ${result.provider}/${result.model}`);
+
     // S'assurer qu'on renvoie un tableau de questions
-    const questions = result.questions || result.list || Object.values(result)[0];
+    const questions = result.data.questions || result.data.list || Object.values(result.data)[0];
 
     return NextResponse.json({ questions });
 

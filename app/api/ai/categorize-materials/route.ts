@@ -1,19 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import Replicate from 'replicate';
-
-
-const getOpenAIClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({ apiKey });
-};
-
-const getReplicateClient = () => {
-  const auth = process.env.REPLICATE_API_TOKEN;
-  if (!auth) return null;
-  return new Replicate({ auth });
-};
+import { completeJSON } from '@/lib/ai/clients';
 
 const BTP_CATEGORIES = [
   'Gros œuvre',
@@ -128,81 +114,36 @@ RÉPONDS EN JSON VALIDE:
   ]
 }`;
 
-      let responseText = '';
-      const replicate = getReplicateClient();
-      const useGemini = !!replicate;
-
-      if (useGemini && replicate) {
-        try {
-          console.log('🧠 AI Categorizing with Gemini 3 Pro...');
-          const output = await replicate.run("google/gemini-3-pro", {
-            input: {
-              prompt: prompt,
-              system_instruction: "Tu es un expert BTP. Tu catégorises les matériaux de construction. Tu réponds UNIQUEMENT en JSON valide.",
-              temperature: 0.2,
-              max_output_tokens: 4000,
-              thinking_level: "medium"
-            }
-          });
-          responseText = Array.isArray(output) ? output.join("") : String(output);
-          modelUsed = 'gemini-3-pro';
-        } catch (geminiError) {
-          console.error('Gemini error, falling back to OpenAI:', geminiError);
-        }
-      }
-
-      // Fallback OpenAI
-      const openai = getOpenAIClient();
-      if (!responseText && openai) {
-        console.log('🔄 AI Categorizing with OpenAI...');
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            { 
-              role: 'system', 
-              content: 'Tu es un expert BTP. Tu catégorises les matériaux de construction. Tu réponds UNIQUEMENT en JSON valide.'
-            },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.2,
-          response_format: { type: "json_object" }
-        });
-        responseText = completion.choices[0]?.message?.content?.trim() || '{}';
-        modelUsed = 'gpt-4o-mini';
-      }
-
-      // Nettoyage JSON
-      let cleanJson = responseText;
-      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        cleanJson = jsonMatch[1];
-      } else {
-        const startIdx = responseText.indexOf('{');
-        const endIdx = responseText.lastIndexOf('}');
-        if (startIdx !== -1 && endIdx !== -1) {
-          cleanJson = responseText.substring(startIdx, endIdx + 1);
-        }
-      }
-
       try {
-        const result = JSON.parse(cleanJson);
+        console.log('🧠 AI Categorizing with unified client (DeepSeek > Gemini > OpenAI)...');
+
+        const systemPrompt = "Tu es un expert BTP. Tu catégorises les matériaux de construction. Tu réponds UNIQUEMENT en JSON valide.";
+
+        const result = await completeJSON<{ categorizations: Array<{ originalIndex?: number; index?: number; category: string }> }>(
+          prompt,
+          systemPrompt,
+          { temperature: 0.2, maxTokens: 4000 }
+        );
+
+        modelUsed = `${result.provider}/${result.model}`;
+        console.log(`✅ AI categorization completed with ${modelUsed}`);
 
         // Ajouter les catégories IA au mapping
-        if (result.categorizations && Array.isArray(result.categorizations)) {
-          for (const cat of result.categorizations) {
+        if (result.data.categorizations && Array.isArray(result.data.categorizations)) {
+          for (const cat of result.data.categorizations) {
             const idx = cat.originalIndex ?? (cat.index ? cat.index - 1 : null);
             if (idx !== null && idx !== undefined) {
               // Valider que la catégorie existe dans notre liste
-              const validCategory = BTP_CATEGORIES.includes(cat.category) 
-                ? cat.category 
+              const validCategory = BTP_CATEGORIES.includes(cat.category)
+                ? cat.category
                 : 'Divers';
               categoryMap[idx] = validCategory;
             }
           }
         }
-        console.log(`🤖 AI categorized ${result.categorizations?.length || 0} additional items`);
+        console.log(`🤖 AI categorized ${result.data.categorizations?.length || 0} additional items`);
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
+        console.error('AI categorization error:', parseError);
         // En cas d'erreur, mettre les non-catégorisés en "Divers"
         uncategorizedIndices.forEach(idx => {
           if (!categoryMap[idx]) {
