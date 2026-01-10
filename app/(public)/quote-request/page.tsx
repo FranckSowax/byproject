@@ -66,12 +66,21 @@ export default function PublicQuoteRequestPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<any>(null);
 
+  // Track if we should auto-submit after auth
+  const [shouldAutoSubmit, setShouldAutoSubmit] = useState(false);
+
   useEffect(() => {
     checkAuth();
     // Load saved materials from localStorage
     const savedMaterials = localStorage.getItem("quote_request_materials");
     if (savedMaterials) {
       setMaterials(JSON.parse(savedMaterials));
+    }
+    // Check if user just came back from auth flow
+    const redirectFlag = localStorage.getItem("quote_request_redirect");
+    if (redirectFlag) {
+      setShouldAutoSubmit(true);
+      localStorage.removeItem("quote_request_redirect");
     }
   }, []);
 
@@ -81,6 +90,18 @@ export default function PublicQuoteRequestPage() {
       localStorage.setItem("quote_request_materials", JSON.stringify(materials));
     }
   }, [materials]);
+
+  // Auto-submit after returning from auth flow
+  useEffect(() => {
+    if (shouldAutoSubmit && isAuthenticated && user && materials.length > 0 && !isSubmitting) {
+      setShouldAutoSubmit(false);
+      // Small delay to ensure UI is ready
+      const timer = setTimeout(() => {
+        handleSubmitRequest();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldAutoSubmit, isAuthenticated, user, materials]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();

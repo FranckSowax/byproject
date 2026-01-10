@@ -1,23 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/context";
 import Image from "next/image";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +31,7 @@ export default function LoginPage() {
 
       // Succès!
       toast.success("Connexion réussie!");
-      router.push("/dashboard");
+      router.push(redirectTo);
       router.refresh();
 
     } catch (error: any) {
@@ -112,7 +114,10 @@ export default function LoginPage() {
             </Button>
             <p className="text-center text-sm text-[#718096]">
               Pas encore de compte ?{" "}
-              <Link href="/signup" className="text-[#5B5FC7] hover:underline font-medium">
+              <Link
+                href={`/signup${redirectTo !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+                className="text-[#5B5FC7] hover:underline font-medium"
+              >
                 S&apos;inscrire
               </Link>
             </p>
@@ -120,5 +125,17 @@ export default function LoginPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
