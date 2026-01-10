@@ -26,7 +26,7 @@ export function PricingSection() {
     },
     {
       name: "Projet",
-      price: "15",
+      price: "79",
       currency: "$",
       period: "/ projet",
       description: "Débloquez l'illimité et obtenez un prix de référence.",
