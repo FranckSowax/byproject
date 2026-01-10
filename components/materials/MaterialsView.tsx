@@ -263,8 +263,64 @@ export function MaterialsView({
   };
 
   const handleUploadImageDrawer = async (file: File): Promise<string | null> => {
-    // Mock upload
-    return URL.createObjectURL(file);
+    if (!selectedDrawerMaterial) return null;
+
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      if (!userId) {
+        toast.error("Vous devez être connecté pour uploader des images");
+        return null;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('bucket', 'project-materials');
+
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(`Erreur upload: ${error.error}`);
+        return null;
+      }
+
+      const data = await response.json();
+      const publicUrl = data.publicUrl;
+
+      // Update material images in database
+      const currentImages = selectedDrawerMaterial.images || [];
+      const newImages = [...currentImages, publicUrl];
+
+      const { error: updateError } = await supabase
+        .from('materials')
+        .update({ images: newImages } as any)
+        .eq('id', selectedDrawerMaterial.id);
+
+      if (updateError) {
+        toast.error("Erreur lors de la mise à jour du matériau");
+        return null;
+      }
+
+      // Update local state
+      setSelectedDrawerMaterial({
+        ...selectedDrawerMaterial,
+        images: newImages
+      });
+
+      toast.success("Image uploadée avec succès");
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error("Erreur lors de l'upload");
+      return null;
+    }
   };
 
   // Filter materials based on search query
