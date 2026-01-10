@@ -26,7 +26,7 @@ export async function GET(
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://byproject-twinsk.netlify.app';
 
     // Format tokens for frontend
     const formattedTokens = tokens.map((t: any, index: number) => ({
@@ -138,7 +138,7 @@ export async function POST(
       })
       .eq('id', requestId);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://byproject-twinsk.netlify.app';
     const formattedTokens = insertedTokens.map((t: any, index: number) => ({
       id: t.id,
       label: `Nouveau fournisseur ${index + 1}`,
