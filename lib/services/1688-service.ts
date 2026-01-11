@@ -439,13 +439,16 @@ function sortByQuality(products: Product1688[]): Product1688[] {
 
 /**
  * Recherche des produits par image sur 1688.com via RapidAPI 1688-product2
+ * L'URL doit être une URL directe vers une image accessible publiquement
+ * Note: L'API 1688 doit pouvoir accéder à cette URL depuis la Chine
  */
 async function searchByImageRapidAPI(imageUrl: string, pageSize: number = 5): Promise<any[]> {
   // Endpoint: /1688/search/image?page=1&sort=default
+  // L'URL doit être encodée pour être un paramètre valide
   const url = `${RAPIDAPI_BASE_URL}/1688/search/image?page=1&sort=default&img_url=${encodeURIComponent(imageUrl)}`;
 
-  console.log(`[1688] RapidAPI image search URL: ${url.substring(0, 150)}...`);
-  console.log(`[1688] Image URL being searched: ${imageUrl}`);
+  console.log(`[1688] RapidAPI image search - Full API URL: ${url}`);
+  console.log(`[1688] Image URL being searched (unencoded): ${imageUrl}`);
 
   try {
     // Ajouter un timeout de 15 secondes pour la recherche par image
@@ -471,6 +474,15 @@ async function searchByImageRapidAPI(imageUrl: string, pageSize: number = 5): Pr
 
     const data = await response.json();
     console.log(`[1688] RapidAPI image search response code: ${data.code}`);
+    console.log(`[1688] RapidAPI image search response msg: ${data.msg || 'no message'}`);
+
+    // Log complet de la réponse pour debug (limité)
+    if (data.data) {
+      console.log(`[1688] Response data keys: ${Object.keys(data.data).join(', ')}`);
+      if (data.data.items) {
+        console.log(`[1688] Items array length: ${data.data.items.length}`);
+      }
+    }
 
     if (data.code !== 200) {
       console.error(`[1688] API error code ${data.code}:`, data.msg);
