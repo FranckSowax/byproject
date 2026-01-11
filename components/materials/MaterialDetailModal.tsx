@@ -192,6 +192,7 @@ export function MaterialDetailModal({
         description: material.description,
         category: material.category,
         quantity: material.quantity,
+        unit: material.specs?.unit || 'pièce',
         surface: material.surface,
         weight: material.weight,
         volume: material.volume,
@@ -206,7 +207,23 @@ export function MaterialDetailModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onSave({ id: material.id, ...editData });
+      // Update specs with new quantity and unit
+      const updatedSpecs = { ...material.specs };
+      const unit = (editData as any).unit || material.specs?.unit || 'pièce';
+      const quantity = editData.quantity || 1;
+
+      // Always update specs when saving
+      updatedSpecs.unit = unit;
+      updatedSpecs.quantity_with_unit = `${quantity} ${unit}`;
+
+      // Remove unit from editData before sending (it's stored in specs)
+      const { unit: _, ...dataWithoutUnit } = editData as any;
+
+      await onSave({
+        id: material.id,
+        ...dataWithoutUnit,
+        specs: updatedSpecs,
+      });
       setIsEditing(false);
     } finally {
       setIsSaving(false);
@@ -346,8 +363,15 @@ export function MaterialDetailModal({
                       type="number"
                       value={editData.quantity || ''}
                       onChange={(e) => setEditData({ ...editData, quantity: parseFloat(e.target.value) || null })}
-                      className="h-7 text-xs w-20"
+                      className="h-7 text-xs w-16"
                       placeholder="Qté"
+                    />
+                    <Input
+                      type="text"
+                      value={(editData as any).unit || ''}
+                      onChange={(e) => setEditData({ ...editData, unit: e.target.value } as any)}
+                      className="h-7 text-xs w-20"
+                      placeholder="unité"
                     />
                   </div>
                 ) : (material.quantity || material.specs?.quantity_with_unit) ? (
@@ -371,8 +395,8 @@ export function MaterialDetailModal({
                     <Save className="h-4 w-4 mr-1.5" />
                     <span className="hidden sm:inline">{isSaving ? 'Enregistrement...' : 'Enregistrer'}</span>
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="ghost"
                     onClick={() => {
                       setEditData({
@@ -380,6 +404,7 @@ export function MaterialDetailModal({
                         description: material.description,
                         category: material.category,
                         quantity: material.quantity,
+                        unit: material.specs?.unit || 'pièce',
                         surface: material.surface,
                         weight: material.weight,
                         volume: material.volume,
@@ -559,13 +584,22 @@ export function MaterialDetailModal({
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">
                   <Label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Quantité</Label>
                   {isEditing ? (
-                    <Input
-                      type="number"
-                      value={editData.quantity || ''}
-                      onChange={(e) => setEditData({ ...editData, quantity: parseFloat(e.target.value) || null })}
-                      placeholder="0"
-                      className="h-9"
-                    />
+                    <div className="flex gap-1">
+                      <Input
+                        type="number"
+                        value={editData.quantity || ''}
+                        onChange={(e) => setEditData({ ...editData, quantity: parseFloat(e.target.value) || null })}
+                        placeholder="0"
+                        className="h-9 w-16 text-center"
+                      />
+                      <Input
+                        type="text"
+                        value={(editData as any).unit || ''}
+                        onChange={(e) => setEditData({ ...editData, unit: e.target.value } as any)}
+                        placeholder="unité"
+                        className="h-9 flex-1 text-center text-sm"
+                      />
+                    </div>
                   ) : (
                     <p className="text-lg font-semibold text-slate-900">
                       {material.specs?.quantity_with_unit || (material.quantity ? `${material.quantity} ${material.specs?.unit || ''}` : '-')}
