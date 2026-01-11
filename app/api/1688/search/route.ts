@@ -7,7 +7,7 @@ import {
 import { Search1688Options } from '@/lib/types/1688';
 import { createServiceClient } from '@/lib/supabase/service';
 
-export const maxDuration = 120; // 2 minutes max pour les recherches longues
+export const maxDuration = 25; // 25 secondes pour rester sous la limite Netlify
 export const dynamic = 'force-dynamic';
 
 /**

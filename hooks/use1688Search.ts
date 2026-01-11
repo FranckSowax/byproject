@@ -47,7 +47,7 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
-   * Recherche une liste de produits
+   * Recherche une liste de produits un par un (évite les timeouts)
    */
   const searchProducts = useCallback(async (
     products: string[],
@@ -55,6 +55,15 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
   ): Promise<ProductListSearchResult | null> => {
     setIsLoading(true);
     setError(null);
+
+    const startedAt = new Date();
+    const searchResults: SearchResult1688[] = [];
+    let failedSearches = 0;
+    let cancelled = false;
+
+    // Créer un nouveau AbortController
+    abortControllerRef.current = new AbortController();
+
     setProgress({
       completed: 0,
       total: products.length,
@@ -62,32 +71,89 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
       percentage: 0,
     });
 
-    // Créer un nouveau AbortController
-    abortControllerRef.current = new AbortController();
-
     try {
-      const response = await fetch('/api/1688/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ products, options }),
-        signal: abortControllerRef.current.signal,
-      });
+      // Rechercher chaque produit individuellement via GET
+      for (let i = 0; i < products.length; i++) {
+        // Vérifier si annulé
+        if (abortControllerRef.current.signal.aborted) {
+          cancelled = true;
+          break;
+        }
 
-      const data = await response.json();
+        const product = products[i];
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la recherche');
+        setProgress({
+          completed: i,
+          total: products.length,
+          currentProduct: product,
+          percentage: Math.round((i / products.length) * 100),
+        });
+
+        try {
+          const response = await fetch(
+            `/api/1688/search?q=${encodeURIComponent(product)}&maxResults=${options.maxResults || 10}`,
+            { signal: abortControllerRef.current.signal }
+          );
+
+          const data = await response.json();
+
+          if (response.ok) {
+            const result: SearchResult1688 = {
+              searchQuery: product,
+              searchQueryChinese: data.searchQueryChinese,
+              results: data.results || [],
+              searchedAt: new Date(data.searchedAt || Date.now()),
+              totalFound: data.totalFound || 0,
+            };
+            searchResults.push(result);
+
+            // Mettre en cache
+            const cacheKey = product.toLowerCase();
+            searchCache.set(cacheKey, result);
+          } else {
+            failedSearches++;
+            searchResults.push({
+              searchQuery: product,
+              results: [],
+              searchedAt: new Date(),
+              totalFound: 0,
+            });
+          }
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            cancelled = true;
+            break;
+          }
+          failedSearches++;
+          searchResults.push({
+            searchQuery: product,
+            results: [],
+            searchedAt: new Date(),
+            totalFound: 0,
+          });
+        }
+
+        // Petit délai entre les requêtes pour ne pas surcharger
+        if (i < products.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
 
-      // Mettre en cache les résultats individuels
-      data.results?.forEach((result: SearchResult1688) => {
-        const cacheKey = result.searchQuery.toLowerCase();
-        searchCache.set(cacheKey, result);
-      });
+      if (cancelled) {
+        setError('Recherche annulée');
+        return null;
+      }
 
-      setResults(data);
+      const finalResult: ProductListSearchResult = {
+        totalProducts: products.length,
+        completedSearches: products.length - failedSearches,
+        failedSearches,
+        results: searchResults,
+        startedAt,
+        completedAt: new Date(),
+      };
+
+      setResults(finalResult);
       setProgress({
         completed: products.length,
         total: products.length,
@@ -95,7 +161,7 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
         percentage: 100,
       });
 
-      return data;
+      return finalResult;
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setError('Recherche annulée');
@@ -109,7 +175,7 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
   }, []);
 
   /**
-   * Recherche les produits d'un projet
+   * Recherche les produits d'un projet (récupère d'abord les matériaux puis cherche un par un)
    */
   const searchProjectProducts = useCallback(async (
     projectId: string,
@@ -127,30 +193,35 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await fetch('/api/1688/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ projectId, options }),
+      // 1. Récupérer les matériaux du projet
+      const materialsResponse = await fetch(`/api/projects/${projectId}/materials`, {
         signal: abortControllerRef.current.signal,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la recherche');
+      if (!materialsResponse.ok) {
+        throw new Error('Erreur lors de la récupération des matériaux');
       }
 
-      setResults(data);
-      setProgress({
-        completed: data.totalProducts,
-        total: data.totalProducts,
-        currentProduct: 'Terminé',
-        percentage: 100,
+      const { data: materials } = await materialsResponse.json();
+
+      if (!materials || materials.length === 0) {
+        setError('Aucun matériau trouvé pour ce projet');
+        setIsLoading(false);
+        return null;
+      }
+
+      // 2. Construire la liste des termes de recherche
+      const searchTerms = materials.map((m: any) => {
+        if (m.description) {
+          return `${m.name} ${m.description}`.trim();
+        }
+        return m.name;
       });
 
-      return data;
+      // 3. Utiliser searchProducts pour chercher un par un
+      setIsLoading(false); // searchProducts va le remettre à true
+      return await searchProducts(searchTerms, options);
+
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setError('Recherche annulée');
@@ -161,7 +232,7 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [searchProducts]);
 
   /**
    * Recherche un seul produit

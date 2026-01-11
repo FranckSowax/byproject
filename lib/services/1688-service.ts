@@ -58,18 +58,69 @@ export function translateToChines(text: string): string {
 }
 
 /**
- * Appelle un Actor Apify et attend les résultats
+ * Appelle un Actor Apify en mode synchrone (attend le résultat directement)
+ * Utilise l'endpoint run-sync qui bloque jusqu'à completion
+ * Timeout de 20 secondes pour rester sous les limites serverless
  */
-async function runApifyActor(actorId: string, input: Record<string, any>): Promise<any> {
+async function runApifyActorSync(actorId: string, input: Record<string, any>): Promise<any> {
+  if (!APIFY_TOKEN) {
+    throw new Error('APIFY_TOKEN is not configured');
+  }
+
+  // Utiliser l'endpoint run-sync-get-dataset-items pour obtenir les résultats directement
+  // timeout=20 pour rester sous la limite de Netlify (26s)
+  const syncUrl = `${APIFY_BASE_URL}/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=20`;
+
+  console.log(`[1688] Starting sync actor ${actorId} with input:`, JSON.stringify(input).substring(0, 200));
+
+  try {
+    const response = await fetch(syncUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[1688] Sync actor failed:`, errorText);
+
+      // Si timeout, retourner un tableau vide plutôt que d'échouer
+      if (response.status === 408 || errorText.includes('timeout')) {
+        console.warn(`[1688] Actor timed out, returning empty results`);
+        return [];
+      }
+
+      throw new Error(`Apify actor failed: ${errorText}`);
+    }
+
+    const results = await response.json();
+    console.log(`[1688] Sync actor completed, got ${results.length} results`);
+    return results;
+  } catch (error: any) {
+    // Gérer les erreurs de timeout réseau
+    if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+      console.warn(`[1688] Network timeout, returning empty results`);
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
+ * Appelle un Actor Apify en mode asynchrone (démarre et retourne l'ID)
+ * Utile pour les recherches longues qui seront récupérées plus tard
+ */
+async function startApifyActorAsync(actorId: string, input: Record<string, any>): Promise<{ runId: string; datasetId: string }> {
   if (!APIFY_TOKEN) {
     throw new Error('APIFY_TOKEN is not configured');
   }
 
   const runUrl = `${APIFY_BASE_URL}/acts/${actorId}/runs?token=${APIFY_TOKEN}`;
 
-  console.log(`[1688] Starting actor ${actorId} with input:`, JSON.stringify(input).substring(0, 200));
+  console.log(`[1688] Starting async actor ${actorId}`);
 
-  // Démarrer l'actor
   const runResponse = await fetch(runUrl, {
     method: 'POST',
     headers: {
@@ -80,44 +131,42 @@ async function runApifyActor(actorId: string, input: Record<string, any>): Promi
 
   if (!runResponse.ok) {
     const error = await runResponse.text();
-    console.error(`[1688] Failed to start actor:`, error);
     throw new Error(`Failed to start Apify actor: ${error}`);
   }
 
   const runData = await runResponse.json();
-  const runId = runData.data.id;
+  return {
+    runId: runData.data.id,
+    datasetId: runData.data.defaultDatasetId,
+  };
+}
 
-  console.log(`[1688] Actor run started with ID: ${runId}`);
-
-  // Attendre que l'actor termine (polling)
-  const maxWaitTime = 60000; // 60 secondes max
-  const pollInterval = 3000; // Vérifier toutes les 3 secondes
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < maxWaitTime) {
-    const statusUrl = `${APIFY_BASE_URL}/acts/${actorId}/runs/${runId}?token=${APIFY_TOKEN}`;
-    const statusResponse = await fetch(statusUrl);
-    const statusData = await statusResponse.json();
-
-    if (statusData.data.status === 'SUCCEEDED') {
-      // Récupérer les résultats
-      const datasetId = statusData.data.defaultDatasetId;
-      const datasetUrl = `${APIFY_BASE_URL}/datasets/${datasetId}/items?token=${APIFY_TOKEN}`;
-      const datasetResponse = await fetch(datasetUrl);
-      const results = await datasetResponse.json();
-
-      console.log(`[1688] Actor completed, got ${results.length} results`);
-      return results;
-    }
-
-    if (statusData.data.status === 'FAILED' || statusData.data.status === 'ABORTED') {
-      throw new Error(`Apify actor ${statusData.data.status}: ${statusData.data.statusMessage}`);
-    }
-
-    await delay(pollInterval);
+/**
+ * Vérifie le statut d'un run Apify et récupère les résultats si terminé
+ */
+export async function checkApifyRunStatus(actorId: string, runId: string): Promise<{
+  status: 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'ABORTED';
+  results?: any[];
+}> {
+  if (!APIFY_TOKEN) {
+    throw new Error('APIFY_TOKEN is not configured');
   }
 
-  throw new Error('Apify actor timeout - took too long to complete');
+  const statusUrl = `${APIFY_BASE_URL}/acts/${actorId}/runs/${runId}?token=${APIFY_TOKEN}`;
+  const statusResponse = await fetch(statusUrl);
+  const statusData = await statusResponse.json();
+
+  const status = statusData.data.status;
+
+  if (status === 'SUCCEEDED') {
+    const datasetId = statusData.data.defaultDatasetId;
+    const datasetUrl = `${APIFY_BASE_URL}/datasets/${datasetId}/items?token=${APIFY_TOKEN}`;
+    const datasetResponse = await fetch(datasetUrl);
+    const results = await datasetResponse.json();
+    return { status, results };
+  }
+
+  return { status };
 }
 
 /**
@@ -178,7 +227,7 @@ export async function search1688Product(
       // Options supplémentaires si supportées par l'actor
     };
 
-    const rawResults = await runApifyActor(SEARCH_ACTOR_ID, input);
+    const rawResults = await runApifyActorSync(SEARCH_ACTOR_ID, input);
     let products = parseApifyResults(rawResults);
 
     // Appliquer les filtres
@@ -226,7 +275,7 @@ export async function get1688ProductDetails(productUrl: string): Promise<Product
       startUrls: [{ url: productUrl }],
     };
 
-    const rawResults = await runApifyActor(DETAILS_ACTOR_ID, input);
+    const rawResults = await runApifyActorSync(DETAILS_ACTOR_ID, input);
 
     if (!rawResults || rawResults.length === 0) {
       throw new Error('No details found for this product');
