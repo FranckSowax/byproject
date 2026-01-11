@@ -76,6 +76,13 @@ const adminNavigation = [
         description: 'Demandes fournisseurs'
       },
       {
+        name: 'Recherche 1688',
+        href: '/admin/1688',
+        icon: Globe,
+        badge: 'Nouveau',
+        description: 'Marketplace B2B Chine'
+      },
+      {
         name: 'Fournisseurs',
         href: '/admin/suppliers',
         icon: Users,
