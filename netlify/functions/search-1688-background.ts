@@ -93,7 +93,7 @@ async function runApifyActorSync(actorId: string, input: Record<string, any>): P
     throw new Error('APIFY_TOKEN is not configured');
   }
 
-  const syncUrl = `${APIFY_BASE_URL}/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=60`;
+  const syncUrl = `${APIFY_BASE_URL}/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=90`;
 
   console.log(`[1688 BG] Starting sync actor for:`, JSON.stringify(input).substring(0, 100));
 
@@ -211,7 +211,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     const searchTerms: string[] = job.search_terms || [];
     const options = job.options || {};
-    const maxResults = options.maxResults || 10;
+    const maxResults = options.maxResults || 5; // Réduit à 5 pour éviter les timeouts
     const results: any[] = [];
     let failedTerms = 0;
 
@@ -220,7 +220,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // 3. Process each search term
     for (let i = 0; i < searchTerms.length; i++) {
       const term = searchTerms[i];
-      const searchKeyword = translateToChines(term);
+      // Simplifier le terme: garder max 5 mots pour éviter les timeouts
+      const simplifiedTerm = term.split(/\s+/).slice(0, 5).join(' ');
+      const searchKeyword = translateToChines(simplifiedTerm);
 
       console.log(`[1688 BG] Searching ${i + 1}/${searchTerms.length}: "${term}" -> "${searchKeyword}"`);
 
