@@ -129,7 +129,7 @@ const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
 
 const CNY_TO_FCFA_RATE = 90;
 
-function translateToChines(text: string): string {
+function translateToChineseStatic(text: string): string {
   const lowerText = text.toLowerCase().trim();
   if (FRENCH_TO_CHINESE_TERMS[lowerText]) {
     return FRENCH_TO_CHINESE_TERMS[lowerText];
@@ -140,6 +140,73 @@ function translateToChines(text: string): string {
     }
   }
   return text;
+}
+
+/**
+ * Traduit un terme de recherche français en chinois via OpenAI/DeepSeek
+ */
+async function translateFrenchToChinese(text: string): Promise<string> {
+  if (!text || text.trim() === '') return text;
+
+  // Vérifier si le texte contient déjà des caractères chinois
+  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+  if (hasChinese) return text;
+
+  // D'abord essayer le mapping statique pour les termes courants
+  const staticTranslation = translateToChineseStatic(text);
+  if (staticTranslation !== text) {
+    console.log(`[1688 BG] Static translation: "${text}" -> "${staticTranslation}"`);
+    return staticTranslation;
+  }
+
+  // Sinon utiliser l'IA pour traduire
+  let client: OpenAI | null = null;
+  let model = 'gpt-4o-mini';
+
+  if (OPENAI_API_KEY) {
+    client = new OpenAI({ apiKey: OPENAI_API_KEY });
+  } else if (DEEPSEEK_API_KEY) {
+    client = new OpenAI({
+      apiKey: DEEPSEEK_API_KEY,
+      baseURL: 'https://api.deepseek.com/v1',
+    });
+    model = 'deepseek-chat';
+  }
+
+  if (!client) {
+    console.log('[1688 BG] No AI API key configured, using original text');
+    return text;
+  }
+
+  try {
+    console.log(`[1688 BG] AI translation FR->ZH for: "${text}"`);
+    const completion = await client.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a professional translator specializing in product names and B2B commerce.
+Translate the following French product search term to Chinese (Simplified).
+The translation should be optimized for searching on 1688.com (Chinese B2B marketplace).
+Use common Chinese product terminology that would yield good search results.
+Return ONLY the Chinese translation, nothing else.`,
+        },
+        { role: 'user', content: text },
+      ],
+      temperature: 0.2,
+      max_tokens: 100,
+    });
+
+    const result = completion.choices[0]?.message?.content?.trim() || '';
+    if (result && /[\u4e00-\u9fa5]/.test(result)) {
+      console.log(`[1688 BG] AI translated: "${text}" -> "${result}"`);
+      return result;
+    }
+    return text;
+  } catch (error) {
+    console.error('[1688 BG] FR->ZH translation error:', error);
+    return text;
+  }
 }
 
 function convertCNYtoFCFA(amountCNY: number): number {
@@ -233,6 +300,87 @@ Example format:
     console.error('[1688 BG] Translation error:', error.message);
     return titles; // Retourner les titres originaux en cas d'erreur
   }
+}
+
+/**
+ * Convertit une URL d'image alicdn en URL proxy pour éviter les problèmes CORS
+ */
+function convertToDisplayProxyUrl(imageUrl: string): string {
+  if (!imageUrl) return '';
+  if (imageUrl.includes('wsrv.nl') || imageUrl.includes('weserv.nl')) {
+    return imageUrl;
+  }
+  if (imageUrl.includes('alicdn.com') || imageUrl.includes('1688.com')) {
+    const encodedUrl = encodeURIComponent(imageUrl);
+    return `https://wsrv.nl/?url=${encodedUrl}&output=jpg&q=85`;
+  }
+  return imageUrl;
+}
+
+/**
+ * Traduit les titres et infos fournisseurs d'une liste de produits
+ */
+async function translateProductsBatch(products: any[]): Promise<any[]> {
+  if (products.length === 0) return products;
+
+  // Collecter tous les textes à traduire
+  const allTexts: string[] = [];
+  const textMapping: { type: 'title' | 'supplierName' | 'supplierLocation'; productIndex: number }[] = [];
+
+  products.forEach((product, index) => {
+    // Titre
+    if (/[\u4e00-\u9fa5]/.test(product.title || '')) {
+      allTexts.push(product.title);
+      textMapping.push({ type: 'title', productIndex: index });
+    }
+    // Nom du fournisseur
+    if (/[\u4e00-\u9fa5]/.test(product.supplier?.name || '')) {
+      allTexts.push(product.supplier.name);
+      textMapping.push({ type: 'supplierName', productIndex: index });
+    }
+    // Localisation du fournisseur
+    if (/[\u4e00-\u9fa5]/.test(product.supplier?.location || '')) {
+      allTexts.push(product.supplier.location);
+      textMapping.push({ type: 'supplierLocation', productIndex: index });
+    }
+  });
+
+  if (allTexts.length === 0) return products;
+
+  console.log(`[1688 BG] Translating ${allTexts.length} texts (titles + supplier info)...`);
+
+  // Traduire tous les textes en batch
+  const translatedTexts = await translateTitlesBatch(allTexts);
+
+  // Appliquer les traductions et le proxy aux produits
+  const updatedProducts = products.map(p => ({
+    ...p,
+    supplier: { ...p.supplier },
+    imageUrl: convertToDisplayProxyUrl(p.imageUrl),
+  }));
+
+  textMapping.forEach((mapping, i) => {
+    const translation = translatedTexts[i];
+    if (translation) {
+      const product = updatedProducts[mapping.productIndex];
+      switch (mapping.type) {
+        case 'title':
+          product.titleChinese = product.title;
+          product.title = translation;
+          break;
+        case 'supplierName':
+          product.supplier.nameChinese = product.supplier.name;
+          product.supplier.name = translation;
+          break;
+        case 'supplierLocation':
+          product.supplier.locationChinese = product.supplier.location;
+          product.supplier.location = translation;
+          break;
+      }
+    }
+  });
+
+  return updatedProducts;
 }
 
 async function searchRapidAPI(keyword: string, pageSize: number = 20): Promise<any[]> {
@@ -428,7 +576,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // 3. Process each search term
     for (let i = 0; i < searchTerms.length; i++) {
       const term = searchTerms[i];
-      const searchKeyword = translateToChines(term);
+      // Traduire le terme de recherche français en chinois via DeepSeek
+      const searchKeyword = await translateFrenchToChinese(term);
 
       console.log(`[1688 BG] Searching ${i + 1}/${searchTerms.length}: "${term}" -> "${searchKeyword}"`);
 
@@ -452,15 +601,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         // Limiter au nombre demandé après le tri
         products = products.slice(0, maxResults);
 
-        // Traduire les titres chinois en français
+        // Traduire les titres, noms fournisseurs et localisations en français + proxy images
         if (products.length > 0) {
-          const chineseTitles = products.map(p => p.title);
-          const frenchTitles = await translateTitlesBatch(chineseTitles);
-          products = products.map((product, idx) => ({
-            ...product,
-            title: frenchTitles[idx] || product.title,
-            titleChinese: product.titleChinese, // Garder le titre chinois original
-          }));
+          products = await translateProductsBatch(products);
         }
 
         results.push({

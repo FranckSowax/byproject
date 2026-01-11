@@ -56,9 +56,9 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * Traduit un terme français en chinois si disponible
+ * Traduit un terme français en chinois (mapping statique - fallback)
  */
-export function translateToChines(text: string): string {
+export function translateToChineseStatic(text: string): string {
   const lowerText = text.toLowerCase().trim();
 
   // Vérifier si le terme existe dans notre mapping
@@ -75,6 +75,48 @@ export function translateToChines(text: string): string {
 
   // Si aucune traduction trouvée, retourner le texte original
   return text;
+}
+
+/**
+ * Traduit un terme de recherche français en chinois via DeepSeek
+ * Utilisé pour les requêtes de recherche sur 1688
+ */
+export async function translateFrenchToChinese(text: string): Promise<string> {
+  if (!text || text.trim() === '') return text;
+
+  // Vérifier si le texte contient déjà des caractères chinois
+  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+  if (hasChinese) return text;
+
+  // D'abord essayer le mapping statique pour les termes courants
+  const staticTranslation = translateToChineseStatic(text);
+  if (staticTranslation !== text) {
+    console.log(`[1688] Static translation: "${text}" -> "${staticTranslation}"`);
+    return staticTranslation;
+  }
+
+  // Sinon utiliser l'IA pour traduire
+  try {
+    console.log(`[1688] AI translation FR->ZH for: "${text}"`);
+    const translated = await completeText(
+      text,
+      `You are a professional translator specializing in product names and B2B commerce.
+Translate the following French product search term to Chinese (Simplified).
+The translation should be optimized for searching on 1688.com (Chinese B2B marketplace).
+Use common Chinese product terminology that would yield good search results.
+Return ONLY the Chinese translation, nothing else.`,
+      { temperature: 0.2, maxTokens: 100 }
+    );
+    const result = translated.trim();
+    if (result && /[\u4e00-\u9fa5]/.test(result)) {
+      console.log(`[1688] AI translated: "${text}" -> "${result}"`);
+      return result;
+    }
+    return text;
+  } catch (error) {
+    console.error('[1688] FR->ZH translation error:', error);
+    return text; // Retourner le texte original en cas d'erreur
+  }
 }
 
 /**
@@ -525,8 +567,8 @@ export async function search1688Product(
 ): Promise<SearchResult1688> {
   const { maxResults = 5, translateToChines: shouldTranslate = true } = options;
 
-  // Traduire si nécessaire
-  const searchKeyword = shouldTranslate ? translateToChines(keyword) : keyword;
+  // Traduire le terme de recherche français en chinois via DeepSeek
+  const searchKeyword = shouldTranslate ? await translateFrenchToChinese(keyword) : keyword;
 
   console.log(`[1688] Searching for: "${keyword}" (Chinese: "${searchKeyword}")`);
 
