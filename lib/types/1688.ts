@@ -3,7 +3,7 @@
 export interface Product1688 {
   id: string;
   title: string;
-  titleChinese: string;
+  titleChinese?: string;
   price: {
     min: number;
     max: number;
@@ -19,7 +19,9 @@ export interface Product1688 {
   repurchaseRate?: number; // Taux de retour de commande (%)
   supplier: {
     name: string;
+    nameChinese?: string;
     location: string;
+    locationChinese?: string;
     yearsOnPlatform?: number;
     rating?: number;
     isVerified?: boolean;

@@ -456,33 +456,42 @@ function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProp
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg leading-tight pr-8">{product.title}</DialogTitle>
-          {product.titleChinese && product.titleChinese !== product.title && (
-            <DialogDescription className="text-sm text-slate-500">{product.titleChinese}</DialogDescription>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        {/* Image en haut - Grande et proéminente */}
+        <div className="relative w-full aspect-square bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
+          {product.imageUrl && !imageError ? (
+            <img
+              src={product.imageUrl}
+              alt={product.title}
+              className="w-full h-full object-contain"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+              <ImageIcon className="h-20 w-20 text-slate-300" />
+              <p className="text-sm text-slate-400">Image non disponible</p>
+            </div>
           )}
-        </DialogHeader>
+          {/* Bouton fermer en overlay */}
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-        <div className="space-y-4">
-          {/* Image - Améliorée */}
-          <div className="relative w-full h-64 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg overflow-hidden">
-            {product.imageUrl && !imageError ? (
-              <img
-                src={product.imageUrl}
-                alt={product.title}
-                className="w-full h-full object-contain"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                <ImageIcon className="h-16 w-16 text-slate-300" />
-                <p className="text-sm text-slate-400">Image non disponible</p>
-              </div>
+        {/* Contenu texte en dessous */}
+        <div className="p-5 space-y-4">
+          {/* Titre du produit */}
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 leading-tight">{product.title}</h2>
+            {product.titleChinese && product.titleChinese !== product.title && (
+              <p className="text-sm text-slate-500 mt-1">{product.titleChinese}</p>
             )}
           </div>
 
-          {/* Price & MOQ */}
+          {/* Prix et MOQ - Compact */}
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -490,88 +499,84 @@ function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProp
                 <p className="text-2xl font-bold text-orange-600">
                   {product.priceInFCFA.min.toLocaleString()} FCFA
                 </p>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-slate-500 mt-0.5">
                   ¥{product.price.min.toFixed(2)} CNY
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-slate-600">Quantité min.</p>
+                <p className="text-sm text-slate-600">MOQ</p>
                 <p className="text-2xl font-bold text-slate-900">{product.moq}</p>
                 <p className="text-sm text-slate-500">unités</p>
               </div>
             </div>
           </div>
 
-          {/* Stats Row */}
-          <div className="flex flex-wrap gap-3">
+          {/* Badges stats */}
+          <div className="flex flex-wrap gap-2">
             {product.sold > 0 && (
-              <Badge variant="outline" className="flex items-center gap-1 py-1.5 px-3">
-                <ShoppingCart className="h-3.5 w-3.5" />
+              <Badge variant="outline" className="flex items-center gap-1 py-1 px-2 text-xs">
+                <ShoppingCart className="h-3 w-3" />
                 {product.sold.toLocaleString()} vendus
               </Badge>
             )}
             {product.supplier.rating && (
-              <Badge variant="outline" className="flex items-center gap-1 py-1.5 px-3 bg-yellow-50 border-yellow-200 text-yellow-700">
-                <Star className="h-3.5 w-3.5 fill-yellow-500 text-yellow-500" />
-                Note: {product.supplier.rating.toFixed(1)}
+              <Badge variant="outline" className="flex items-center gap-1 py-1 px-2 text-xs bg-yellow-50 border-yellow-200 text-yellow-700">
+                <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                {product.supplier.rating.toFixed(1)}
               </Badge>
             )}
             {product.repurchaseRate !== undefined && product.repurchaseRate > 0 && (
-              <Badge variant="outline" className="flex items-center gap-1 py-1.5 px-3 bg-green-50 border-green-200 text-green-700">
-                <RefreshCw className="h-3.5 w-3.5" />
-                {product.repurchaseRate}% taux de retour
+              <Badge variant="outline" className="flex items-center gap-1 py-1 px-2 text-xs bg-green-50 border-green-200 text-green-700">
+                <RefreshCw className="h-3 w-3" />
+                {product.repurchaseRate}% réachat
               </Badge>
             )}
           </div>
 
-          {/* Supplier Info */}
-          <div className="border border-slate-200 rounded-lg p-4">
-            <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          {/* Fournisseur - Compact */}
+          <div className="border border-slate-200 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
               <MapPin className="h-4 w-4 text-blue-600" />
-              Fournisseur
-            </h4>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Nom</span>
-                <span className="font-medium text-slate-900 text-right max-w-[200px] truncate">{product.supplier.name}</span>
+              <span className="font-semibold text-slate-900 text-sm">Fournisseur</span>
+              {product.supplier.isVerified && (
+                <Badge className="bg-green-100 text-green-700 border-green-200 text-xs py-0 px-1.5">
+                  <CheckCircle className="h-3 w-3 mr-0.5" />
+                  Vérifié
+                </Badge>
+              )}
+            </div>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Nom</span>
+                <span className="font-medium text-slate-900 text-right max-w-[60%] truncate" title={product.supplier.nameChinese}>
+                  {product.supplier.name}
+                </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Localisation</span>
-                <span className="font-medium text-slate-900">{product.supplier.location}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Localisation</span>
+                <span className="font-medium text-slate-900" title={product.supplier.locationChinese}>
+                  {product.supplier.location}
+                </span>
               </div>
               {product.supplier.yearsOnPlatform && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Années sur 1688</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Ancienneté</span>
                   <span className="font-medium text-slate-900">{product.supplier.yearsOnPlatform} ans</span>
-                </div>
-              )}
-              {product.supplier.isVerified && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Statut</span>
-                  <Badge className="bg-green-100 text-green-700 border-green-200">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Vérifié
-                  </Badge>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3">
-            {product.productUrl && (
-              <Button
-                className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                onClick={() => window.open(product.productUrl, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Voir sur 1688.com
-              </Button>
-            )}
-            <Button variant="outline" onClick={onClose}>
-              Fermer
+          {/* Bouton action */}
+          {product.productUrl && (
+            <Button
+              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+              onClick={() => window.open(product.productUrl, '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Voir sur 1688.com
             </Button>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

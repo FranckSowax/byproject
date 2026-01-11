@@ -78,6 +78,27 @@ export function translateToChines(text: string): string {
 }
 
 /**
+ * Convertit une URL d'image alicdn en URL proxy pour éviter les problèmes CORS
+ * Les images de 1688/alicdn sont bloquées par CORS dans le navigateur
+ */
+export function convertToDisplayProxyUrl(imageUrl: string): string {
+  if (!imageUrl) return '';
+
+  // Si c'est déjà une URL proxy, ne pas modifier
+  if (imageUrl.includes('wsrv.nl') || imageUrl.includes('weserv.nl')) {
+    return imageUrl;
+  }
+
+  // Les images alicdn/1688 ont besoin d'un proxy pour s'afficher dans le navigateur
+  if (imageUrl.includes('alicdn.com') || imageUrl.includes('1688.com') || imageUrl.includes('cbu01.alicdn.com')) {
+    const encodedUrl = encodeURIComponent(imageUrl);
+    return `https://wsrv.nl/?url=${encodedUrl}&output=jpg&q=85`;
+  }
+
+  return imageUrl;
+}
+
+/**
  * Traduit un texte chinois en français en utilisant l'IA
  */
 async function translateChineseToFrench(text: string): Promise<string> {
@@ -101,24 +122,25 @@ async function translateChineseToFrench(text: string): Promise<string> {
 }
 
 /**
- * Traduit plusieurs titres chinois en français en batch
+ * Traduit plusieurs textes chinois en français en batch
  */
-async function translateTitlesBatch(titles: string[]): Promise<string[]> {
-  if (titles.length === 0) return [];
+async function translateTextsBatch(texts: string[]): Promise<string[]> {
+  if (texts.length === 0) return [];
 
-  // Filtrer les titres avec des caractères chinois
-  const chineseTitles = titles.filter(t => /[\u4e00-\u9fa5]/.test(t));
-  if (chineseTitles.length === 0) return titles;
+  // Filtrer les textes avec des caractères chinois
+  const chineseTexts = texts.filter(t => /[\u4e00-\u9fa5]/.test(t));
+  if (chineseTexts.length === 0) return texts;
 
   try {
     // Créer un prompt batch pour économiser les appels API
-    const numberedTitles = chineseTitles.map((t, i) => `${i + 1}. ${t}`).join('\n');
+    const numberedTexts = chineseTexts.map((t, i) => `${i + 1}. ${t}`).join('\n');
 
     const translated = await completeText(
-      numberedTitles,
-      `You are a professional translator specializing in product names. Translate each Chinese product title to French.
+      numberedTexts,
+      `You are a professional translator. Translate each Chinese text to French.
 Keep each translation on a separate line with the same numbering format.
 Be concise and accurate. Return ONLY the numbered translations, nothing else.
+For product titles, company names, and location names, provide natural French translations.
 Example format:
 1. French translation 1
 2. French translation 2`,
@@ -138,18 +160,83 @@ Example format:
 
     // Reconstruire le tableau avec les traductions
     let chineseIndex = 0;
-    return titles.map(title => {
-      if (/[\u4e00-\u9fa5]/.test(title)) {
+    return texts.map(text => {
+      if (/[\u4e00-\u9fa5]/.test(text)) {
         const translation = translationMap.get(chineseIndex);
         chineseIndex++;
-        return translation || title;
+        return translation || text;
       }
-      return title;
+      return text;
     });
   } catch (error) {
     console.error('[1688] Batch translation error:', error);
-    return titles; // Retourner les titres originaux en cas d'erreur
+    return texts; // Retourner les textes originaux en cas d'erreur
   }
+}
+
+/**
+ * Traduit les titres et infos fournisseurs d'une liste de produits
+ */
+async function translateProductsBatch(products: Product1688[]): Promise<Product1688[]> {
+  if (products.length === 0) return products;
+
+  // Collecter tous les textes à traduire
+  const allTexts: string[] = [];
+  const textMapping: { type: 'title' | 'supplierName' | 'supplierLocation'; productIndex: number }[] = [];
+
+  products.forEach((product, index) => {
+    // Titre
+    if (/[\u4e00-\u9fa5]/.test(product.title)) {
+      allTexts.push(product.title);
+      textMapping.push({ type: 'title', productIndex: index });
+    }
+    // Nom du fournisseur
+    if (/[\u4e00-\u9fa5]/.test(product.supplier.name)) {
+      allTexts.push(product.supplier.name);
+      textMapping.push({ type: 'supplierName', productIndex: index });
+    }
+    // Localisation du fournisseur
+    if (/[\u4e00-\u9fa5]/.test(product.supplier.location)) {
+      allTexts.push(product.supplier.location);
+      textMapping.push({ type: 'supplierLocation', productIndex: index });
+    }
+  });
+
+  if (allTexts.length === 0) return products;
+
+  console.log(`[1688] Translating ${allTexts.length} texts (titles + supplier info)...`);
+
+  // Traduire tous les textes en un seul appel
+  const translatedTexts = await translateTextsBatch(allTexts);
+
+  // Appliquer les traductions aux produits
+  const updatedProducts = products.map(p => ({
+    ...p,
+    supplier: { ...p.supplier },
+  }));
+
+  textMapping.forEach((mapping, i) => {
+    const translation = translatedTexts[i];
+    if (translation) {
+      const product = updatedProducts[mapping.productIndex];
+      switch (mapping.type) {
+        case 'title':
+          product.titleChinese = product.title;
+          product.title = translation;
+          break;
+        case 'supplierName':
+          product.supplier.nameChinese = product.supplier.name;
+          product.supplier.name = translation;
+          break;
+        case 'supplierLocation':
+          product.supplier.locationChinese = product.supplier.location;
+          product.supplier.location = translation;
+          break;
+      }
+    }
+  });
+
+  return updatedProducts;
 }
 
 /**
@@ -386,19 +473,16 @@ export async function search1688ProductByImage(
     // Trier par qualité (note + taux de retour)
     products = sortByQuality(products);
 
-    // Traduire les titres chinois en français
+    // Traduire les titres et infos fournisseurs en français
     if (products.length > 0) {
-      console.log(`[1688] Translating ${products.length} product titles to French...`);
-      const chineseTitles = products.map(p => p.titleChinese);
-      const frenchTitles = await translateTitlesBatch(chineseTitles);
-
-      products = products.map((product, index) => ({
-        ...product,
-        title: frenchTitles[index] || product.title,
-        titleChinese: product.titleChinese,
-      }));
-      console.log(`[1688] Translation complete`);
+      products = await translateProductsBatch(products);
     }
+
+    // Appliquer le proxy aux images pour l'affichage dans le navigateur
+    products = products.map(p => ({
+      ...p,
+      imageUrl: convertToDisplayProxyUrl(p.imageUrl),
+    }));
 
     // Appliquer les filtres
     if (options.minPrice !== undefined) {
@@ -456,20 +540,16 @@ export async function search1688Product(
     // Limiter au nombre demandé après le tri
     products = products.slice(0, maxResults);
 
-    // Traduire les titres chinois en français
+    // Traduire les titres et infos fournisseurs en français
     if (products.length > 0) {
-      console.log(`[1688] Translating ${products.length} product titles to French...`);
-      const chineseTitles = products.map(p => p.titleChinese);
-      const frenchTitles = await translateTitlesBatch(chineseTitles);
-
-      // Mettre à jour les produits avec les titres traduits
-      products = products.map((product, index) => ({
-        ...product,
-        title: frenchTitles[index] || product.title,
-        titleChinese: product.titleChinese, // Garder le titre chinois original
-      }));
-      console.log(`[1688] Translation complete`);
+      products = await translateProductsBatch(products);
     }
+
+    // Appliquer le proxy aux images pour l'affichage dans le navigateur
+    products = products.map(p => ({
+      ...p,
+      imageUrl: convertToDisplayProxyUrl(p.imageUrl),
+    }));
 
     // Appliquer les filtres
     if (options.minPrice !== undefined) {
