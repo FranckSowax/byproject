@@ -88,14 +88,18 @@ export async function translateFrenchToChinese(text: string): Promise<string> {
   const hasChinese = /[\u4e00-\u9fa5]/.test(text);
   if (hasChinese) return text;
 
-  // D'abord essayer le mapping statique pour les termes courants
-  const staticTranslation = translateToChineseStatic(text);
-  if (staticTranslation !== text) {
-    console.log(`[1688] Static translation: "${text}" -> "${staticTranslation}"`);
-    return staticTranslation;
+  // Pour les termes simples (1-2 mots), essayer le mapping statique
+  const wordCount = text.trim().split(/\s+/).length;
+  if (wordCount <= 2) {
+    const staticTranslation = translateToChineseStatic(text);
+    // N'utiliser que si c'est une correspondance exacte (entièrement traduit en chinois)
+    if (staticTranslation !== text && /^[\u4e00-\u9fa5]+$/.test(staticTranslation)) {
+      console.log(`[1688] Static translation: "${text}" -> "${staticTranslation}"`);
+      return staticTranslation;
+    }
   }
 
-  // Sinon utiliser l'IA pour traduire
+  // Utiliser l'IA pour traduire les phrases complexes ou quand le mapping statique échoue
   try {
     console.log(`[1688] AI translation FR->ZH for: "${text}"`);
     const translated = await completeText(
@@ -104,6 +108,8 @@ export async function translateFrenchToChinese(text: string): Promise<string> {
 Translate the following French product search term to Chinese (Simplified).
 The translation should be optimized for searching on 1688.com (Chinese B2B marketplace).
 Use common Chinese product terminology that would yield good search results.
+IMPORTANT: Translate ALL words including colors (rouge=红色, bleu=蓝色, noir=黑色, blanc=白色),
+brand names (keep iPhone as iPhone or 苹果手机), and product types.
 Return ONLY the Chinese translation, nothing else.`,
       { temperature: 0.2, maxTokens: 100 }
     );
