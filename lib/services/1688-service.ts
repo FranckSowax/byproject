@@ -16,6 +16,7 @@ import {
   convertCNYtoFCFA,
   FRENCH_TO_CHINESE_TERMS,
 } from '@/lib/types/1688';
+import { completeText } from '@/lib/ai/clients';
 
 // Configuration RapidAPI 1688-product2
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || 'c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7';
@@ -52,6 +53,81 @@ export function translateToChines(text: string): string {
 
   // Si aucune traduction trouvée, retourner le texte original
   return text;
+}
+
+/**
+ * Traduit un texte chinois en français en utilisant l'IA
+ */
+async function translateChineseToFrench(text: string): Promise<string> {
+  if (!text || text.trim() === '') return text;
+
+  // Vérifier si le texte contient des caractères chinois
+  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+  if (!hasChinese) return text;
+
+  try {
+    const translated = await completeText(
+      text,
+      'You are a professional translator. Translate the following Chinese product title to French. Keep it concise and accurate. Return ONLY the French translation, nothing else.',
+      { temperature: 0.2, maxTokens: 200 }
+    );
+    return translated.trim() || text;
+  } catch (error) {
+    console.error('[1688] Translation error:', error);
+    return text; // Retourner le texte original en cas d'erreur
+  }
+}
+
+/**
+ * Traduit plusieurs titres chinois en français en batch
+ */
+async function translateTitlesBatch(titles: string[]): Promise<string[]> {
+  if (titles.length === 0) return [];
+
+  // Filtrer les titres avec des caractères chinois
+  const chineseTitles = titles.filter(t => /[\u4e00-\u9fa5]/.test(t));
+  if (chineseTitles.length === 0) return titles;
+
+  try {
+    // Créer un prompt batch pour économiser les appels API
+    const numberedTitles = chineseTitles.map((t, i) => `${i + 1}. ${t}`).join('\n');
+
+    const translated = await completeText(
+      numberedTitles,
+      `You are a professional translator specializing in product names. Translate each Chinese product title to French.
+Keep each translation on a separate line with the same numbering format.
+Be concise and accurate. Return ONLY the numbered translations, nothing else.
+Example format:
+1. French translation 1
+2. French translation 2`,
+      { temperature: 0.2, maxTokens: 2000 }
+    );
+
+    // Parser les résultats
+    const lines = translated.trim().split('\n');
+    const translationMap = new Map<number, string>();
+
+    for (const line of lines) {
+      const match = line.match(/^(\d+)\.\s*(.+)$/);
+      if (match) {
+        translationMap.set(parseInt(match[1]) - 1, match[2].trim());
+      }
+    }
+
+    // Reconstruire le tableau avec les traductions
+    let chineseIndex = 0;
+    return titles.map(title => {
+      if (/[\u4e00-\u9fa5]/.test(title)) {
+        const translation = translationMap.get(chineseIndex);
+        chineseIndex++;
+        return translation || title;
+      }
+      return title;
+    });
+  } catch (error) {
+    console.error('[1688] Batch translation error:', error);
+    return titles; // Retourner les titres originaux en cas d'erreur
+  }
 }
 
 /**
@@ -186,6 +262,19 @@ export async function search1688Product(
   try {
     const rawResults = await searchRapidAPI(searchKeyword, maxResults);
     let products = parseRapidAPIResults(rawResults);
+
+    // Traduire les titres chinois en français
+    console.log(`[1688] Translating ${products.length} product titles to French...`);
+    const chineseTitles = products.map(p => p.titleChinese);
+    const frenchTitles = await translateTitlesBatch(chineseTitles);
+
+    // Mettre à jour les produits avec les titres traduits
+    products = products.map((product, index) => ({
+      ...product,
+      title: frenchTitles[index] || product.title,
+      titleChinese: product.titleChinese, // Garder le titre chinois original
+    }));
+    console.log(`[1688] Translation complete`);
 
     // Appliquer les filtres
     if (options.minPrice !== undefined) {

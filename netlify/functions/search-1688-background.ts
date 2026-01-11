@@ -1,5 +1,6 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import OpenAI from 'openai';
 
 // Configuration
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -7,6 +8,10 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || 'c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7';
 const RAPIDAPI_HOST = '1688-product2.p.rapidapi.com';
 const RAPIDAPI_BASE_URL = `https://${RAPIDAPI_HOST}`;
+
+// AI Configuration for translation
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 
 // French to Chinese translation mapping
 const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
@@ -143,6 +148,91 @@ function convertCNYtoFCFA(amountCNY: number): number {
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Traduit plusieurs titres chinois en français en batch via OpenAI/DeepSeek
+ */
+async function translateTitlesBatch(titles: string[]): Promise<string[]> {
+  if (titles.length === 0) return [];
+
+  // Filtrer les titres avec des caractères chinois
+  const chineseTitles = titles.filter(t => /[\u4e00-\u9fa5]/.test(t));
+  if (chineseTitles.length === 0) return titles;
+
+  // Essayer OpenAI d'abord, puis DeepSeek
+  let client: OpenAI | null = null;
+  let model = 'gpt-4o-mini';
+
+  if (OPENAI_API_KEY) {
+    client = new OpenAI({ apiKey: OPENAI_API_KEY });
+  } else if (DEEPSEEK_API_KEY) {
+    client = new OpenAI({
+      apiKey: DEEPSEEK_API_KEY,
+      baseURL: 'https://api.deepseek.com/v1',
+    });
+    model = 'deepseek-chat';
+  }
+
+  if (!client) {
+    console.log('[1688 BG] No AI API key configured, skipping translation');
+    return titles;
+  }
+
+  try {
+    console.log(`[1688 BG] Translating ${chineseTitles.length} titles to French...`);
+
+    // Créer un prompt batch pour économiser les appels API
+    const numberedTitles = chineseTitles.map((t, i) => `${i + 1}. ${t}`).join('\n');
+
+    const completion = await client.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a professional translator specializing in product names. Translate each Chinese product title to French.
+Keep each translation on a separate line with the same numbering format.
+Be concise and accurate. Return ONLY the numbered translations, nothing else.
+Example format:
+1. French translation 1
+2. French translation 2`,
+        },
+        { role: 'user', content: numberedTitles },
+      ],
+      temperature: 0.2,
+      max_tokens: 2000,
+    });
+
+    const translated = completion.choices[0]?.message?.content?.trim() || '';
+
+    // Parser les résultats
+    const lines = translated.split('\n');
+    const translationMap = new Map<number, string>();
+
+    for (const line of lines) {
+      const match = line.match(/^(\d+)\.\s*(.+)$/);
+      if (match) {
+        translationMap.set(parseInt(match[1]) - 1, match[2].trim());
+      }
+    }
+
+    // Reconstruire le tableau avec les traductions
+    let chineseIndex = 0;
+    const result = titles.map(title => {
+      if (/[\u4e00-\u9fa5]/.test(title)) {
+        const translation = translationMap.get(chineseIndex);
+        chineseIndex++;
+        return translation || title;
+      }
+      return title;
+    });
+
+    console.log(`[1688 BG] Translation complete`);
+    return result;
+  } catch (error: any) {
+    console.error('[1688 BG] Translation error:', error.message);
+    return titles; // Retourner les titres originaux en cas d'erreur
+  }
 }
 
 async function searchRapidAPI(keyword: string, pageSize: number = 20): Promise<any[]> {
@@ -322,7 +412,18 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
       try {
         const rawResults = await searchRapidAPI(searchKeyword, maxResults);
-        const products = parseRapidAPIResults(rawResults);
+        let products = parseRapidAPIResults(rawResults);
+
+        // Traduire les titres chinois en français
+        if (products.length > 0) {
+          const chineseTitles = products.map(p => p.title);
+          const frenchTitles = await translateTitlesBatch(chineseTitles);
+          products = products.map((product, idx) => ({
+            ...product,
+            title: frenchTitles[idx] || product.title,
+            titleChinese: product.titleChinese, // Garder le titre chinois original
+          }));
+        }
 
         results.push({
           searchQuery: term,
