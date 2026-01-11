@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   search1688Product,
+  search1688ProductByImage,
   searchProductList,
   searchQuoteRequestProducts,
 } from '@/lib/services/1688-service';
@@ -99,29 +100,58 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET /api/1688/search?q=keyword&maxResults=10
+ * GET /api/1688/search?q=keyword&maxResults=5&imageUrl=xxx
  *
  * Recherche simple d'un seul produit
+ * Privilégie la recherche par image si imageUrl est fourni
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const keyword = searchParams.get('q');
-    const maxResults = parseInt(searchParams.get('maxResults') || '10', 10);
+    const imageUrl = searchParams.get('imageUrl');
+    const maxResults = parseInt(searchParams.get('maxResults') || '5', 10);
+
+    // Privilégier la recherche par image si disponible
+    if (imageUrl) {
+      console.log(`[1688 API] Image search for: ${imageUrl.substring(0, 50)}...`);
+
+      try {
+        const result = await search1688ProductByImage(imageUrl, { maxResults });
+        return NextResponse.json({
+          success: true,
+          searchType: 'image',
+          ...result,
+        });
+      } catch (imageError: any) {
+        console.warn(`[1688 API] Image search failed, falling back to keyword: ${imageError.message}`);
+        // Fallback to keyword search if image search fails
+        if (keyword) {
+          const result = await search1688Product(keyword, { maxResults });
+          return NextResponse.json({
+            success: true,
+            searchType: 'keyword_fallback',
+            ...result,
+          });
+        }
+        throw imageError;
+      }
+    }
 
     if (!keyword) {
       return NextResponse.json(
-        { error: 'Le paramètre q (keyword) est requis' },
+        { error: 'Le paramètre q (keyword) ou imageUrl est requis' },
         { status: 400 }
       );
     }
 
-    console.log(`[1688 API] Single search for: ${keyword}`);
+    console.log(`[1688 API] Keyword search for: ${keyword}`);
 
     const result = await search1688Product(keyword, { maxResults });
 
     return NextResponse.json({
       success: true,
+      searchType: 'keyword',
       ...result,
     });
   } catch (error: any) {

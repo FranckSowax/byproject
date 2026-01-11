@@ -129,8 +129,9 @@ export default function Admin1688Page() {
     toast.info(`Lancement de la recherche 1688 pour ${request.projects?.name || 'le projet'}...`);
 
     // The hook will automatically use background job for >5 materials
+    // Limite à 5 résultats par matériau, triés par qualité
     const result = await searchProjectProducts(request.project_id, {
-      maxResults: 10,
+      maxResults: 5,
       translateToChines: true,
     });
 
@@ -150,7 +151,7 @@ export default function Admin1688Page() {
     toast.info(`Lancement de la recherche en arrière-plan pour ${request.projects?.name || 'le projet'}...`);
 
     await startBackgroundSearch(request.project_id, {
-      maxResults: 10,
+      maxResults: 5,
       translateToChines: true,
     });
   };

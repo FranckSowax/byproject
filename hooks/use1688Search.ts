@@ -216,7 +216,7 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
 
         try {
           const response = await fetch(
-            `/api/1688/search?q=${encodeURIComponent(product)}&maxResults=${options.maxResults || 10}`,
+            `/api/1688/search?q=${encodeURIComponent(product)}&maxResults=${options.maxResults || 5}`,
             { signal: abortControllerRef.current.signal }
           );
 
@@ -370,13 +370,14 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
   }, [searchProducts, startBackgroundSearch]);
 
   /**
-   * Recherche un seul produit
+   * Recherche un seul produit (par mot-clé ou par image)
    */
   const searchSingle = useCallback(async (
     keyword: string,
-    maxResults: number = 10
+    maxResults: number = 5,
+    imageUrl?: string
   ): Promise<SearchResult1688 | null> => {
-    const cacheKey = keyword.toLowerCase();
+    const cacheKey = imageUrl ? `img:${imageUrl.substring(0, 50)}` : keyword.toLowerCase();
     if (searchCache.has(cacheKey)) {
       const cached = searchCache.get(cacheKey)!;
       setSingleResult(cached);
@@ -387,9 +388,16 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/1688/search?q=${encodeURIComponent(keyword)}&maxResults=${maxResults}`
-      );
+      // Construire l'URL avec priorité sur la recherche par image
+      let url = `/api/1688/search?maxResults=${maxResults}`;
+      if (imageUrl) {
+        url += `&imageUrl=${encodeURIComponent(imageUrl)}`;
+      }
+      if (keyword) {
+        url += `&q=${encodeURIComponent(keyword)}`;
+      }
+
+      const response = await fetch(url);
 
       const data = await response.json();
 

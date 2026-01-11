@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -382,41 +381,34 @@ function ProductCard({ product, onClick }: ProductCardProps) {
       className="border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer group"
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        <div className="flex gap-4">
-          {/* Image - Taille augmentée */}
-          <div className="relative w-24 h-24 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+      <CardContent className="p-3">
+        <div className="flex gap-3">
+          {/* Image */}
+          <div className="relative w-20 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
             {product.imageUrl && !imageError ? (
-              <Image
+              <img
                 src={product.imageUrl}
                 alt={product.title}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                unoptimized
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 onError={() => setImageError(true)}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                <ImageIcon className="h-8 w-8 text-slate-300" />
+                <ImageIcon className="h-6 w-6 text-slate-300" />
               </div>
             )}
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+            <h4 className="font-medium text-sm text-slate-900 line-clamp-3 group-hover:text-blue-600 transition-colors leading-tight">
               {product.title}
             </h4>
 
             {/* Price */}
-            <div className="mt-2">
-              <p className="text-lg font-bold text-orange-600">
+            <div className="mt-1.5">
+              <p className="text-base font-bold text-orange-600">
                 {product.priceInFCFA.min.toLocaleString()} FCFA
-                {product.priceInFCFA.max > product.priceInFCFA.min && (
-                  <span className="text-sm font-normal text-slate-500">
-                    {' '}- {product.priceInFCFA.max.toLocaleString()} FCFA
-                  </span>
-                )}
               </p>
               <p className="text-xs text-slate-500">
                 ¥{product.price.min.toFixed(2)} CNY
@@ -424,7 +416,7 @@ function ProductCard({ product, onClick }: ProductCardProps) {
             </div>
 
             {/* MOQ, Rating & Repurchase Rate */}
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-600">
               <span className="flex items-center gap-1">
                 <ShoppingCart className="h-3 w-3" />
                 MOQ: {product.moq}
@@ -438,13 +430,13 @@ function ProductCard({ product, onClick }: ProductCardProps) {
               {product.repurchaseRate !== undefined && product.repurchaseRate > 0 && (
                 <span className="flex items-center gap-1 text-green-600">
                   <RefreshCw className="h-3 w-3" />
-                  {product.repurchaseRate}% retour
+                  {product.repurchaseRate}%
                 </span>
               )}
             </div>
           </div>
 
-          <ChevronRight className="h-5 w-5 text-slate-400 self-center group-hover:text-blue-600 transition-colors" />
+          <ChevronRight className="h-4 w-4 text-slate-400 self-center group-hover:text-blue-600 transition-colors flex-shrink-0" />
         </div>
       </CardContent>
     </Card>
@@ -464,24 +456,22 @@ function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProp
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">{product.title}</DialogTitle>
+          <DialogTitle className="text-lg leading-tight pr-8">{product.title}</DialogTitle>
           {product.titleChinese && product.titleChinese !== product.title && (
             <DialogDescription className="text-sm text-slate-500">{product.titleChinese}</DialogDescription>
           )}
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Image - Améliorée */}
-          <div className="relative w-full h-72 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg overflow-hidden">
+          <div className="relative w-full h-64 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg overflow-hidden">
             {product.imageUrl && !imageError ? (
-              <Image
+              <img
                 src={product.imageUrl}
                 alt={product.title}
-                fill
-                className="object-contain"
-                unoptimized
+                className="w-full h-full object-contain"
                 onError={() => setImageError(true)}
               />
             ) : (
