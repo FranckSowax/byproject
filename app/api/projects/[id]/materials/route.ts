@@ -25,7 +25,7 @@ export async function GET(
 
     const { data: materials, error } = await supabase
       .from('materials')
-      .select('id, name, description, quantity, category, specs')
+      .select('id, name, description, quantity, category, specs, images')
       .eq('project_id', projectId)
       .order('name');
 

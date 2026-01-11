@@ -25,6 +25,7 @@ interface Use1688SearchState {
 
 interface Use1688SearchActions {
   searchProducts: (products: string[], options?: Search1688Options) => Promise<ProductListSearchResult | null>;
+  searchProductsWithImages: (materials: Array<{ name: string; description?: string; images?: string[] }>, options?: Search1688Options) => Promise<ProductListSearchResult | null>;
   searchProjectProducts: (projectId: string, options?: Search1688Options) => Promise<ProductListSearchResult | null>;
   startBackgroundSearch: (projectId: string, options?: Search1688Options) => Promise<string | null>;
   searchSingle: (keyword: string, maxResults?: number) => Promise<SearchResult1688 | null>;
@@ -171,6 +172,141 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
       return null;
     }
   }, [checkJobStatus]);
+
+  /**
+   * Recherche une liste de matériaux avec images (privilégie la recherche par image)
+   */
+  const searchProductsWithImages = useCallback(async (
+    materials: Array<{ name: string; description?: string; images?: string[] }>,
+    options: Search1688Options = {}
+  ): Promise<ProductListSearchResult | null> => {
+    setIsLoading(true);
+    setError(null);
+    setJobStatus('running');
+
+    const startedAt = new Date();
+    const searchResults: SearchResult1688[] = [];
+    let failedSearches = 0;
+    let cancelled = false;
+
+    abortControllerRef.current = new AbortController();
+
+    setProgress({
+      completed: 0,
+      total: materials.length,
+      currentProduct: materials[0]?.name || '',
+      percentage: 0,
+    });
+
+    try {
+      for (let i = 0; i < materials.length; i++) {
+        if (abortControllerRef.current.signal.aborted) {
+          cancelled = true;
+          break;
+        }
+
+        const material = materials[i];
+        const imageUrl = material.images && material.images.length > 0 ? material.images[0] : null;
+        const searchTerm = material.description
+          ? `${material.name} ${material.description}`.trim()
+          : material.name;
+
+        setProgress({
+          completed: i,
+          total: materials.length,
+          currentProduct: material.name,
+          percentage: Math.round((i / materials.length) * 100),
+        });
+
+        try {
+          // Privilégier la recherche par image si disponible
+          let url = `/api/1688/search?maxResults=${options.maxResults || 5}`;
+          if (imageUrl) {
+            url += `&imageUrl=${encodeURIComponent(imageUrl)}`;
+          }
+          url += `&q=${encodeURIComponent(searchTerm)}`;
+
+          const response = await fetch(url, { signal: abortControllerRef.current.signal });
+          const data = await response.json();
+
+          if (response.ok) {
+            const result: SearchResult1688 = {
+              searchQuery: searchTerm,
+              searchQueryChinese: data.searchQueryChinese,
+              results: data.results || [],
+              searchedAt: new Date(data.searchedAt || Date.now()),
+              totalFound: data.totalFound || 0,
+            };
+            searchResults.push(result);
+
+            const cacheKey = searchTerm.toLowerCase();
+            searchCache.set(cacheKey, result);
+          } else {
+            failedSearches++;
+            searchResults.push({
+              searchQuery: searchTerm,
+              results: [],
+              searchedAt: new Date(),
+              totalFound: 0,
+            });
+          }
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            cancelled = true;
+            break;
+          }
+          failedSearches++;
+          searchResults.push({
+            searchQuery: searchTerm,
+            results: [],
+            searchedAt: new Date(),
+            totalFound: 0,
+          });
+        }
+
+        if (i < materials.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      if (cancelled) {
+        setError('Recherche annulée');
+        setJobStatus('cancelled');
+        return null;
+      }
+
+      const finalResult: ProductListSearchResult = {
+        totalProducts: materials.length,
+        completedSearches: materials.length - failedSearches,
+        failedSearches,
+        results: searchResults,
+        startedAt,
+        completedAt: new Date(),
+      };
+
+      setResults(finalResult);
+      setJobStatus('completed');
+      setProgress({
+        completed: materials.length,
+        total: materials.length,
+        currentProduct: 'Terminé',
+        percentage: 100,
+      });
+
+      return finalResult;
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setError('Recherche annulée');
+        setJobStatus('cancelled');
+        return null;
+      }
+      setError(err.message || 'Erreur inconnue');
+      setJobStatus('failed');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   /**
    * Recherche une liste de produits un par un (évite les timeouts)
@@ -346,16 +482,9 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
         return null; // Results will come via polling
       }
 
-      // 3. For small lists, search directly
-      const searchTerms = materials.map((m: any) => {
-        if (m.description) {
-          return `${m.name} ${m.description}`.trim();
-        }
-        return m.name;
-      });
-
+      // 3. For small lists, search directly with images when available
       setIsLoading(false);
-      return await searchProducts(searchTerms, options);
+      return await searchProductsWithImages(materials, options);
 
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -473,6 +602,7 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
     jobId,
     jobStatus,
     searchProducts,
+    searchProductsWithImages,
     searchProjectProducts,
     startBackgroundSearch,
     searchSingle,

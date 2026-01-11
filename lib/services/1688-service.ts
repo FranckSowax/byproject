@@ -616,18 +616,67 @@ export async function searchProductList(
 /**
  * Recherche des produits pour une demande de cotation
  * Prend les matériaux d'un projet et recherche sur 1688
+ * Privilégie la recherche par image si une image est disponible
  */
 export async function searchQuoteRequestProducts(
-  materials: Array<{ name: string; description?: string; quantity?: number }>,
+  materials: Array<{ name: string; description?: string; quantity?: number; images?: string[] }>,
   options: Search1688Options = {}
 ): Promise<ProductListSearchResult> {
-  // Construire les termes de recherche à partir des matériaux
-  const searchTerms = materials.map(m => {
-    if (m.description) {
-      return `${m.name} ${m.description}`.trim();
-    }
-    return m.name;
-  });
+  const startedAt = new Date();
+  const results: SearchResult1688[] = [];
+  let failedSearches = 0;
 
-  return searchProductList(searchTerms, options);
+  console.log(`[1688] Starting quote request search for ${materials.length} materials`);
+
+  for (let i = 0; i < materials.length; i++) {
+    const material = materials[i];
+    const imageUrl = material.images && material.images.length > 0 ? material.images[0] : null;
+    const searchTerm = material.description
+      ? `${material.name} ${material.description}`.trim()
+      : material.name;
+
+    try {
+      let result: SearchResult1688;
+
+      // Privilégier la recherche par image si disponible
+      if (imageUrl) {
+        console.log(`[1688] Using image search for "${material.name}": ${imageUrl.substring(0, 50)}...`);
+        try {
+          result = await search1688ProductByImage(imageUrl, options);
+          result.searchQuery = searchTerm; // Garder le nom du matériau comme query
+        } catch (imageError: any) {
+          console.warn(`[1688] Image search failed for "${material.name}", falling back to keyword: ${imageError.message}`);
+          result = await search1688Product(searchTerm, options);
+        }
+      } else {
+        result = await search1688Product(searchTerm, options);
+      }
+
+      results.push(result);
+      console.log(`[1688] Completed ${i + 1}/${materials.length}: "${material.name}" - ${result.totalFound} results`);
+    } catch (error) {
+      console.error(`[1688] Failed ${i + 1}/${materials.length}: "${material.name}"`, error);
+      failedSearches++;
+      results.push({
+        searchQuery: searchTerm,
+        results: [],
+        searchedAt: new Date(),
+        totalFound: 0,
+      });
+    }
+
+    // Rate limiting
+    if (i < materials.length - 1) {
+      await delay(RATE_LIMIT_DELAY_MS);
+    }
+  }
+
+  return {
+    totalProducts: materials.length,
+    completedSearches: materials.length - failedSearches,
+    failedSearches,
+    results,
+    startedAt,
+    completedAt: new Date(),
+  };
 }

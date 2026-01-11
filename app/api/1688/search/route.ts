@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
       const { data: materials, error } = await supabase
         .from('materials')
-        .select('id, name, description, quantity')
+        .select('id, name, description, quantity, images')
         .eq('project_id', projectId);
 
       if (error) {
