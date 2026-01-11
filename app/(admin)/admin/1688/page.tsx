@@ -25,15 +25,15 @@ import {
   Search,
   Package,
   RefreshCw,
-  ExternalLink,
   Clock,
   CheckCircle,
   XCircle,
   Play,
   Eye,
   Loader2,
-  TrendingUp,
   ShoppingCart,
+  AlertCircle,
+  Pause,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { use1688Search } from '@/hooks/use1688Search';
@@ -59,6 +59,15 @@ interface SupplierRequest {
   };
 }
 
+const jobStatusConfig = {
+  idle: { label: 'Prêt', color: 'bg-slate-100 text-slate-600', icon: Clock },
+  pending: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  running: { label: 'En cours', color: 'bg-blue-100 text-blue-700', icon: Loader2 },
+  completed: { label: 'Terminé', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  failed: { label: 'Échoué', color: 'bg-red-100 text-red-700', icon: XCircle },
+  cancelled: { label: 'Annulé', color: 'bg-orange-100 text-orange-700', icon: Pause },
+};
+
 export default function Admin1688Page() {
   const [requests, setRequests] = useState<SupplierRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +81,10 @@ export default function Admin1688Page() {
     progress,
     results,
     error,
+    jobId,
+    jobStatus,
     searchProjectProducts,
+    startBackgroundSearch,
     cancelSearch,
     clearResults,
   } = use1688Search();
@@ -80,6 +92,17 @@ export default function Admin1688Page() {
   useEffect(() => {
     loadRequests();
   }, []);
+
+  // Watch for results updates from background job
+  useEffect(() => {
+    if (results && jobStatus === 'completed') {
+      setSearchResults(results);
+      if (selectedRequest) {
+        toast.success(`Recherche terminée: ${results.completedSearches} matériaux traités`);
+        setShowResultsDialog(true);
+      }
+    }
+  }, [results, jobStatus, selectedRequest]);
 
   const loadRequests = async () => {
     try {
@@ -105,18 +128,31 @@ export default function Admin1688Page() {
 
     toast.info(`Lancement de la recherche 1688 pour ${request.projects?.name || 'le projet'}...`);
 
+    // The hook will automatically use background job for >5 materials
     const result = await searchProjectProducts(request.project_id, {
       maxResults: 10,
       translateToChines: true,
     });
 
+    // If result is returned immediately (small list), show it
     if (result) {
       setSearchResults(result);
       setShowResultsDialog(true);
       toast.success(`Recherche terminée: ${result.completedSearches} matériaux traités`);
-    } else if (error) {
-      toast.error(error);
     }
+    // For background jobs, results will come via useEffect above
+  };
+
+  const handleForceBackgroundSearch = async (request: SupplierRequest) => {
+    setSelectedRequest(request);
+    clearResults();
+
+    toast.info(`Lancement de la recherche en arrière-plan pour ${request.projects?.name || 'le projet'}...`);
+
+    await startBackgroundSearch(request.project_id, {
+      maxResults: 10,
+      translateToChines: true,
+    });
   };
 
   const handleViewResults = (request: SupplierRequest) => {
@@ -141,6 +177,8 @@ export default function Admin1688Page() {
     withMaterials: requests.filter(r => r.total_materials > 0).length,
     totalMaterials: requests.reduce((acc, r) => acc + r.total_materials, 0),
   };
+
+  const StatusIcon = jobStatusConfig[jobStatus]?.icon || Clock;
 
   return (
     <div className="space-y-6">
@@ -210,26 +248,36 @@ export default function Admin1688Page() {
         </Card>
       </div>
 
-      {/* Search loading indicator */}
-      {isSearching && (
+      {/* Job Status Indicator */}
+      {(isSearching || jobStatus === 'pending' || jobStatus === 'running') && (
         <Card className="border-0 shadow-lg border-l-4 border-l-orange-500">
           <CardContent className="py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Loader2 className="h-8 w-8 text-orange-600 animate-spin" />
+                <StatusIcon className={`h-8 w-8 text-orange-600 ${jobStatus === 'running' || jobStatus === 'pending' ? 'animate-spin' : ''}`} />
                 <div>
-                  <p className="font-medium text-slate-900">
-                    Recherche en cours sur 1688.com
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-slate-900">
+                      Recherche en cours sur 1688.com
+                    </p>
+                    <Badge className={jobStatusConfig[jobStatus]?.color}>
+                      {jobStatusConfig[jobStatus]?.label}
+                    </Badge>
+                  </div>
                   {progress && (
                     <p className="text-sm text-slate-600">
                       {progress.completed}/{progress.total} - {progress.currentProduct}
                     </p>
                   )}
+                  {jobId && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Job ID: {jobId.substring(0, 8)}...
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                {progress && (
+                {progress && progress.total > 0 && (
                   <div className="w-32">
                     <div className="bg-slate-200 rounded-full h-2">
                       <div
@@ -251,6 +299,18 @@ export default function Admin1688Page() {
                   Annuler
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-0 shadow-lg border-l-4 border-l-red-500">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <p className="text-red-600">{error}</p>
             </div>
           </CardContent>
         </Card>
@@ -278,7 +338,8 @@ export default function Admin1688Page() {
         <CardHeader>
           <CardTitle>Demandes de Cotation</CardTitle>
           <CardDescription>
-            Sélectionnez une demande pour lancer une recherche sur 1688.com
+            Sélectionnez une demande pour lancer une recherche sur 1688.com.
+            Les recherches avec plus de 5 matériaux utilisent automatiquement le mode arrière-plan.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -309,76 +370,84 @@ export default function Admin1688Page() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRequests.map((request) => (
-                    <TableRow key={request.id} className="hover:bg-slate-50">
-                      <TableCell>
-                        <div className="font-mono text-sm font-medium text-blue-600">
-                          {request.request_number}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-slate-900">
-                          {(request.projects as any)?.name || 'N/A'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
+                  filteredRequests.map((request) => {
+                    const isCurrentSearch = selectedRequest?.id === request.id;
+                    const isSearchingThis = isCurrentSearch && (isSearching || jobStatus === 'pending' || jobStatus === 'running');
+
+                    return (
+                      <TableRow key={request.id} className="hover:bg-slate-50">
+                        <TableCell>
+                          <div className="font-mono text-sm font-medium text-blue-600">
+                            {request.request_number}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="font-medium text-slate-900">
-                            {(request.users as any)?.full_name || 'N/A'}
+                            {(request.projects as any)?.name || 'N/A'}
                           </div>
-                          <div className="text-slate-500 text-xs">
-                            {(request.users as any)?.email}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="font-medium text-slate-900">
+                              {(request.users as any)?.full_name || 'N/A'}
+                            </div>
+                            <div className="text-slate-500 text-xs">
+                              {(request.users as any)?.email}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={request.total_materials > 0 ? 'default' : 'secondary'}
-                          className={
-                            request.total_materials > 0
-                              ? 'bg-green-100 text-green-700 border-green-200'
-                              : ''
-                          }
-                        >
-                          <Package className="h-3 w-3 mr-1" />
-                          {request.total_materials} matériau{request.total_materials > 1 ? 'x' : ''}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm text-slate-600">
-                          {new Date(request.created_at).toLocaleDateString('fr-FR')}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                            onClick={() => handleSearch1688(request)}
-                            disabled={isSearching || request.total_materials === 0}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={request.total_materials > 0 ? 'default' : 'secondary'}
+                            className={
+                              request.total_materials > 0
+                                ? request.total_materials > 5
+                                  ? 'bg-orange-100 text-orange-700 border-orange-200'
+                                  : 'bg-green-100 text-green-700 border-green-200'
+                                : ''
+                            }
                           >
-                            {isSearching && selectedRequest?.id === request.id ? (
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            ) : (
-                              <Play className="h-4 w-4 mr-1" />
-                            )}
-                            Rechercher
-                          </Button>
-                          {results && selectedRequest?.id === request.id && (
+                            <Package className="h-3 w-3 mr-1" />
+                            {request.total_materials} matériau{request.total_materials > 1 ? 'x' : ''}
+                            {request.total_materials > 5 && ' (BG)'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-slate-600">
+                            {new Date(request.created_at).toLocaleDateString('fr-FR')}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
                             <Button
-                              variant="outline"
+                              variant="default"
                               size="sm"
-                              onClick={() => handleViewResults(request)}
+                              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                              onClick={() => handleSearch1688(request)}
+                              disabled={isSearching || request.total_materials === 0}
                             >
-                              <Eye className="h-4 w-4 mr-1" />
-                              Résultats
+                              {isSearchingThis ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Play className="h-4 w-4 mr-1" />
+                              )}
+                              Rechercher
                             </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                            {results && isCurrentSearch && jobStatus === 'completed' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewResults(request)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Résultats
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -400,7 +469,7 @@ export default function Admin1688Page() {
           </DialogHeader>
           <Results1688
             results={searchResults}
-            isLoading={isSearching}
+            isLoading={isSearching || jobStatus === 'pending' || jobStatus === 'running'}
             error={error}
             progress={progress}
           />

@@ -12,6 +12,11 @@
 
 [functions]
   node_bundler = "esbuild"
+  directory = "netlify/functions"
+
+# Background functions have 15 minute timeout
+[functions."search-1688-background"]
+  schedule = ""
 
 # Force fresh build - no cache
 [build.processing]
