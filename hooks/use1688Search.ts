@@ -206,6 +206,7 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
         }
 
         const material = materials[i];
+        const imageUrl = material.images && material.images.length > 0 ? material.images[0] : null;
         const searchTerm = material.description
           ? `${material.name} ${material.description}`.trim()
           : material.name;
@@ -218,9 +219,12 @@ export function use1688Search(): Use1688SearchState & Use1688SearchActions {
         });
 
         try {
-          // Recherche par mot-clé uniquement
-          // La recherche par image est désactivée car les URLs Supabase ne sont pas accessibles par l'API 1688
-          const url = `/api/1688/search?maxResults=${options.maxResults || 5}&q=${encodeURIComponent(searchTerm)}`;
+          // Privilégier la recherche par image si disponible (le proxy wsrv.nl est utilisé côté serveur)
+          let url = `/api/1688/search?maxResults=${options.maxResults || 5}`;
+          if (imageUrl) {
+            url += `&imageUrl=${encodeURIComponent(imageUrl)}`;
+          }
+          url += `&q=${encodeURIComponent(searchTerm)}`;
 
           const response = await fetch(url, { signal: abortControllerRef.current.signal });
           const data = await response.json();

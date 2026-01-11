@@ -27,6 +27,28 @@ const RAPIDAPI_BASE_URL = `https://${RAPIDAPI_HOST}`;
 const RATE_LIMIT_DELAY_MS = 1000; // 1 seconde entre chaque requête
 
 /**
+ * Convertit une URL Supabase en URL proxy accessible depuis la Chine
+ * Utilise le service de fetch proxy d'images.weserv.nl (gratuit, pas de compte requis)
+ * Alternative: wsrv.nl ou imageproxy.io
+ */
+function convertToProxyUrl(imageUrl: string): string {
+  // Si c'est déjà une URL proxy ou une URL 1688/alicdn, ne pas modifier
+  if (
+    imageUrl.includes('wsrv.nl') ||
+    imageUrl.includes('weserv.nl') ||
+    imageUrl.includes('alicdn.com') ||
+    imageUrl.includes('1688.com')
+  ) {
+    return imageUrl;
+  }
+
+  // Utiliser wsrv.nl comme proxy d'image (images.weserv.nl)
+  // Ce service est accessible mondialement et peut récupérer des images depuis Supabase
+  const encodedUrl = encodeURIComponent(imageUrl);
+  return `https://wsrv.nl/?url=${encodedUrl}&output=jpg&q=85`;
+}
+
+/**
  * Délai utilitaire pour le rate limiting
  */
 function delay(ms: number): Promise<void> {
@@ -336,6 +358,7 @@ async function searchByImageRapidAPI(imageUrl: string, pageSize: number = 5): Pr
 
 /**
  * Recherche un produit par image sur 1688.com
+ * Utilise un proxy d'image pour rendre les URLs Supabase accessibles depuis la Chine
  * Retourne une erreur si aucun résultat n'est trouvé pour déclencher le fallback
  */
 export async function search1688ProductByImage(
@@ -344,10 +367,13 @@ export async function search1688ProductByImage(
 ): Promise<SearchResult1688> {
   const { maxResults = 5 } = options;
 
+  // Convertir l'URL Supabase en URL proxy accessible depuis la Chine
+  const proxyUrl = convertToProxyUrl(imageUrl);
   console.log(`[1688] Searching by image: "${imageUrl.substring(0, 50)}..."`);
+  console.log(`[1688] Using proxy URL: "${proxyUrl.substring(0, 80)}..."`);
 
   try {
-    const rawResults = await searchByImageRapidAPI(imageUrl, maxResults);
+    const rawResults = await searchByImageRapidAPI(proxyUrl, maxResults);
 
     // Si aucun résultat, lancer une erreur pour déclencher le fallback vers la recherche par mot-clé
     if (!rawResults || rawResults.length === 0) {
@@ -636,10 +662,7 @@ export async function searchProductList(
 /**
  * Recherche des produits pour une demande de cotation
  * Prend les matériaux d'un projet et recherche sur 1688
- *
- * NOTE: La recherche par image est désactivée car l'API 1688 ne peut pas
- * accéder aux images Supabase Storage (restrictions géographiques/format).
- * On utilise uniquement la recherche par mot-clé qui fonctionne bien.
+ * Privilégie la recherche par image (via proxy wsrv.nl) si une image est disponible
  */
 export async function searchQuoteRequestProducts(
   materials: Array<{ name: string; description?: string; quantity?: number; images?: string[] }>,
@@ -653,6 +676,7 @@ export async function searchQuoteRequestProducts(
 
   for (let i = 0; i < materials.length; i++) {
     const material = materials[i];
+    const imageUrl = material.images && material.images.length > 0 ? material.images[0] : null;
     const searchTerm = material.description
       ? `${material.name} ${material.description}`.trim()
       : material.name;
@@ -660,9 +684,19 @@ export async function searchQuoteRequestProducts(
     try {
       let result: SearchResult1688;
 
-      // Recherche par mot-clé uniquement
-      // La recherche par image est désactivée car les URLs Supabase ne sont pas accessibles par l'API 1688
-      result = await search1688Product(searchTerm, options);
+      // Privilégier la recherche par image si disponible
+      if (imageUrl) {
+        console.log(`[1688] Using image search for "${material.name}": ${imageUrl.substring(0, 50)}...`);
+        try {
+          result = await search1688ProductByImage(imageUrl, options);
+          result.searchQuery = searchTerm; // Garder le nom du matériau comme query
+        } catch (imageError: any) {
+          console.warn(`[1688] Image search failed for "${material.name}", falling back to keyword: ${imageError.message}`);
+          result = await search1688Product(searchTerm, options);
+        }
+      } else {
+        result = await search1688Product(searchTerm, options);
+      }
 
       results.push(result);
       console.log(`[1688] Completed ${i + 1}/${materials.length}: "${material.name}" - ${result.totalFound} results`);
