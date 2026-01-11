@@ -277,65 +277,96 @@ async function searchRapidAPI(keyword: string, pageSize: number = 20): Promise<a
 }
 
 function parseRapidAPIResults(rawResults: any[]): any[] {
-  return rawResults.map((item, index) => {
-    // Format 1688-product2:
-    // item_id, title, img, price, price_info (wholesale_price, drop_ship_price),
-    // quantity_begin, sale_info (sale_quantity), delivery_info, shop_info, etc.
+  return rawResults
+    .filter(item => item && item.item_id && item.title) // Filtrer les items null/invalides
+    .map((item, index) => {
+      // Format 1688-product2:
+      // item_id, title, img, price, price_info (wholesale_price, drop_ship_price, sale_price),
+      // quantity_begin, sale_info (sale_quantity), delivery_info, shop_info, item_repurchase_rate, etc.
 
-    // Prix - utiliser wholesale_price ou price
-    const price = parseFloat(
-      item.price_info?.wholesale_price ||
-      item.price_info?.origin_price ||
-      item.price ||
-      '0'
-    );
+      // Prix - utiliser sale_price, wholesale_price ou price
+      const price = parseFloat(
+        item.price_info?.sale_price ||
+        item.price_info?.wholesale_price ||
+        item.price_info?.origin_price ||
+        item.price ||
+        '0'
+      );
 
-    // MOQ - utiliser quantity_begin
-    const moq = parseInt(item.quantity_begin || '1', 10);
+      // MOQ - utiliser quantity_begin
+      const moq = parseInt(item.quantity_begin || '1', 10);
 
-    // Ventes - parser sale_quantity (peut être "215617" ou "1万+")
-    let sold = 0;
-    if (item.sale_info?.sale_quantity) {
-      const saleStr = String(item.sale_info.sale_quantity);
-      if (saleStr.includes('万')) {
-        sold = parseFloat(saleStr.replace('万+', '').replace('万', '')) * 10000;
-      } else {
-        sold = parseInt(saleStr.replace(/[^\d]/g, ''), 10) || 0;
+      // Ventes - parser sale_quantity (peut être "215617" ou "1万+")
+      let sold = 0;
+      if (item.sale_info?.sale_quantity) {
+        const saleStr = String(item.sale_info.sale_quantity);
+        if (saleStr.includes('万')) {
+          sold = parseFloat(saleStr.replace('万+', '').replace('万', '')) * 10000;
+        } else {
+          sold = parseInt(saleStr.replace(/[^\d]/g, ''), 10) || 0;
+        }
       }
-    }
 
-    // Info fournisseur
-    const shopInfo = item.shop_info || {};
-    const scoreInfo = shopInfo.sore_info || shopInfo.score_info || {};
-    const deliveryInfo = item.delivery_info || {};
+      // Taux de retour de commande (item_repurchase_rate: "17%", "39%", etc.)
+      let repurchaseRate: number | undefined;
+      if (item.item_repurchase_rate) {
+        const rateStr = String(item.item_repurchase_rate).replace('%', '');
+        const rateNum = parseFloat(rateStr);
+        if (!isNaN(rateNum)) {
+          repurchaseRate = rateNum;
+        }
+      }
 
-    // Location
-    const location = deliveryInfo.area_from
-      ? deliveryInfo.area_from.join(', ')
-      : 'China';
+      // Info fournisseur
+      const shopInfo = item.shop_info || {};
+      const scoreInfo = shopInfo.sore_info || shopInfo.score_info || {};
+      const deliveryInfo = item.delivery_info || {};
 
-    return {
-      id: String(item.item_id || `1688-${index}-${Date.now()}`),
-      title: item.title || 'Unknown',
-      titleChinese: item.title || '',
-      price: { min: price, max: price, currency: 'CNY' },
-      priceInFCFA: {
-        min: convertCNYtoFCFA(price),
-        max: convertCNYtoFCFA(price),
-        currency: 'FCFA',
-      },
-      moq: moq,
-      sold: sold,
-      supplier: {
-        name: shopInfo.company_name || shopInfo.login_id || 'Unknown',
-        location: location,
-        yearsOnPlatform: shopInfo.tp_year ? parseInt(shopInfo.tp_year, 10) : undefined,
-        rating: scoreInfo.composite_new_score ? parseFloat(scoreInfo.composite_new_score) : undefined,
-        isVerified: shopInfo.tp_member === 'true' || shopInfo.factory_inspection === true,
-      },
-      imageUrl: item.img || '',
-      productUrl: `https://detail.1688.com/offer/${item.item_id}.html`,
-    };
+      // Location
+      const location = deliveryInfo.area_from
+        ? deliveryInfo.area_from.filter((s: string) => s).join(', ')
+        : 'China';
+
+      // Image - améliorer l'URL si nécessaire
+      let imageUrl = item.img || '';
+      if (imageUrl && imageUrl.startsWith('http://')) {
+        imageUrl = imageUrl.replace('http://', 'https://');
+      }
+
+      return {
+        id: String(item.item_id || `1688-${index}-${Date.now()}`),
+        title: item.title || 'Unknown',
+        titleChinese: item.title || '',
+        price: { min: price, max: price, currency: 'CNY' },
+        priceInFCFA: {
+          min: convertCNYtoFCFA(price),
+          max: convertCNYtoFCFA(price),
+          currency: 'FCFA',
+        },
+        moq: moq,
+        sold: sold,
+        repurchaseRate: repurchaseRate,
+        supplier: {
+          name: shopInfo.company_name || shopInfo.login_id || 'Unknown',
+          location: location,
+          yearsOnPlatform: shopInfo.tp_year ? parseInt(shopInfo.tp_year, 10) : undefined,
+          rating: scoreInfo.composite_new_score ? parseFloat(scoreInfo.composite_new_score) : undefined,
+          isVerified: shopInfo.tp_member === true || shopInfo.tp_member === 'true' || shopInfo.factory_inspection === true,
+        },
+        imageUrl: imageUrl,
+        productUrl: `https://detail.1688.com/offer/${item.item_id}.html`,
+      };
+    });
+}
+
+/**
+ * Trie les produits par qualité (note + taux de retour)
+ */
+function sortByQuality(products: any[]): any[] {
+  return [...products].sort((a, b) => {
+    const scoreA = (a.supplier?.rating || 0) + (a.repurchaseRate || 0) / 10;
+    const scoreB = (b.supplier?.rating || 0) + (b.repurchaseRate || 0) / 10;
+    return scoreB - scoreA; // Tri décroissant
   });
 }
 
@@ -388,7 +419,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     const searchTerms: string[] = job.search_terms || [];
     const options = job.options || {};
-    const maxResults = options.maxResults || 10; // RapidAPI est plus rapide qu'Apify
+    const maxResults = options.maxResults || 5; // Limité à 5 par défaut, triés par qualité
     const results: any[] = [];
     let failedTerms = 0;
 
@@ -411,8 +442,15 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         .eq('id', jobId);
 
       try {
-        const rawResults = await searchRapidAPI(searchKeyword, maxResults);
+        // Récupérer plus de résultats pour le tri puis limiter
+        const rawResults = await searchRapidAPI(searchKeyword, maxResults * 2);
         let products = parseRapidAPIResults(rawResults);
+
+        // Trier par qualité (note + taux de retour)
+        products = sortByQuality(products);
+
+        // Limiter au nombre demandé après le tri
+        products = products.slice(0, maxResults);
 
         // Traduire les titres chinois en français
         if (products.length > 0) {

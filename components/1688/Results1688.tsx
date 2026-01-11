@@ -34,6 +34,8 @@ import {
   Loader2,
   X,
   ArrowUpDown,
+  RefreshCw,
+  ImageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -339,7 +341,7 @@ export function Results1688({
                   <p>Aucun produit trouvé pour cette recherche</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {result.results.map((product, productIndex) => (
                     <ProductCard
                       key={product.id || productIndex}
@@ -373,6 +375,8 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product, onClick }: ProductCardProps) {
+  const [imageError, setImageError] = useState(false);
+
   return (
     <Card
       className="border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer group"
@@ -380,19 +384,20 @@ function ProductCard({ product, onClick }: ProductCardProps) {
     >
       <CardContent className="p-4">
         <div className="flex gap-4">
-          {/* Image */}
-          <div className="relative w-20 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-            {product.imageUrl ? (
+          {/* Image - Taille augmentée */}
+          <div className="relative w-24 h-24 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+            {product.imageUrl && !imageError ? (
               <Image
                 src={product.imageUrl}
                 alt={product.title}
                 fill
-                className="object-cover"
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
                 unoptimized
+                onError={() => setImageError(true)}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package className="h-8 w-8 text-slate-300" />
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+                <ImageIcon className="h-8 w-8 text-slate-300" />
               </div>
             )}
           </div>
@@ -414,12 +419,12 @@ function ProductCard({ product, onClick }: ProductCardProps) {
                 )}
               </p>
               <p className="text-xs text-slate-500">
-                ¥{product.price.min.toFixed(2)} - ¥{product.price.max.toFixed(2)} CNY
+                ¥{product.price.min.toFixed(2)} CNY
               </p>
             </div>
 
-            {/* MOQ & Supplier */}
-            <div className="mt-2 flex items-center gap-3 text-xs text-slate-600">
+            {/* MOQ, Rating & Repurchase Rate */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
               <span className="flex items-center gap-1">
                 <ShoppingCart className="h-3 w-3" />
                 MOQ: {product.moq}
@@ -428,6 +433,12 @@ function ProductCard({ product, onClick }: ProductCardProps) {
                 <span className="flex items-center gap-1">
                   <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                   {product.supplier.rating.toFixed(1)}
+                </span>
+              )}
+              {product.repurchaseRate !== undefined && product.repurchaseRate > 0 && (
+                <span className="flex items-center gap-1 text-green-600">
+                  <RefreshCw className="h-3 w-3" />
+                  {product.repurchaseRate}% retour
                 </span>
               )}
             </div>
@@ -447,6 +458,8 @@ interface ProductDetailDialogProps {
 }
 
 function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProps) {
+  const [imageError, setImageError] = useState(false);
+
   if (!product) return null;
 
   return (
@@ -454,39 +467,41 @@ function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProp
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">{product.title}</DialogTitle>
-          {product.titleChinese && (
-            <DialogDescription>{product.titleChinese}</DialogDescription>
+          {product.titleChinese && product.titleChinese !== product.title && (
+            <DialogDescription className="text-sm text-slate-500">{product.titleChinese}</DialogDescription>
           )}
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Image */}
-          <div className="relative w-full h-64 bg-slate-100 rounded-lg overflow-hidden">
-            {product.imageUrl ? (
+          {/* Image - Améliorée */}
+          <div className="relative w-full h-72 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg overflow-hidden">
+            {product.imageUrl && !imageError ? (
               <Image
                 src={product.imageUrl}
                 alt={product.title}
                 fill
                 className="object-contain"
                 unoptimized
+                onError={() => setImageError(true)}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package className="h-16 w-16 text-slate-300" />
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                <ImageIcon className="h-16 w-16 text-slate-300" />
+                <p className="text-sm text-slate-400">Image non disponible</p>
               </div>
             )}
           </div>
 
-          {/* Price */}
+          {/* Price & MOQ */}
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Prix unitaire</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {product.priceInFCFA.min.toLocaleString()} - {product.priceInFCFA.max.toLocaleString()} FCFA
+                  {product.priceInFCFA.min.toLocaleString()} FCFA
                 </p>
                 <p className="text-sm text-slate-500 mt-1">
-                  ¥{product.price.min.toFixed(2)} - ¥{product.price.max.toFixed(2)} CNY
+                  ¥{product.price.min.toFixed(2)} CNY
                 </p>
               </div>
               <div className="text-right">
@@ -495,6 +510,28 @@ function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProp
                 <p className="text-sm text-slate-500">unités</p>
               </div>
             </div>
+          </div>
+
+          {/* Stats Row */}
+          <div className="flex flex-wrap gap-3">
+            {product.sold > 0 && (
+              <Badge variant="outline" className="flex items-center gap-1 py-1.5 px-3">
+                <ShoppingCart className="h-3.5 w-3.5" />
+                {product.sold.toLocaleString()} vendus
+              </Badge>
+            )}
+            {product.supplier.rating && (
+              <Badge variant="outline" className="flex items-center gap-1 py-1.5 px-3 bg-yellow-50 border-yellow-200 text-yellow-700">
+                <Star className="h-3.5 w-3.5 fill-yellow-500 text-yellow-500" />
+                Note: {product.supplier.rating.toFixed(1)}
+              </Badge>
+            )}
+            {product.repurchaseRate !== undefined && product.repurchaseRate > 0 && (
+              <Badge variant="outline" className="flex items-center gap-1 py-1.5 px-3 bg-green-50 border-green-200 text-green-700">
+                <RefreshCw className="h-3.5 w-3.5" />
+                {product.repurchaseRate}% taux de retour
+              </Badge>
+            )}
           </div>
 
           {/* Supplier Info */}
@@ -506,7 +543,7 @@ function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProp
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Nom</span>
-                <span className="font-medium text-slate-900">{product.supplier.name}</span>
+                <span className="font-medium text-slate-900 text-right max-w-[200px] truncate">{product.supplier.name}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Localisation</span>
@@ -516,15 +553,6 @@ function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProp
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Années sur 1688</span>
                   <span className="font-medium text-slate-900">{product.supplier.yearsOnPlatform} ans</span>
-                </div>
-              )}
-              {product.supplier.rating && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Note</span>
-                  <span className="font-medium text-slate-900 flex items-center gap-1">
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                    {product.supplier.rating.toFixed(1)}
-                  </span>
                 </div>
               )}
               {product.supplier.isVerified && (
@@ -538,14 +566,6 @@ function ProductDetailDialog({ product, open, onClose }: ProductDetailDialogProp
               )}
             </div>
           </div>
-
-          {/* Stats */}
-          {product.sold > 0 && (
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <ShoppingCart className="h-4 w-4" />
-              <span>{product.sold.toLocaleString()} vendus</span>
-            </div>
-          )}
 
           {/* Actions */}
           <div className="flex gap-3">

@@ -16,6 +16,7 @@ export interface Product1688 {
   };
   moq: number; // Minimum Order Quantity
   sold: number;
+  repurchaseRate?: number; // Taux de retour de commande (%)
   supplier: {
     name: string;
     location: string;

@@ -179,70 +179,211 @@ async function searchRapidAPI(keyword: string, pageSize: number = 20): Promise<a
  * Parse les résultats bruts de l'API RapidAPI 1688-product2 en Product1688
  */
 function parseRapidAPIResults(rawResults: any[]): Product1688[] {
-  return rawResults.map((item, index) => {
-    // Format 1688-product2:
-    // item_id, title, img, price, price_info (wholesale_price, drop_ship_price),
-    // quantity_begin, sale_info (sale_quantity), delivery_info, shop_info, etc.
+  return rawResults
+    .filter(item => item && item.item_id && item.title) // Filtrer les items null/invalides
+    .map((item, index) => {
+      // Format 1688-product2:
+      // item_id, title, img, price, price_info (wholesale_price, drop_ship_price, sale_price, origin_price),
+      // quantity_begin, sale_info (sale_quantity, gmv_30days, booked_count),
+      // delivery_info, shop_info, item_repurchase_rate, etc.
 
-    // Prix - utiliser wholesale_price ou price
-    const price = parseFloat(
-      item.price_info?.wholesale_price ||
-      item.price_info?.origin_price ||
-      item.price ||
-      '0'
-    );
+      // Prix - utiliser sale_price, wholesale_price ou price
+      const price = parseFloat(
+        item.price_info?.sale_price ||
+        item.price_info?.wholesale_price ||
+        item.price_info?.origin_price ||
+        item.price ||
+        '0'
+      );
 
-    // MOQ - utiliser quantity_begin
-    const moq = parseInt(item.quantity_begin || '1', 10);
+      // MOQ - utiliser quantity_begin
+      const moq = parseInt(item.quantity_begin || '1', 10);
 
-    // Ventes - parser sale_quantity (peut être "215617" ou "1万+")
-    let sold = 0;
-    if (item.sale_info?.sale_quantity) {
-      const saleStr = String(item.sale_info.sale_quantity);
-      if (saleStr.includes('万')) {
-        sold = parseFloat(saleStr.replace('万+', '').replace('万', '')) * 10000;
-      } else {
-        sold = parseInt(saleStr.replace(/[^\d]/g, ''), 10) || 0;
+      // Ventes - parser sale_quantity (peut être "215617" ou "1万+")
+      let sold = 0;
+      if (item.sale_info?.sale_quantity) {
+        const saleStr = String(item.sale_info.sale_quantity);
+        if (saleStr.includes('万')) {
+          sold = parseFloat(saleStr.replace('万+', '').replace('万', '')) * 10000;
+        } else {
+          sold = parseInt(saleStr.replace(/[^\d]/g, ''), 10) || 0;
+        }
       }
+
+      // Taux de retour de commande (item_repurchase_rate: "17%", "39%", etc.)
+      let repurchaseRate: number | undefined;
+      if (item.item_repurchase_rate) {
+        const rateStr = String(item.item_repurchase_rate).replace('%', '');
+        const rateNum = parseFloat(rateStr);
+        if (!isNaN(rateNum)) {
+          repurchaseRate = rateNum;
+        }
+      }
+
+      // Info fournisseur
+      const shopInfo = item.shop_info || {};
+      const scoreInfo = shopInfo.sore_info || shopInfo.score_info || {};
+      const deliveryInfo = item.delivery_info || {};
+
+      // Location
+      const location = deliveryInfo.area_from
+        ? deliveryInfo.area_from.filter((s: string) => s).join(', ')
+        : 'China';
+
+      // Image - améliorer l'URL si nécessaire
+      let imageUrl = item.img || '';
+      // S'assurer que l'URL de l'image est en HTTPS
+      if (imageUrl && imageUrl.startsWith('http://')) {
+        imageUrl = imageUrl.replace('http://', 'https://');
+      }
+
+      return {
+        id: String(item.item_id || `1688-${index}-${Date.now()}`),
+        title: item.title || 'Unknown',
+        titleChinese: item.title || '',
+        price: {
+          min: price,
+          max: price,
+          currency: 'CNY' as const,
+        },
+        priceInFCFA: {
+          min: convertCNYtoFCFA(price),
+          max: convertCNYtoFCFA(price),
+          currency: 'FCFA' as const,
+        },
+        moq: moq,
+        sold: sold,
+        repurchaseRate: repurchaseRate,
+        supplier: {
+          name: shopInfo.company_name || shopInfo.login_id || 'Unknown',
+          location: location,
+          yearsOnPlatform: shopInfo.tp_year ? parseInt(shopInfo.tp_year, 10) : undefined,
+          rating: scoreInfo.composite_new_score ? parseFloat(scoreInfo.composite_new_score) : undefined,
+          isVerified: shopInfo.tp_member === true || shopInfo.tp_member === 'true' || shopInfo.factory_inspection === true,
+        },
+        imageUrl: imageUrl,
+        productUrl: `https://detail.1688.com/offer/${item.item_id}.html`,
+      };
+    });
+}
+
+/**
+ * Trie les produits par qualité (note + taux de retour)
+ */
+function sortByQuality(products: Product1688[]): Product1688[] {
+  return [...products].sort((a, b) => {
+    // Score combiné: note du fournisseur + taux de retour
+    const scoreA = (a.supplier.rating || 0) + (a.repurchaseRate || 0) / 10;
+    const scoreB = (b.supplier.rating || 0) + (b.repurchaseRate || 0) / 10;
+    return scoreB - scoreA; // Tri décroissant
+  });
+}
+
+/**
+ * Recherche des produits par image sur 1688.com via RapidAPI 1688-product2
+ */
+async function searchByImageRapidAPI(imageUrl: string, pageSize: number = 5): Promise<any[]> {
+  // Endpoint: /1688/search/image?page=1&sort=default
+  const url = `${RAPIDAPI_BASE_URL}/1688/search/image?page=1&sort=default&img_url=${encodeURIComponent(imageUrl)}`;
+
+  console.log(`[1688] RapidAPI image search: "${imageUrl.substring(0, 50)}..."`);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': RAPIDAPI_HOST,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[1688] RapidAPI image search error:`, errorText);
+      throw new Error(`RapidAPI image search failed: ${response.status} ${errorText}`);
     }
 
-    // Info fournisseur
-    const shopInfo = item.shop_info || {};
-    const scoreInfo = shopInfo.sore_info || shopInfo.score_info || {};
-    const deliveryInfo = item.delivery_info || {};
+    const data = await response.json();
+    console.log(`[1688] RapidAPI image search response received`);
 
-    // Location
-    const location = deliveryInfo.area_from
-      ? deliveryInfo.area_from.join(', ')
-      : 'China';
+    if (data.code !== 200) {
+      console.error(`[1688] API error:`, data.msg);
+      throw new Error(`API error: ${data.msg}`);
+    }
+
+    const items = data?.data?.items || [];
+    console.log(`[1688] Found ${items.length} items by image`);
+
+    // Limiter au nombre demandé
+    return items.slice(0, pageSize);
+  } catch (error: any) {
+    console.error(`[1688] RapidAPI image search error:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Recherche un produit par image sur 1688.com
+ */
+export async function search1688ProductByImage(
+  imageUrl: string,
+  options: Search1688Options = {}
+): Promise<SearchResult1688> {
+  const { maxResults = 5 } = options;
+
+  console.log(`[1688] Searching by image: "${imageUrl.substring(0, 50)}..."`);
+
+  try {
+    const rawResults = await searchByImageRapidAPI(imageUrl, maxResults);
+    let products = parseRapidAPIResults(rawResults);
+
+    // Trier par qualité (note + taux de retour)
+    products = sortByQuality(products);
+
+    // Traduire les titres chinois en français
+    if (products.length > 0) {
+      console.log(`[1688] Translating ${products.length} product titles to French...`);
+      const chineseTitles = products.map(p => p.titleChinese);
+      const frenchTitles = await translateTitlesBatch(chineseTitles);
+
+      products = products.map((product, index) => ({
+        ...product,
+        title: frenchTitles[index] || product.title,
+        titleChinese: product.titleChinese,
+      }));
+      console.log(`[1688] Translation complete`);
+    }
+
+    // Appliquer les filtres
+    if (options.minPrice !== undefined) {
+      products = products.filter(p => p.price.min >= options.minPrice!);
+    }
+    if (options.maxPrice !== undefined) {
+      products = products.filter(p => p.price.max <= options.maxPrice!);
+    }
+    if (options.minMOQ !== undefined) {
+      products = products.filter(p => p.moq >= options.minMOQ!);
+    }
+    if (options.maxMOQ !== undefined) {
+      products = products.filter(p => p.moq <= options.maxMOQ!);
+    }
+    if (options.minRating !== undefined) {
+      products = products.filter(p => (p.supplier.rating || 0) >= options.minRating!);
+    }
 
     return {
-      id: String(item.item_id || `1688-${index}-${Date.now()}`),
-      title: item.title || 'Unknown',
-      titleChinese: item.title || '',
-      price: {
-        min: price,
-        max: price,
-        currency: 'CNY' as const,
-      },
-      priceInFCFA: {
-        min: convertCNYtoFCFA(price),
-        max: convertCNYtoFCFA(price),
-        currency: 'FCFA' as const,
-      },
-      moq: moq,
-      sold: sold,
-      supplier: {
-        name: shopInfo.company_name || shopInfo.login_id || 'Unknown',
-        location: location,
-        yearsOnPlatform: shopInfo.tp_year ? parseInt(shopInfo.tp_year, 10) : undefined,
-        rating: scoreInfo.composite_new_score ? parseFloat(scoreInfo.composite_new_score) : undefined,
-        isVerified: shopInfo.tp_member === 'true' || shopInfo.factory_inspection === true,
-      },
-      imageUrl: item.img || '',
-      productUrl: `https://detail.1688.com/offer/${item.item_id}.html`,
+      searchQuery: 'Image search',
+      results: products,
+      searchedAt: new Date(),
+      totalFound: products.length,
     };
-  });
+  } catch (error: any) {
+    console.error(`[1688] Image search error:`, error);
+    throw {
+      code: 'IMAGE_SEARCH_ERROR',
+      message: error.message || 'Unknown image search error',
+    } as Search1688Error;
+  }
 }
 
 /**
@@ -252,7 +393,7 @@ export async function search1688Product(
   keyword: string,
   options: Search1688Options = {}
 ): Promise<SearchResult1688> {
-  const { maxResults = 10, translateToChines: shouldTranslate = true } = options;
+  const { maxResults = 5, translateToChines: shouldTranslate = true } = options;
 
   // Traduire si nécessaire
   const searchKeyword = shouldTranslate ? translateToChines(keyword) : keyword;
@@ -260,21 +401,29 @@ export async function search1688Product(
   console.log(`[1688] Searching for: "${keyword}" (Chinese: "${searchKeyword}")`);
 
   try {
-    const rawResults = await searchRapidAPI(searchKeyword, maxResults);
+    const rawResults = await searchRapidAPI(searchKeyword, maxResults * 2); // Récupérer plus pour le tri
     let products = parseRapidAPIResults(rawResults);
 
-    // Traduire les titres chinois en français
-    console.log(`[1688] Translating ${products.length} product titles to French...`);
-    const chineseTitles = products.map(p => p.titleChinese);
-    const frenchTitles = await translateTitlesBatch(chineseTitles);
+    // Trier par qualité (note + taux de retour)
+    products = sortByQuality(products);
 
-    // Mettre à jour les produits avec les titres traduits
-    products = products.map((product, index) => ({
-      ...product,
-      title: frenchTitles[index] || product.title,
-      titleChinese: product.titleChinese, // Garder le titre chinois original
-    }));
-    console.log(`[1688] Translation complete`);
+    // Limiter au nombre demandé après le tri
+    products = products.slice(0, maxResults);
+
+    // Traduire les titres chinois en français
+    if (products.length > 0) {
+      console.log(`[1688] Translating ${products.length} product titles to French...`);
+      const chineseTitles = products.map(p => p.titleChinese);
+      const frenchTitles = await translateTitlesBatch(chineseTitles);
+
+      // Mettre à jour les produits avec les titres traduits
+      products = products.map((product, index) => ({
+        ...product,
+        title: frenchTitles[index] || product.title,
+        titleChinese: product.titleChinese, // Garder le titre chinois original
+      }));
+      console.log(`[1688] Translation complete`);
+    }
 
     // Appliquer les filtres
     if (options.minPrice !== undefined) {
