@@ -10,6 +10,7 @@ const SEARCH_ACTOR_ID = 'ecomscrape~1688-product-search-scraper';
 
 // French to Chinese translation mapping
 const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
+  // Construction
   'ciment': '水泥',
   'béton': '混凝土',
   'brique': '砖',
@@ -30,7 +31,8 @@ const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
   'prise': '插座',
   'robinet': '水龙头',
   'lavabo': '洗手盆',
-  'toilette': 'WC马桶',
+  'toilette': '马桶',
+  'wc': '马桶',
   'douche': '淋浴',
   'baignoire': '浴缸',
   'évier': '水槽',
@@ -43,6 +45,7 @@ const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
   'clou': '钉子',
   'boulon': '螺栓',
   'écrou': '螺母',
+  // Électricité / Climatisation
   'climatiseur': '空调',
   'ventilateur': '风扇',
   'chauffage': '暖气',
@@ -55,6 +58,7 @@ const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
   'ampoule': '灯泡',
   'lustre': '吊灯',
   'projecteur': '投光灯',
+  // Mobilier
   'chaise': '椅子',
   'table': '桌子',
   'bureau': '办公桌',
@@ -63,6 +67,59 @@ const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
   'matelas': '床垫',
   'canapé': '沙发',
   'étagère': '架子',
+  // Automobile
+  'voiture': '汽车',
+  'auto': '汽车',
+  'clé': '钥匙',
+  'cle': '钥匙',
+  'boitier': '外壳',
+  'boîtier': '外壳',
+  'télécommande': '遥控器',
+  'telecommande': '遥控器',
+  'batterie': '电池',
+  'pneu': '轮胎',
+  'roue': '车轮',
+  'phare': '车灯',
+  'pare-brise': '挡风玻璃',
+  'rétroviseur': '后视镜',
+  'moteur': '发动机',
+  'frein': '刹车',
+  'embrayage': '离合器',
+  'amortisseur': '减震器',
+  'filtre': '过滤器',
+  'huile': '机油',
+  'essence': '汽油',
+  // Électronique
+  'téléphone': '手机',
+  'telephone': '手机',
+  'coque': '手机壳',
+  'écran': '屏幕',
+  'chargeur': '充电器',
+  'casque': '耳机',
+  'ordinateur': '电脑',
+  'clavier': '键盘',
+  'souris': '鼠标',
+  'usb': 'USB',
+  'hdmi': 'HDMI',
+  // Vêtements / Textile
+  'vêtement': '服装',
+  'tissu': '布料',
+  'textile': '纺织品',
+  'coton': '棉',
+  'soie': '丝绸',
+  'cuir': '皮革',
+  'chaussure': '鞋子',
+  'sac': '包',
+  // Général
+  'accessoire': '配件',
+  'pièce': '零件',
+  'piece': '零件',
+  'rechange': '备件',
+  'plastique': '塑料',
+  'verre': '玻璃',
+  'bois': '木材',
+  'métal': '金属',
+  'metal': '金属',
 };
 
 const CNY_TO_FCFA_RATE = 90;
