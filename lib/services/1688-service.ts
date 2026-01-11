@@ -636,7 +636,10 @@ export async function searchProductList(
 /**
  * Recherche des produits pour une demande de cotation
  * Prend les matériaux d'un projet et recherche sur 1688
- * Privilégie la recherche par image si une image est disponible
+ *
+ * NOTE: La recherche par image est désactivée car l'API 1688 ne peut pas
+ * accéder aux images Supabase Storage (restrictions géographiques/format).
+ * On utilise uniquement la recherche par mot-clé qui fonctionne bien.
  */
 export async function searchQuoteRequestProducts(
   materials: Array<{ name: string; description?: string; quantity?: number; images?: string[] }>,
@@ -650,7 +653,6 @@ export async function searchQuoteRequestProducts(
 
   for (let i = 0; i < materials.length; i++) {
     const material = materials[i];
-    const imageUrl = material.images && material.images.length > 0 ? material.images[0] : null;
     const searchTerm = material.description
       ? `${material.name} ${material.description}`.trim()
       : material.name;
@@ -658,19 +660,9 @@ export async function searchQuoteRequestProducts(
     try {
       let result: SearchResult1688;
 
-      // Privilégier la recherche par image si disponible
-      if (imageUrl) {
-        console.log(`[1688] Using image search for "${material.name}": ${imageUrl.substring(0, 50)}...`);
-        try {
-          result = await search1688ProductByImage(imageUrl, options);
-          result.searchQuery = searchTerm; // Garder le nom du matériau comme query
-        } catch (imageError: any) {
-          console.warn(`[1688] Image search failed for "${material.name}", falling back to keyword: ${imageError.message}`);
-          result = await search1688Product(searchTerm, options);
-        }
-      } else {
-        result = await search1688Product(searchTerm, options);
-      }
+      // Recherche par mot-clé uniquement
+      // La recherche par image est désactivée car les URLs Supabase ne sont pas accessibles par l'API 1688
+      result = await search1688Product(searchTerm, options);
 
       results.push(result);
       console.log(`[1688] Completed ${i + 1}/${materials.length}: "${material.name}" - ${result.totalFound} results`);
