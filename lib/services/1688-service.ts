@@ -550,7 +550,12 @@ export async function search1688ProductByImage(
       totalFound: products.length,
     };
   } catch (error: any) {
-    console.error(`[1688] Image search error:`, error);
+    // Utiliser warn au lieu de error pour le fallback (comportement attendu)
+    if (error.message?.includes('fallback')) {
+      console.warn(`[1688] Image search: ${error.message}`);
+    } else {
+      console.error(`[1688] Image search error:`, error);
+    }
     throw {
       code: 'IMAGE_SEARCH_ERROR',
       message: error.message || 'Unknown image search error',

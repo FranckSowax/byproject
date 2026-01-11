@@ -340,7 +340,7 @@ export function Results1688({
                   <p>Aucun produit trouvé pour cette recherche</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                   {result.results.map((product, productIndex) => (
                     <ProductCard
                       key={product.id || productIndex}
@@ -378,65 +378,59 @@ function ProductCard({ product, onClick }: ProductCardProps) {
 
   return (
     <Card
-      className="border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer group"
+      className="border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer group overflow-hidden"
       onClick={onClick}
     >
+      {/* Image en haut */}
+      <div className="relative w-full aspect-square bg-slate-100 overflow-hidden">
+        {product.imageUrl && !imageError ? (
+          <img
+            src={product.imageUrl}
+            alt={product.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+            <ImageIcon className="h-10 w-10 text-slate-300" />
+          </div>
+        )}
+        {/* Badge prix en overlay */}
+        <div className="absolute bottom-2 left-2 bg-orange-500 text-white px-2 py-1 rounded-md text-sm font-bold shadow-lg">
+          {product.priceInFCFA.min.toLocaleString()} FCFA
+        </div>
+      </div>
+
+      {/* Contenu texte en dessous */}
       <CardContent className="p-3">
-        <div className="flex gap-3">
-          {/* Image */}
-          <div className="relative w-20 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-            {product.imageUrl && !imageError ? (
-              <img
-                src={product.imageUrl}
-                alt={product.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                <ImageIcon className="h-6 w-6 text-slate-300" />
-              </div>
-            )}
-          </div>
+        {/* Titre */}
+        <h4 className="font-medium text-sm text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors leading-tight mb-2">
+          {product.title}
+        </h4>
 
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm text-slate-900 line-clamp-3 group-hover:text-blue-600 transition-colors leading-tight">
-              {product.title}
-            </h4>
+        {/* Prix CNY */}
+        <p className="text-xs text-slate-500 mb-2">
+          ¥{product.price.min.toFixed(2)} CNY
+        </p>
 
-            {/* Price */}
-            <div className="mt-1.5">
-              <p className="text-base font-bold text-orange-600">
-                {product.priceInFCFA.min.toLocaleString()} FCFA
-              </p>
-              <p className="text-xs text-slate-500">
-                ¥{product.price.min.toFixed(2)} CNY
-              </p>
-            </div>
-
-            {/* MOQ, Rating & Repurchase Rate */}
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-              <span className="flex items-center gap-1">
-                <ShoppingCart className="h-3 w-3" />
-                MOQ: {product.moq}
-              </span>
-              {product.supplier.rating && (
-                <span className="flex items-center gap-1">
-                  <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                  {product.supplier.rating.toFixed(1)}
-                </span>
-              )}
-              {product.repurchaseRate !== undefined && product.repurchaseRate > 0 && (
-                <span className="flex items-center gap-1 text-green-600">
-                  <RefreshCw className="h-3 w-3" />
-                  {product.repurchaseRate}%
-                </span>
-              )}
-            </div>
-          </div>
-
-          <ChevronRight className="h-4 w-4 text-slate-400 self-center group-hover:text-blue-600 transition-colors flex-shrink-0" />
+        {/* MOQ, Rating & Repurchase Rate */}
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
+            <ShoppingCart className="h-3 w-3" />
+            MOQ: {product.moq}
+          </span>
+          {product.supplier.rating && (
+            <span className="flex items-center gap-1 bg-yellow-50 px-1.5 py-0.5 rounded text-yellow-700">
+              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+              {product.supplier.rating.toFixed(1)}
+            </span>
+          )}
+          {product.repurchaseRate !== undefined && product.repurchaseRate > 0 && (
+            <span className="flex items-center gap-1 bg-green-50 px-1.5 py-0.5 rounded text-green-600">
+              <RefreshCw className="h-3 w-3" />
+              {product.repurchaseRate}%
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>
