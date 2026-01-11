@@ -22,8 +22,8 @@ const APIFY_TOKEN = process.env.APIFY_TOKEN || '';
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
 
 // Actor IDs
-const SEARCH_ACTOR_ID = 'ecomscrape/1688-product-search-scraper';
-const DETAILS_ACTOR_ID = 'ecomscrape/1688-product-details-page-scraper';
+const SEARCH_ACTOR_ID = 'ecomscrape~1688-product-search-scraper';
+const DETAILS_ACTOR_ID = 'ecomscrape~1688-product-details-page-scraper';
 
 // Rate limiting
 const RATE_LIMIT_DELAY_MS = 2000; // 2 secondes entre chaque requête

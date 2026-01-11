@@ -6,7 +6,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const APIFY_TOKEN = process.env.APIFY_TOKEN!;
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
-const SEARCH_ACTOR_ID = 'ecomscrape/1688-product-search-scraper';
+const SEARCH_ACTOR_ID = 'ecomscrape~1688-product-search-scraper';
 
 // French to Chinese translation mapping
 const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
