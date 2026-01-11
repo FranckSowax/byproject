@@ -107,7 +107,15 @@ async function runApifyActorSync(actorId: string, input: Record<string, any>): P
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[1688 BG] Sync actor failed:`, errorText);
-      if (response.status === 408 || errorText.includes('timeout')) {
+
+      // Si timeout ou run-failed, retourner un tableau vide
+      const isTimeout = response.status === 408 ||
+        errorText.toLowerCase().includes('timeout') ||
+        errorText.includes('TIMED-OUT') ||
+        errorText.includes('run-failed');
+
+      if (isTimeout) {
+        console.warn(`[1688 BG] Actor timed out or failed, returning empty results`);
         return [];
       }
       throw new Error(`Apify actor failed: ${errorText}`);

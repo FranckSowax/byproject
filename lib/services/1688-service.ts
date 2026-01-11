@@ -86,9 +86,15 @@ async function runApifyActorSync(actorId: string, input: Record<string, any>): P
       const errorText = await response.text();
       console.error(`[1688] Sync actor failed:`, errorText);
 
-      // Si timeout, retourner un tableau vide plutôt que d'échouer
-      if (response.status === 408 || errorText.includes('timeout')) {
-        console.warn(`[1688] Actor timed out, returning empty results`);
+      // Si timeout ou run-failed, retourner un tableau vide plutôt que d'échouer
+      // Apify peut retourner "timeout", "TIMED-OUT", ou "run-failed" selon le cas
+      const isTimeout = response.status === 408 ||
+        errorText.toLowerCase().includes('timeout') ||
+        errorText.includes('TIMED-OUT') ||
+        errorText.includes('run-failed');
+
+      if (isTimeout) {
+        console.warn(`[1688] Actor timed out or failed, returning empty results`);
         return [];
       }
 
