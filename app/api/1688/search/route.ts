@@ -114,25 +114,36 @@ export async function GET(request: NextRequest) {
 
     // Privilégier la recherche par image si disponible
     if (imageUrl) {
-      console.log(`[1688 API] Image search for: ${imageUrl.substring(0, 50)}...`);
+      console.log(`[1688 API] Image search for: ${imageUrl.substring(0, 100)}...`);
+      console.log(`[1688 API] Keyword fallback available: ${keyword ? 'yes' : 'no'}`);
 
       try {
         const result = await search1688ProductByImage(imageUrl, { maxResults });
+        console.log(`[1688 API] Image search successful, found ${result.results?.length || 0} results`);
         return NextResponse.json({
           success: true,
           searchType: 'image',
           ...result,
         });
       } catch (imageError: any) {
-        console.warn(`[1688 API] Image search failed, falling back to keyword: ${imageError.message}`);
+        console.warn(`[1688 API] Image search failed: ${imageError.message}`);
+        console.warn(`[1688 API] Full error:`, imageError);
+
         // Fallback to keyword search if image search fails
         if (keyword) {
-          const result = await search1688Product(keyword, { maxResults });
-          return NextResponse.json({
-            success: true,
-            searchType: 'keyword_fallback',
-            ...result,
-          });
+          console.log(`[1688 API] Falling back to keyword search: "${keyword}"`);
+          try {
+            const result = await search1688Product(keyword, { maxResults });
+            console.log(`[1688 API] Keyword fallback successful, found ${result.results?.length || 0} results`);
+            return NextResponse.json({
+              success: true,
+              searchType: 'keyword_fallback',
+              ...result,
+            });
+          } catch (keywordError: any) {
+            console.error(`[1688 API] Keyword fallback also failed: ${keywordError.message}`);
+            throw keywordError;
+          }
         }
         throw imageError;
       }

@@ -286,37 +286,49 @@ async function searchByImageRapidAPI(imageUrl: string, pageSize: number = 5): Pr
   // Endpoint: /1688/search/image?page=1&sort=default
   const url = `${RAPIDAPI_BASE_URL}/1688/search/image?page=1&sort=default&img_url=${encodeURIComponent(imageUrl)}`;
 
-  console.log(`[1688] RapidAPI image search: "${imageUrl.substring(0, 50)}..."`);
+  console.log(`[1688] RapidAPI image search URL: ${url.substring(0, 150)}...`);
+  console.log(`[1688] Image URL being searched: ${imageUrl}`);
 
   try {
+    // Ajouter un timeout de 15 secondes pour la recherche par image
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'x-rapidapi-key': RAPIDAPI_KEY,
         'x-rapidapi-host': RAPIDAPI_HOST,
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[1688] RapidAPI image search error:`, errorText);
-      throw new Error(`RapidAPI image search failed: ${response.status} ${errorText}`);
+      console.error(`[1688] RapidAPI image search error (${response.status}):`, errorText);
+      throw new Error(`RapidAPI image search failed: ${response.status} - ${errorText.substring(0, 200)}`);
     }
 
     const data = await response.json();
-    console.log(`[1688] RapidAPI image search response received`);
+    console.log(`[1688] RapidAPI image search response code: ${data.code}`);
 
     if (data.code !== 200) {
-      console.error(`[1688] API error:`, data.msg);
-      throw new Error(`API error: ${data.msg}`);
+      console.error(`[1688] API error code ${data.code}:`, data.msg);
+      throw new Error(`API error (${data.code}): ${data.msg || 'Unknown error'}`);
     }
 
     const items = data?.data?.items || [];
-    console.log(`[1688] Found ${items.length} items by image`);
+    console.log(`[1688] Found ${items.length} items by image search`);
 
     // Limiter au nombre demandé
     return items.slice(0, pageSize);
   } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error(`[1688] Image search timeout after 15s`);
+      throw new Error('Image search timeout - the image URL may not be accessible');
+    }
     console.error(`[1688] RapidAPI image search error:`, error.message);
     throw error;
   }
