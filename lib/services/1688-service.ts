@@ -27,15 +27,9 @@ const RAPIDAPI_BASE_URL = `https://${RAPIDAPI_HOST}`;
 const RATE_LIMIT_DELAY_MS = 1000; // 1 seconde entre chaque requête
 
 /**
- * URL de base de l'application pour le proxy d'images
- * En production, utiliser l'URL Netlify pour que l'API 1688 puisse accéder aux images
- */
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://byproject-twinsk.netlify.app';
-
-/**
  * Convertit une URL Supabase en URL proxy accessible depuis la Chine
- * Utilise notre propre proxy d'image sur Netlify pour les images Supabase
- * Cela permet à l'API 1688 d'accéder aux images via une URL publique stable
+ * Utilise wsrv.nl (basé sur Cloudflare) qui est accessible mondialement
+ * y compris depuis la Chine où l'API 1688 doit télécharger l'image
  */
 function convertToProxyUrl(imageUrl: string): string {
   // Si c'est déjà une URL proxy, 1688 ou alicdn, ne pas modifier
@@ -43,16 +37,15 @@ function convertToProxyUrl(imageUrl: string): string {
     imageUrl.includes('wsrv.nl') ||
     imageUrl.includes('weserv.nl') ||
     imageUrl.includes('alicdn.com') ||
-    imageUrl.includes('1688.com') ||
-    imageUrl.includes('/api/image-proxy')
+    imageUrl.includes('1688.com')
   ) {
     return imageUrl;
   }
 
-  // Pour les images Supabase ou autres, utiliser notre proxy sur Netlify
-  // Cela donne une URL publique accessible: https://byproject-twinsk.netlify.app/api/image-proxy?url=...
+  // Utiliser wsrv.nl (Cloudflare) comme proxy pour les images Supabase
+  // wsrv.nl est accessible depuis la Chine et peut servir les images à l'API 1688
   const encodedUrl = encodeURIComponent(imageUrl);
-  return `${APP_BASE_URL}/api/image-proxy?url=${encodedUrl}`;
+  return `https://wsrv.nl/?url=${encodedUrl}`;
 }
 
 /**
