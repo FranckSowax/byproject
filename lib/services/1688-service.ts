@@ -1,7 +1,7 @@
 /**
  * Service pour la recherche de produits sur 1688.com via RapidAPI
  *
- * Ce service utilise l'API RapidAPI 1688-datahub directement
+ * Ce service utilise l'API RapidAPI 1688-product2 directement
  * pour rechercher des produits sur la marketplace B2B chinoise 1688.com
  */
 
@@ -17,9 +17,9 @@ import {
   FRENCH_TO_CHINESE_TERMS,
 } from '@/lib/types/1688';
 
-// Configuration RapidAPI 1688-datahub
+// Configuration RapidAPI 1688-product2
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || 'c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7';
-const RAPIDAPI_HOST = '1688-datahub.p.rapidapi.com';
+const RAPIDAPI_HOST = '1688-product2.p.rapidapi.com';
 const RAPIDAPI_BASE_URL = `https://${RAPIDAPI_HOST}`;
 
 // Rate limiting
@@ -55,12 +55,13 @@ export function translateToChines(text: string): string {
 }
 
 /**
- * Recherche des produits sur 1688.com via RapidAPI
+ * Recherche des produits sur 1688.com via RapidAPI 1688-product2
  */
 async function searchRapidAPI(keyword: string, pageSize: number = 20): Promise<any[]> {
-  const url = `${RAPIDAPI_BASE_URL}/item_search?q=${encodeURIComponent(keyword)}&page=1&pageSize=${pageSize}&sort=default`;
+  // Endpoint: /1688/search/items?page=1&keyword=xxx&sort=default
+  const url = `${RAPIDAPI_BASE_URL}/1688/search/items?page=1&keyword=${encodeURIComponent(keyword)}&sort=default`;
 
-  console.log(`[1688] RapidAPI search: "${keyword}" (pageSize: ${pageSize})`);
+  console.log(`[1688] RapidAPI search: "${keyword}"`);
 
   try {
     const response = await fetch(url, {
@@ -80,11 +81,17 @@ async function searchRapidAPI(keyword: string, pageSize: number = 20): Promise<a
     const data = await response.json();
     console.log(`[1688] RapidAPI response received`);
 
-    // L'API retourne les items dans data.result.resultList ou data.items selon la structure
-    const items = data?.result?.resultList || data?.items || data?.data || [];
+    // L'API 1688-product2 retourne les items dans data.data.items
+    if (data.code !== 200) {
+      console.error(`[1688] API error:`, data.msg);
+      throw new Error(`API error: ${data.msg}`);
+    }
+
+    const items = data?.data?.items || [];
     console.log(`[1688] Found ${items.length} items`);
 
-    return items;
+    // Limiter au nombre demandé
+    return items.slice(0, pageSize);
   } catch (error: any) {
     console.error(`[1688] RapidAPI error:`, error.message);
     throw error;
@@ -93,64 +100,71 @@ async function searchRapidAPI(keyword: string, pageSize: number = 20): Promise<a
 
 
 /**
- * Parse les résultats bruts de l'API RapidAPI en Product1688
+ * Parse les résultats bruts de l'API RapidAPI 1688-product2 en Product1688
  */
 function parseRapidAPIResults(rawResults: any[]): Product1688[] {
   return rawResults.map((item, index) => {
-    // RapidAPI 1688-datahub format
-    // Essayer différents formats de prix possibles
-    let priceMin = 0;
-    let priceMax = 0;
+    // Format 1688-product2:
+    // item_id, title, img, price, price_info (wholesale_price, drop_ship_price),
+    // quantity_begin, sale_info (sale_quantity), delivery_info, shop_info, etc.
 
-    if (item.price) {
-      if (typeof item.price === 'string') {
-        // Format "10.00-20.00" ou "10.00"
-        const priceParts = item.price.split('-');
-        priceMin = parseFloat(priceParts[0]) || 0;
-        priceMax = parseFloat(priceParts[1] || priceParts[0]) || priceMin;
-      } else if (typeof item.price === 'number') {
-        priceMin = item.price;
-        priceMax = item.price;
+    // Prix - utiliser wholesale_price ou price
+    const price = parseFloat(
+      item.price_info?.wholesale_price ||
+      item.price_info?.origin_price ||
+      item.price ||
+      '0'
+    );
+
+    // MOQ - utiliser quantity_begin
+    const moq = parseInt(item.quantity_begin || '1', 10);
+
+    // Ventes - parser sale_quantity (peut être "215617" ou "1万+")
+    let sold = 0;
+    if (item.sale_info?.sale_quantity) {
+      const saleStr = String(item.sale_info.sale_quantity);
+      if (saleStr.includes('万')) {
+        sold = parseFloat(saleStr.replace('万+', '').replace('万', '')) * 10000;
+      } else {
+        sold = parseInt(saleStr.replace(/[^\d]/g, ''), 10) || 0;
       }
     }
-    if (item.priceMin) priceMin = parseFloat(item.priceMin);
-    if (item.priceMax) priceMax = parseFloat(item.priceMax);
-    if (priceMax === 0) priceMax = priceMin;
 
-    // Extraire l'ID du produit
-    const productId = item.offerId || item.id || item.itemId || item.productId || `1688-${index}-${Date.now()}`;
+    // Info fournisseur
+    const shopInfo = item.shop_info || {};
+    const scoreInfo = shopInfo.sore_info || shopInfo.score_info || {};
+    const deliveryInfo = item.delivery_info || {};
 
-    // Construire l'URL du produit
-    let productUrl = item.productUrl || item.url || item.detailUrl || item.itemUrl || '';
-    if (!productUrl && productId) {
-      productUrl = `https://detail.1688.com/offer/${productId}.html`;
-    }
+    // Location
+    const location = deliveryInfo.area_from
+      ? deliveryInfo.area_from.join(', ')
+      : 'China';
 
     return {
-      id: String(productId),
-      title: item.title || item.name || item.subject || 'Unknown',
-      titleChinese: item.title || item.subject || '',
+      id: String(item.item_id || `1688-${index}-${Date.now()}`),
+      title: item.title || 'Unknown',
+      titleChinese: item.title || '',
       price: {
-        min: priceMin,
-        max: priceMax,
+        min: price,
+        max: price,
         currency: 'CNY' as const,
       },
       priceInFCFA: {
-        min: convertCNYtoFCFA(priceMin),
-        max: convertCNYtoFCFA(priceMax),
+        min: convertCNYtoFCFA(price),
+        max: convertCNYtoFCFA(price),
         currency: 'FCFA' as const,
       },
-      moq: parseInt(item.moq || item.minOrder || item.beginAmount || '1', 10),
-      sold: parseInt(item.sold || item.salesCount || item.monthSold || item.gmvMonthCount || '0', 10),
+      moq: moq,
+      sold: sold,
       supplier: {
-        name: item.supplierName || item.companyName || item.sellerName || item.shopName || 'Unknown',
-        location: item.supplierLocation || item.location || item.sellerProvince || 'China',
-        yearsOnPlatform: item.yearsOnPlatform ? parseInt(item.yearsOnPlatform, 10) : undefined,
-        rating: item.supplierRating || item.sellerReputation ? parseFloat(item.supplierRating || item.sellerReputation) : undefined,
-        isVerified: item.isVerified || item.isTp || false,
+        name: shopInfo.company_name || shopInfo.login_id || 'Unknown',
+        location: location,
+        yearsOnPlatform: shopInfo.tp_year ? parseInt(shopInfo.tp_year, 10) : undefined,
+        rating: scoreInfo.composite_new_score ? parseFloat(scoreInfo.composite_new_score) : undefined,
+        isVerified: shopInfo.tp_member === 'true' || shopInfo.factory_inspection === true,
       },
-      imageUrl: item.imageUrl || item.image || item.mainImage || item.imgUrl || item.picUrl || '',
-      productUrl: productUrl,
+      imageUrl: item.img || '',
+      productUrl: `https://detail.1688.com/offer/${item.item_id}.html`,
     };
   });
 }
@@ -208,7 +222,7 @@ export async function search1688Product(
 }
 
 /**
- * Récupère les détails d'un produit sur 1688.com via RapidAPI
+ * Récupère les détails d'un produit sur 1688.com via RapidAPI 1688-product2
  */
 export async function get1688ProductDetails(productUrl: string): Promise<ProductDetails1688> {
   console.log(`[1688] Getting details for: ${productUrl}`);
@@ -222,8 +236,8 @@ export async function get1688ProductDetails(productUrl: string): Promise<Product
       throw new Error('Could not extract product ID from URL');
     }
 
-    // Utiliser l'endpoint item_detail de RapidAPI
-    const url = `${RAPIDAPI_BASE_URL}/item_detail?id=${productId}`;
+    // Utiliser l'endpoint /1688/item/detail de RapidAPI 1688-product2
+    const url = `${RAPIDAPI_BASE_URL}/1688/item/detail?item_id=${productId}`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -239,35 +253,59 @@ export async function get1688ProductDetails(productUrl: string): Promise<Product
     }
 
     const data = await response.json();
-    const item = data?.result || data?.data || data;
+
+    if (data.code !== 200) {
+      throw new Error(`API error: ${data.msg}`);
+    }
+
+    const item = data?.data;
 
     if (!item) {
       throw new Error('No details found for this product');
     }
 
-    const baseProduct = parseRapidAPIResults([item])[0];
+    // Parser les prix par paliers
+    const priceTiers = item.price_info?.price_range?.map((tier: any) => ({
+      minQuantity: parseInt(tier.begin_amount || '1', 10),
+      maxQuantity: tier.end_amount ? parseInt(tier.end_amount, 10) : undefined,
+      pricePerUnit: parseFloat(tier.price || '0'),
+      currency: 'CNY' as const,
+    }));
+
+    const price = parseFloat(item.price_info?.price || '0');
+    const shopInfo = item.shop_info || {};
+    const scoreInfo = shopInfo.score_info || {};
 
     return {
-      ...baseProduct,
-      description: item.description || item.briefDescription || '',
-      priceTiers: item.priceRange?.map((tier: any) => ({
-        minQuantity: parseInt(tier.minAmount || tier.beginAmount || '1', 10),
-        maxQuantity: tier.maxAmount ? parseInt(tier.maxAmount, 10) : undefined,
-        pricePerUnit: parseFloat(tier.price || '0'),
+      id: String(item.item_id),
+      title: item.title || 'Unknown',
+      titleChinese: item.title || '',
+      price: {
+        min: price,
+        max: price,
         currency: 'CNY' as const,
-      })),
-      stock: item.stock || item.quantity ? parseInt(item.stock || item.quantity, 10) : undefined,
-      shippingInfo: item.shippingWeight || item.weight ? {
-        weight: parseFloat(item.shippingWeight || item.weight || '0'),
-        dimensions: item.dimensions,
-        shippingCost: item.shippingCost ? parseFloat(item.shippingCost) : undefined,
-      } : undefined,
-      attributes: item.attributes || item.skuProps || {},
-      images: item.images || item.imgList || [item.imageUrl],
-      reviews: item.reviewCount || item.rateCount ? {
-        count: parseInt(item.reviewCount || item.rateCount, 10),
-        rating: parseFloat(item.rating || item.avgScore || '0'),
-      } : undefined,
+      },
+      priceInFCFA: {
+        min: convertCNYtoFCFA(price),
+        max: convertCNYtoFCFA(price),
+        currency: 'FCFA' as const,
+      },
+      moq: item.min_order_quantity || 1,
+      sold: item.sale_info?.sale_quantity_int || 0,
+      supplier: {
+        name: shopInfo.company_name || shopInfo.login_id || 'Unknown',
+        location: shopInfo.location ? shopInfo.location.join(', ') : 'China',
+        yearsOnPlatform: shopInfo.shop_years,
+        rating: scoreInfo.composite_new_score ? parseFloat(scoreInfo.composite_new_score) : undefined,
+        isVerified: shopInfo.is_factory || false,
+      },
+      imageUrl: item.main_imgs?.[0] || '',
+      productUrl: item.product_url || productUrl,
+      description: item.description || '',
+      priceTiers,
+      stock: item.quantity,
+      attributes: item.sku_props || {},
+      images: item.main_imgs || [],
     };
   } catch (error: any) {
     console.error(`[1688] Details error for "${productUrl}":`, error);
