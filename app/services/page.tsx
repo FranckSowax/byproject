@@ -12,12 +12,12 @@ export default function ServicesPage() {
       <header className="border-b border-gray-100 bg-white sticky top-0 z-50">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-             <Image 
-                src="/logo-byproject.png" 
-                alt="By Project" 
-                width={150} 
-                height={50}
-                className="h-10 w-auto"
+             <Image
+                src="/logo-byproject.png"
+                alt="By Project"
+                width={225}
+                height={75}
+                className="h-[60px] w-auto"
               />
           </Link>
           <Link href="/">

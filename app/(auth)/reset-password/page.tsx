@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
       <Card className="w-full max-w-md border-0 shadow-2xl">
         <CardHeader className="space-y-1 pb-4">
           <div className="flex items-center justify-center mb-6">
-            <div className="relative w-32 h-32">
+            <div className="relative w-48 h-48">
               <Image
                 src="/logo-byproject.png"
                 alt="By Project Logo"

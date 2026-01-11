@@ -54,12 +54,12 @@ function LoginForm() {
       <Card className="w-full max-w-md shadow-xl border-[#E0E4FF]">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-4 flex items-center justify-center">
-            <Image 
-              src="/logo-byproject.png" 
-              alt="By Project" 
-              width={180} 
-              height={60}
-              className="h-16 w-auto"
+            <Image
+              src="/logo-byproject.png"
+              alt="By Project"
+              width={270}
+              height={90}
+              className="h-24 w-auto"
               priority
             />
           </div>

@@ -43,12 +43,12 @@ export default function Home() {
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <Image 
-                src="/logo-byproject.png" 
-                alt="By Project" 
-                width={140} 
-                height={45}
-                className="h-9 w-auto"
+              <Image
+                src="/logo-byproject.png"
+                alt="By Project"
+                width={210}
+                height={68}
+                className="h-[54px] w-auto"
                 priority
               />
             </Link>
@@ -456,12 +456,12 @@ export default function Home() {
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <Image 
-                src="/logo-byproject.png" 
-                alt="By Project" 
-                width={120} 
-                height={40}
-                className="h-8 w-auto"
+              <Image
+                src="/logo-byproject.png"
+                alt="By Project"
+                width={180}
+                height={60}
+                className="h-12 w-auto"
               />
             </Link>
             <div className="flex items-center gap-6 text-sm text-slate-500">

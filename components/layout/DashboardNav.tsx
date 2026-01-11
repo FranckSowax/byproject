@@ -73,12 +73,12 @@ export function DashboardNav() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <Image 
-              src="/logo-byproject.png" 
-              alt="By Project" 
-              width={150} 
-              height={50}
-              className="h-10 w-auto"
+            <Image
+              src="/logo-byproject.png"
+              alt="By Project"
+              width={225}
+              height={75}
+              className="h-[60px] w-auto"
               priority
             />
           </Link>
