@@ -93,7 +93,7 @@ async function runApifyActorSync(actorId: string, input: Record<string, any>): P
     throw new Error('APIFY_TOKEN is not configured');
   }
 
-  const syncUrl = `${APIFY_BASE_URL}/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=55`;
+  const syncUrl = `${APIFY_BASE_URL}/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=60`;
 
   console.log(`[1688 BG] Starting sync actor for:`, JSON.stringify(input).substring(0, 100));
 
