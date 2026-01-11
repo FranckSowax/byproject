@@ -4,9 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 // Configuration
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const APIFY_TOKEN = process.env.APIFY_TOKEN!;
-const APIFY_BASE_URL = 'https://api.apify.com/v2';
-const SEARCH_ACTOR_ID = 'ecomscrape~1688-product-search-scraper';
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || 'c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7';
+const RAPIDAPI_HOST = '1688-datahub.p.rapidapi.com';
+const RAPIDAPI_BASE_URL = `https://${RAPIDAPI_HOST}`;
 
 // French to Chinese translation mapping
 const FRENCH_TO_CHINESE_TERMS: Record<string, string> = {
@@ -145,76 +145,88 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function runApifyActorSync(actorId: string, input: Record<string, any>): Promise<any[]> {
-  if (!APIFY_TOKEN) {
-    throw new Error('APIFY_TOKEN is not configured');
-  }
+async function searchRapidAPI(keyword: string, pageSize: number = 20): Promise<any[]> {
+  const url = `${RAPIDAPI_BASE_URL}/item_search?q=${encodeURIComponent(keyword)}&page=1&pageSize=${pageSize}&sort=default`;
 
-  const syncUrl = `${APIFY_BASE_URL}/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=90`;
-
-  console.log(`[1688 BG] Starting sync actor for:`, JSON.stringify(input).substring(0, 100));
+  console.log(`[1688 BG] RapidAPI search: "${keyword}" (pageSize: ${pageSize})`);
 
   try {
-    const response = await fetch(syncUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': RAPIDAPI_HOST,
+      },
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[1688 BG] Sync actor failed:`, errorText);
-
-      // Si timeout ou run-failed, retourner un tableau vide
-      const isTimeout = response.status === 408 ||
-        errorText.toLowerCase().includes('timeout') ||
-        errorText.includes('TIMED-OUT') ||
-        errorText.includes('run-failed');
-
-      if (isTimeout) {
-        console.warn(`[1688 BG] Actor timed out or failed, returning empty results`);
-        return [];
-      }
-      throw new Error(`Apify actor failed: ${errorText}`);
+      console.error(`[1688 BG] RapidAPI error:`, errorText);
+      throw new Error(`RapidAPI failed: ${response.status} ${errorText}`);
     }
 
-    const results = await response.json();
-    console.log(`[1688 BG] Got ${results.length} results`);
-    return results;
+    const data = await response.json();
+    console.log(`[1688 BG] RapidAPI response received`);
+
+    // L'API retourne les items dans différents formats possibles
+    const items = data?.result?.resultList || data?.items || data?.data || [];
+    console.log(`[1688 BG] Found ${items.length} items`);
+
+    return items;
   } catch (error: any) {
-    if (error.name === 'AbortError' || error.message?.includes('timeout')) {
-      return [];
-    }
+    console.error(`[1688 BG] RapidAPI error:`, error.message);
     throw error;
   }
 }
 
-function parseApifyResults(rawResults: any[]): any[] {
+function parseRapidAPIResults(rawResults: any[]): any[] {
   return rawResults.map((item, index) => {
-    const priceMin = parseFloat(item.priceMin || item.price || 0);
-    const priceMax = parseFloat(item.priceMax || item.price || priceMin);
+    // RapidAPI 1688-datahub format
+    let priceMin = 0;
+    let priceMax = 0;
+
+    if (item.price) {
+      if (typeof item.price === 'string') {
+        const priceParts = item.price.split('-');
+        priceMin = parseFloat(priceParts[0]) || 0;
+        priceMax = parseFloat(priceParts[1] || priceParts[0]) || priceMin;
+      } else if (typeof item.price === 'number') {
+        priceMin = item.price;
+        priceMax = item.price;
+      }
+    }
+    if (item.priceMin) priceMin = parseFloat(item.priceMin);
+    if (item.priceMax) priceMax = parseFloat(item.priceMax);
+    if (priceMax === 0) priceMax = priceMin;
+
+    const productId = item.offerId || item.id || item.itemId || item.productId || `1688-${index}-${Date.now()}`;
+
+    let productUrl = item.productUrl || item.url || item.detailUrl || item.itemUrl || '';
+    if (!productUrl && productId) {
+      productUrl = `https://detail.1688.com/offer/${productId}.html`;
+    }
 
     return {
-      id: item.id || item.offerId || `1688-${index}-${Date.now()}`,
-      title: item.title || item.name || 'Unknown',
-      titleChinese: item.titleChinese || item.title || '',
+      id: String(productId),
+      title: item.title || item.name || item.subject || 'Unknown',
+      titleChinese: item.title || item.subject || '',
       price: { min: priceMin, max: priceMax, currency: 'CNY' },
       priceInFCFA: {
         min: convertCNYtoFCFA(priceMin),
         max: convertCNYtoFCFA(priceMax),
         currency: 'FCFA',
       },
-      moq: parseInt(item.moq || item.minOrder || '1', 10),
-      sold: parseInt(item.sold || item.salesCount || '0', 10),
+      moq: parseInt(item.moq || item.minOrder || item.beginAmount || '1', 10),
+      sold: parseInt(item.sold || item.salesCount || item.monthSold || item.gmvMonthCount || '0', 10),
       supplier: {
-        name: item.supplierName || item.companyName || 'Unknown',
-        location: item.supplierLocation || item.location || 'China',
+        name: item.supplierName || item.companyName || item.sellerName || item.shopName || 'Unknown',
+        location: item.supplierLocation || item.location || item.sellerProvince || 'China',
         yearsOnPlatform: item.yearsOnPlatform ? parseInt(item.yearsOnPlatform, 10) : undefined,
-        rating: item.supplierRating ? parseFloat(item.supplierRating) : undefined,
-        isVerified: item.isVerified || false,
+        rating: item.supplierRating || item.sellerReputation ? parseFloat(item.supplierRating || item.sellerReputation) : undefined,
+        isVerified: item.isVerified || item.isTp || false,
       },
-      imageUrl: item.imageUrl || item.image || item.mainImage || '',
-      productUrl: item.productUrl || item.url || item.detailUrl || '',
+      imageUrl: item.imageUrl || item.image || item.mainImage || item.imgUrl || item.picUrl || '',
+      productUrl: productUrl,
     };
   });
 }
@@ -268,7 +280,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     const searchTerms: string[] = job.search_terms || [];
     const options = job.options || {};
-    const maxResults = options.maxResults || 5; // Réduit à 5 pour éviter les timeouts
+    const maxResults = options.maxResults || 10; // RapidAPI est plus rapide qu'Apify
     const results: any[] = [];
     let failedTerms = 0;
 
@@ -277,9 +289,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // 3. Process each search term
     for (let i = 0; i < searchTerms.length; i++) {
       const term = searchTerms[i];
-      // Simplifier le terme: garder max 5 mots pour éviter les timeouts
-      const simplifiedTerm = term.split(/\s+/).slice(0, 5).join(' ');
-      const searchKeyword = translateToChines(simplifiedTerm);
+      const searchKeyword = translateToChines(term);
 
       console.log(`[1688 BG] Searching ${i + 1}/${searchTerms.length}: "${term}" -> "${searchKeyword}"`);
 
@@ -293,9 +303,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         .eq('id', jobId);
 
       try {
-        const input = { keyword: searchKeyword, maxItems: maxResults };
-        const rawResults = await runApifyActorSync(SEARCH_ACTOR_ID, input);
-        const products = parseApifyResults(rawResults);
+        const rawResults = await searchRapidAPI(searchKeyword, maxResults);
+        const products = parseRapidAPIResults(rawResults);
 
         results.push({
           searchQuery: term,
@@ -318,9 +327,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         });
       }
 
-      // Rate limiting between requests
+      // Rate limiting between requests (1 second for RapidAPI)
       if (i < searchTerms.length - 1) {
-        await delay(2000);
+        await delay(1000);
       }
     }
 
