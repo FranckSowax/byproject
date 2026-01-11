@@ -340,7 +340,7 @@ export function Results1688({
                   <p>Aucun produit trouvé pour cette recherche</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   {result.results.map((product, productIndex) => (
                     <ProductCard
                       key={product.id || productIndex}
@@ -379,6 +379,7 @@ function ProductCard({ product, onClick }: ProductCardProps) {
   return (
     <Card
       className="border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer group overflow-hidden"
+      style={{ width: '100%', minWidth: 0 }}
       onClick={onClick}
     >
       {/* Image en haut */}
