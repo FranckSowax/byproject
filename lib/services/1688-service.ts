@@ -336,6 +336,7 @@ async function searchByImageRapidAPI(imageUrl: string, pageSize: number = 5): Pr
 
 /**
  * Recherche un produit par image sur 1688.com
+ * Retourne une erreur si aucun résultat n'est trouvé pour déclencher le fallback
  */
 export async function search1688ProductByImage(
   imageUrl: string,
@@ -347,6 +348,13 @@ export async function search1688ProductByImage(
 
   try {
     const rawResults = await searchByImageRapidAPI(imageUrl, maxResults);
+
+    // Si aucun résultat, lancer une erreur pour déclencher le fallback vers la recherche par mot-clé
+    if (!rawResults || rawResults.length === 0) {
+      console.log(`[1688] Image search returned 0 results, triggering fallback`);
+      throw new Error('Image search returned no results - fallback to keyword search');
+    }
+
     let products = parseRapidAPIResults(rawResults);
 
     // Trier par qualité (note + taux de retour)
