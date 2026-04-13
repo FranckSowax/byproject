@@ -14,9 +14,20 @@ import {
   Search1688Error,
   CNY_TO_FCFA_RATE,
   convertCNYtoFCFA,
-  FRENCH_TO_CHINESE_TERMS,
 } from '@/lib/types/1688';
-import { completeText } from '@/lib/ai/clients';
+// completeText moved to translation-utils.ts
+
+// Import shared utilities (extracted from this file)
+import {
+  translateToChineseStatic as _translateToChineseStatic,
+  convertToProxyUrl,
+  convertToDisplayProxyUrl as _convertToDisplayProxyUrl,
+  delay,
+} from '@/lib/services/translation-utils';
+
+// Re-export for backward compatibility
+export const translateToChineseStatic = _translateToChineseStatic;
+export const convertToDisplayProxyUrl = _convertToDisplayProxyUrl;
 
 // Configuration RapidAPI 1688-product2
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || 'c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7';
@@ -26,201 +37,11 @@ const RAPIDAPI_BASE_URL = `https://${RAPIDAPI_HOST}`;
 // Rate limiting
 const RATE_LIMIT_DELAY_MS = 1000; // 1 seconde entre chaque requête
 
-/**
- * Convertit une URL Supabase en URL proxy accessible depuis la Chine
- * Utilise wsrv.nl (basé sur Cloudflare) qui est accessible mondialement
- * y compris depuis la Chine où l'API 1688 doit télécharger l'image
- */
-function convertToProxyUrl(imageUrl: string): string {
-  // Si c'est déjà une URL proxy, 1688 ou alicdn, ne pas modifier
-  if (
-    imageUrl.includes('wsrv.nl') ||
-    imageUrl.includes('weserv.nl') ||
-    imageUrl.includes('alicdn.com') ||
-    imageUrl.includes('1688.com')
-  ) {
-    return imageUrl;
-  }
+// translateFrenchToChinese is now imported from translation-utils.ts
+import { translateFrenchToChinese } from '@/lib/services/translation-utils';
 
-  // Utiliser wsrv.nl (Cloudflare) comme proxy pour les images Supabase
-  // wsrv.nl est accessible depuis la Chine et peut servir les images à l'API 1688
-  const encodedUrl = encodeURIComponent(imageUrl);
-  return `https://wsrv.nl/?url=${encodedUrl}`;
-}
-
-/**
- * Délai utilitaire pour le rate limiting
- */
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Traduit un terme français en chinois (mapping statique - fallback)
- */
-export function translateToChineseStatic(text: string): string {
-  const lowerText = text.toLowerCase().trim();
-
-  // Vérifier si le terme existe dans notre mapping
-  if (FRENCH_TO_CHINESE_TERMS[lowerText]) {
-    return FRENCH_TO_CHINESE_TERMS[lowerText];
-  }
-
-  // Sinon, essayer de trouver des correspondances partielles
-  for (const [french, chinese] of Object.entries(FRENCH_TO_CHINESE_TERMS)) {
-    if (lowerText.includes(french)) {
-      return lowerText.replace(french, chinese);
-    }
-  }
-
-  // Si aucune traduction trouvée, retourner le texte original
-  return text;
-}
-
-/**
- * Traduit un terme de recherche français en chinois via DeepSeek
- * Utilisé pour les requêtes de recherche sur 1688
- */
-export async function translateFrenchToChinese(text: string): Promise<string> {
-  if (!text || text.trim() === '') return text;
-
-  // Vérifier si le texte contient déjà des caractères chinois
-  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
-  if (hasChinese) return text;
-
-  // Pour les termes simples (1-2 mots), essayer le mapping statique
-  const wordCount = text.trim().split(/\s+/).length;
-  if (wordCount <= 2) {
-    const staticTranslation = translateToChineseStatic(text);
-    // N'utiliser que si c'est une correspondance exacte (entièrement traduit en chinois)
-    if (staticTranslation !== text && /^[\u4e00-\u9fa5]+$/.test(staticTranslation)) {
-      console.log(`[1688] Static translation: "${text}" -> "${staticTranslation}"`);
-      return staticTranslation;
-    }
-  }
-
-  // Utiliser l'IA pour traduire les phrases complexes ou quand le mapping statique échoue
-  try {
-    console.log(`[1688] AI translation FR->ZH for: "${text}"`);
-    const translated = await completeText(
-      text,
-      `You are a professional translator specializing in product names and B2B commerce.
-Translate the following French product search term to Chinese (Simplified).
-The translation should be optimized for searching on 1688.com (Chinese B2B marketplace).
-Use common Chinese product terminology that would yield good search results.
-IMPORTANT: Translate ALL words including colors (rouge=红色, bleu=蓝色, noir=黑色, blanc=白色),
-brand names (keep iPhone as iPhone or 苹果手机), and product types.
-Return ONLY the Chinese translation, nothing else.`,
-      { temperature: 0.2, maxTokens: 100 }
-    );
-    const result = translated.trim();
-    if (result && /[\u4e00-\u9fa5]/.test(result)) {
-      console.log(`[1688] AI translated: "${text}" -> "${result}"`);
-      return result;
-    }
-    return text;
-  } catch (error) {
-    console.error('[1688] FR->ZH translation error:', error);
-    return text; // Retourner le texte original en cas d'erreur
-  }
-}
-
-/**
- * Convertit une URL d'image alicdn en URL proxy pour éviter les problèmes CORS
- * Les images de 1688/alicdn sont bloquées par CORS dans le navigateur
- */
-export function convertToDisplayProxyUrl(imageUrl: string): string {
-  if (!imageUrl) return '';
-
-  // Si c'est déjà une URL proxy, ne pas modifier
-  if (imageUrl.includes('wsrv.nl') || imageUrl.includes('weserv.nl')) {
-    return imageUrl;
-  }
-
-  // Les images alicdn/1688 ont besoin d'un proxy pour s'afficher dans le navigateur
-  if (imageUrl.includes('alicdn.com') || imageUrl.includes('1688.com') || imageUrl.includes('cbu01.alicdn.com')) {
-    const encodedUrl = encodeURIComponent(imageUrl);
-    return `https://wsrv.nl/?url=${encodedUrl}&output=jpg&q=85`;
-  }
-
-  return imageUrl;
-}
-
-/**
- * Traduit un texte chinois en français en utilisant l'IA
- */
-async function translateChineseToFrench(text: string): Promise<string> {
-  if (!text || text.trim() === '') return text;
-
-  // Vérifier si le texte contient des caractères chinois
-  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
-  if (!hasChinese) return text;
-
-  try {
-    const translated = await completeText(
-      text,
-      'You are a professional translator. Translate the following Chinese product title to French. Keep it concise and accurate. Return ONLY the French translation, nothing else.',
-      { temperature: 0.2, maxTokens: 200 }
-    );
-    return translated.trim() || text;
-  } catch (error) {
-    console.error('[1688] Translation error:', error);
-    return text; // Retourner le texte original en cas d'erreur
-  }
-}
-
-/**
- * Traduit plusieurs textes chinois en français en batch
- */
-async function translateTextsBatch(texts: string[]): Promise<string[]> {
-  if (texts.length === 0) return [];
-
-  // Filtrer les textes avec des caractères chinois
-  const chineseTexts = texts.filter(t => /[\u4e00-\u9fa5]/.test(t));
-  if (chineseTexts.length === 0) return texts;
-
-  try {
-    // Créer un prompt batch pour économiser les appels API
-    const numberedTexts = chineseTexts.map((t, i) => `${i + 1}. ${t}`).join('\n');
-
-    const translated = await completeText(
-      numberedTexts,
-      `You are a professional translator. Translate each Chinese text to French.
-Keep each translation on a separate line with the same numbering format.
-Be concise and accurate. Return ONLY the numbered translations, nothing else.
-For product titles, company names, and location names, provide natural French translations.
-Example format:
-1. French translation 1
-2. French translation 2`,
-      { temperature: 0.2, maxTokens: 2000 }
-    );
-
-    // Parser les résultats
-    const lines = translated.trim().split('\n');
-    const translationMap = new Map<number, string>();
-
-    for (const line of lines) {
-      const match = line.match(/^(\d+)\.\s*(.+)$/);
-      if (match) {
-        translationMap.set(parseInt(match[1]) - 1, match[2].trim());
-      }
-    }
-
-    // Reconstruire le tableau avec les traductions
-    let chineseIndex = 0;
-    return texts.map(text => {
-      if (/[\u4e00-\u9fa5]/.test(text)) {
-        const translation = translationMap.get(chineseIndex);
-        chineseIndex++;
-        return translation || text;
-      }
-      return text;
-    });
-  } catch (error) {
-    console.error('[1688] Batch translation error:', error);
-    return texts; // Retourner les textes originaux en cas d'erreur
-  }
-}
+// translateChineseToFrench, translateTextsBatch now imported from translation-utils.ts
+import { translateChineseToFrench, translateTextsBatch } from '@/lib/services/translation-utils';
 
 /**
  * Traduit les titres et infos fournisseurs d'une liste de produits

@@ -27,7 +27,8 @@ import {
   Calendar,
   Download,
   Upload,
-  FileCheck
+  FileCheck,
+  ShoppingCart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AdminGuard from '@/components/admin/AdminGuard';
@@ -59,6 +60,18 @@ const adminNavigation = [
     ]
   },
   {
+    title: 'Sourcing Client',
+    items: [
+      {
+        name: 'Requêtes Client',
+        href: '/admin/client-requests',
+        icon: ShoppingCart,
+        badge: 'Nouveau',
+        description: 'Demandes sourcing client (Taobao/1688/Kimi)'
+      },
+    ]
+  },
+  {
     title: 'Fournisseurs',
     items: [
       {
@@ -79,7 +92,7 @@ const adminNavigation = [
         name: 'Recherche 1688',
         href: '/admin/1688',
         icon: Globe,
-        badge: 'Nouveau',
+        badge: null,
         description: 'Marketplace B2B Chine'
       },
       {
